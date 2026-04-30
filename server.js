@@ -326,7 +326,7 @@ const httpServer = app.listen(port, () => {
   console.log(`⚡ HTTP server listening on port ${port}`);
 });
 
-// Colyseus 0.17 automatically handles /matchmake routes when attached to httpServer
+// Colyseus WebSocketTransport automatically intercepts /matchmake routes
 const gameServer = new Server({
   transport: new WebSocketTransport({ server: httpServer })
 });
