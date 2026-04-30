@@ -1,3 +1,4 @@
+const http = require("http");
 const { Server, Room } = require("@colyseus/core");
 const { WebSocketTransport } = require("@colyseus/ws-transport");
 const { Schema, MapSchema } = require("@colyseus/schema");
@@ -322,51 +323,19 @@ app.get("/health", (_, res) => res.send("OK"));
 app.use("/playground", playground());
 
 const port = process.env.PORT || 2567;
-const httpServer = app.listen(port, () => {
-  console.log(`⚡ HTTP server listening on port ${port}`);
-});
 
+// Create the HTTP server from the Express app
+const httpServer = http.createServer(app);
+
+// Give Colyseus the SAME HTTP server so it can intercept /matchmake routes
 const gameServer = new Server({
   transport: new WebSocketTransport({ server: httpServer })
 });
 gameServer.define("football", FootballRoom);
 
-// ---------- Manual Matchmaking Routes (fixes JSON.parse error) ----------
-app.post("/matchmake/create", async (req, res) => {
-  try {
-    const { roomName, options } = req.body;
-    const room = await gameServer.matchmaker.create("football", options || {});
-    res.json({ roomId: room.roomId });
-    console.log(`✅ Room created: ${room.roomId}`);
-  } catch (e) {
-    console.error("❌ Create failed:", e.message);
-    res.status(400).json({ error: e.message });
-  }
+// Start listening on the HTTP server
+httpServer.listen(port, () => {
+  console.log(`⚡ HTTP server listening on port ${port}`);
 });
 
-app.post("/matchmake/joinOrCreate", async (req, res) => {
-  try {
-    const { roomName, options } = req.body;
-    const room = await gameServer.matchmaker.joinOrCreate("football", options || {});
-    res.json({ roomId: room.roomId });
-    console.log(`✅ Room joined/created: ${room.roomId}`);
-  } catch (e) {
-    console.error("❌ JoinOrCreate failed:", e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-app.post("/matchmake/joinById", async (req, res) => {
-  try {
-    const { roomId, options } = req.body;
-    const room = await gameServer.matchmaker.joinById(roomId, options || {});
-    res.json({ roomId: room.roomId });
-    console.log(`✅ Joined room by ID: ${room.roomId}`);
-  } catch (e) {
-    console.error("❌ JoinById failed:", e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-console.log("✅ Manual matchmaking routes registered.");
 console.log(`⚡ Colyseus WebSocket ready on port ${port}`);
