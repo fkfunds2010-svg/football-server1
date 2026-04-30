@@ -5,7 +5,7 @@ const express = require("express");
 const cors = require("cors");
 const { playground } = require("@colyseus/playground");
 
-// ---------- Schemas ----------
+// ---------- Schemas (Schema 4.x style) ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -326,7 +326,7 @@ const httpServer = app.listen(port, () => {
   console.log(`⚡ HTTP server listening on port ${port}`);
 });
 
-// Colyseus automatically intercepts /matchmake requests when attached to httpServer
+// Colyseus 0.17 automatically handles /matchmake routes when attached to httpServer
 const gameServer = new Server({
   transport: new WebSocketTransport({ server: httpServer })
 });
