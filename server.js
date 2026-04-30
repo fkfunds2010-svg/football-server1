@@ -333,6 +333,45 @@ const gameServer = new Server({
 });
 gameServer.define("football", FootballRoom);
 
+// ----- MANUAL MATCHMAKING ROUTES (fixes JSON.parse error) -----
+app.post("/matchmake/create", async (req, res) => {
+  try {
+    const options = req.body.options || req.body;
+    const room = await gameServer.matchmaker.create("football", options);
+    res.json({ roomId: room.roomId });
+    console.log(`✅ Room created: ${room.roomId}`);
+  } catch (e) {
+    console.error("❌ Create failed:", e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.post("/matchmake/joinOrCreate", async (req, res) => {
+  try {
+    const options = req.body.options || req.body;
+    const room = await gameServer.matchmaker.joinOrCreate("football", options);
+    res.json({ roomId: room.roomId });
+    console.log(`✅ Room joined/created: ${room.roomId}`);
+  } catch (e) {
+    console.error("❌ JoinOrCreate failed:", e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.post("/matchmake/joinById", async (req, res) => {
+  try {
+    const { roomId, options } = req.body;
+    const room = await gameServer.matchmaker.joinById(roomId, options || {});
+    res.json({ roomId: room.roomId });
+    console.log(`✅ Joined room by ID: ${room.roomId}`);
+  } catch (e) {
+    console.error("❌ JoinById failed:", e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+console.log("✅ Manual matchmaking routes registered.");
+
 // Start listening on the HTTP server
 httpServer.listen(port, () => {
   console.log(`⚡ HTTP server listening on port ${port}`);
