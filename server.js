@@ -1,11 +1,11 @@
-const { Server, Room } = require("@colyseus/core");
+const { Server, Room, matchMaker } = require("@colyseus/core");
 const { WebSocketTransport } = require("@colyseus/ws-transport");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const express = require("express");
 const cors = require("cors");
 const { playground } = require("@colyseus/playground");
 
-// ---------- Schemas (Schema 4.x style) ----------
+// ---------- Schemas ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -321,12 +321,14 @@ app.get("/health", (_, res) => res.send("OK"));
 
 app.use("/playground", playground());
 
+// ⭐ THIS LINE FIXES THE PLAYGROUND AND YOUR GAME
+matchMaker.exposeRoutes(app);
+
 const port = process.env.PORT || 2567;
 const httpServer = app.listen(port, () => {
   console.log(`⚡ HTTP server listening on port ${port}`);
 });
 
-// Colyseus WebSocketTransport automatically intercepts /matchmake routes
 const gameServer = new Server({
   transport: new WebSocketTransport({ server: httpServer })
 });
