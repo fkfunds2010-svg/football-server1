@@ -303,17 +303,3 @@ class FootballRoom extends Room {
     }
   }
 }
-
-// ---------- defineServer ----------
-const server = defineServer({
-  rooms: {
-    football: FootballRoom
-  },
-
-  express: (app) => {
-    app.get("/health", (req, res) => res.send("OK"));
-  }
-});
-
-server.listen(process.env.PORT || 2567);
-console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
