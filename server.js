@@ -1,10 +1,6 @@
-const http = require("http");
-const { Server, Room } = require("@colyseus/core");
-const { WebSocketTransport } = require("@colyseus/ws-transport");
+const { defineServer } = require("colyseus");
+const { Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
-const express = require("express");
-const cors = require("cors");
-const { playground } = require("@colyseus/playground");
 
 // ---------- Schemas ----------
 class PlayerState extends Schema {
@@ -13,16 +9,14 @@ class PlayerState extends Schema {
     this.x = 150; this.y = 415; this.vx = 0; this.vy = 0;
     this.isJumping = false; this.color = "#ff00ff"; this.side = "left";
     this.name = ""; this.ready = false; this.accelX = 0;
-    this.reconnecting = false;
-    this.disconnectTime = 0;
+    this.reconnecting = false; this.disconnectTime = 0;
   }
 }
 PlayerState._schema = {
   x: "number", y: "number", vx: "number", vy: "number",
   isJumping: "boolean", color: "string", side: "string",
   name: "string", ready: "boolean", accelX: "number",
-  reconnecting: "boolean",
-  disconnectTime: "number"
+  reconnecting: "boolean", disconnectTime: "number"
 };
 
 class BallState extends Schema {
@@ -44,8 +38,7 @@ class GameState extends Schema {
     this.keeper2 = new KeeperState();
     this.p1Score = 0; this.p2Score = 0; this.timeLeft = 120;
     this.gameOver = false; this.winnerMessage = "";
-    this.matchState = "waiting";
-    this.hostId = ""; this.roomCode = "";
+    this.matchState = "waiting"; this.hostId = ""; this.roomCode = "";
     this.countdown = -1; this.goalFreeze = 0;
     this.password = ""; this.lastWinner = "";
   }
@@ -311,70 +304,16 @@ class FootballRoom extends Room {
   }
 }
 
-// ---------- Express & Colyseus server ----------
-const app = express();
-app.set("trust proxy", 1);
-app.use(cors());
-app.use(express.json());
+// ---------- defineServer (CORRECTED – no defineRoom wrapper) ----------
+const server = defineServer({
+  rooms: {
+    football: FootballRoom
+  },
 
-app.get("/", (_, res) => res.send("Football server is running ✅"));
-app.get("/health", (_, res) => res.send("OK"));
-
-app.use("/playground", playground());
-
-const port = process.env.PORT || 2567;
-
-// Create the HTTP server from the Express app
-const httpServer = http.createServer(app);
-
-// Create the Colyseus server, attaching it to the SAME httpServer
-const gameServer = new Server({
-  transport: new WebSocketTransport({ server: httpServer })
-});
-gameServer.define("football", FootballRoom);
-
-// ----- MANUAL MATCHMAKING ROUTES (FIXED – capital M) -----
-app.post("/matchmake/create", async (req, res) => {
-  try {
-    const options = req.body.options || req.body;
-    const room = await gameServer.matchMaker.create("football", options);
-    res.json({ roomId: room.roomId });
-    console.log(`✅ Room created: ${room.roomId}`);
-  } catch (e) {
-    console.error("❌ Create failed:", e.message);
-    res.status(400).json({ error: e.message });
+  express: (app) => {
+    app.get("/health", (req, res) => res.send("OK"));
   }
 });
 
-app.post("/matchmake/joinOrCreate", async (req, res) => {
-  try {
-    const options = req.body.options || req.body;
-    const room = await gameServer.matchMaker.joinOrCreate("football", options);
-    res.json({ roomId: room.roomId });
-    console.log(`✅ Room joined/created: ${room.roomId}`);
-  } catch (e) {
-    console.error("❌ JoinOrCreate failed:", e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-app.post("/matchmake/joinById", async (req, res) => {
-  try {
-    const { roomId, options } = req.body;
-    const room = await gameServer.matchMaker.joinById(roomId, options || {});
-    res.json({ roomId: room.roomId });
-    console.log(`✅ Joined room by ID: ${room.roomId}`);
-  } catch (e) {
-    console.error("❌ JoinById failed:", e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-console.log("✅ Manual matchmaking routes registered.");
-
-// Start listening
-httpServer.listen(port, () => {
-  console.log(`⚡ HTTP server listening on port ${port}`);
-});
-
-console.log(`⚡ Colyseus WebSocket ready on port ${port}`);
+server.listen(process.env.PORT || 2567);
+console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
