@@ -1,6 +1,8 @@
 const { defineServer } = require("colyseus");
 const { Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
+const { playground } = require("@colyseus/playground");
+const express = require("express");
 
 // ---------- Schemas ----------
 class PlayerState extends Schema {
@@ -54,7 +56,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room ----------
+// ---------- Room (exactly as you already have it) ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -302,4 +304,35 @@ class FootballRoom extends Room {
       }
     }
   }
+}
+
+// ---------- Safe server startup ----------
+let server;
+try {
+  server = defineServer({
+    rooms: {
+      football: FootballRoom
+    },
+    express: (app) => {
+      // Allow everything needed by the Playground
+      app.use((req, res, next) => {
+        res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * ws: wss:;");
+        next();
+      });
+
+      // Health check endpoint
+      app.get("/health", (req, res) => res.send("OK"));
+
+      // Mount the Playground
+      app.use("/playground", playground());
+    }
+  });
+
+  server.listen(process.env.PORT || 2567, () => {
+    console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
+  });
+
+} catch (error) {
+  console.error("❌ Server failed to start:", error);
+  process.exit(1);
 }
