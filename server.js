@@ -3,9 +3,9 @@ const { Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
 const cors = require("cors");
-const express = require("express");   // ← THIS WAS MISSING
+const express = require("express");
 
-// ---------- Schemas ----------
+// ---------- Schemas (unchanged) ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -57,7 +57,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room ----------
+// ---------- Room (unchanged) ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -307,31 +307,41 @@ class FootballRoom extends Room {
   }
 }
 
-// ---------- defineServer with CORS ----------
-const server = defineServer({
-  rooms: {
-    football: FootballRoom
-  },
+// ---------- Safe startup ----------
+try {
+  const server = defineServer({
+    rooms: {
+      football: FootballRoom
+    },
 
-  express: (app) => {
-    // CORS for all origins (Playground and game client)
-    app.use(cors());
-    app.use(express.json());
+    express: (app) => {
+      app.use(cors());
+      app.use(express.json());
 
-      // CSP – now allows data: images for the Playground
-    app.use((req, res, next) => {
-      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval'; img-src * data:; connect-src * ws: wss:;");
-      next();
-    });
+      // Allow data: URIs for Playground SVGs
+      app.use((req, res, next) => {
+        res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval'; img-src * data:; connect-src * ws: wss:;");
+        next();
+      });
 
-    // Health check
-    app.get("/health", (req, res) => res.send("OK"));
+      app.get("/health", (req, res) => res.send("OK"));
+      app.use("/playground", playground());
+    }
+  });
 
-    // Playground
-    app.use("/playground", playground());
-  }
+  server.listen(process.env.PORT || 2567, () => {
+    console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
+  });
+
+} catch (error) {
+  console.error("❌ Server failed to start:", error);
+  process.exit(1);
+}
+
+// Catch any unhandled errors in room logic
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
-
-server.listen(process.env.PORT || 2567, () => {
-  console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
 });
