@@ -5,7 +5,7 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Schemas (unchanged) ----------
+// ---------- Schemas ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -57,7 +57,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room (unchanged) ----------
+// ---------- Room ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -307,41 +307,32 @@ class FootballRoom extends Room {
   }
 }
 
-// ---------- Safe startup ----------
-try {
-  const server = defineServer({
-    rooms: {
-      football: FootballRoom
-    },
+// ---------- Server setup ----------
+const server = defineServer({
+  rooms: {
+    football: FootballRoom
+  },
 
-    express: (app) => {
-      app.use(cors());
-      app.use(express.json());
+  express: (app) => {
+    // Allow everything the Playground needs
+    app.use(cors());
+    app.use(express.json());
 
-      // Allow data: URIs for Playground SVGs
-      app.use((req, res, next) => {
-        res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval'; img-src * data:; connect-src * ws: wss:;");
-        next();
-      });
+    app.use((req, res, next) => {
+      res.setHeader(
+        "Content-Security-Policy",
+        "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * ws: wss:;"
+      );
+      next();
+    });
 
-      app.get("/health", (req, res) => res.send("OK"));
-      app.use("/playground", playground());
-    }
-  });
+    app.get("/health", (req, res) => res.send("OK"));
 
-  server.listen(process.env.PORT || 2567, () => {
-    console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
-  });
-
-} catch (error) {
-  console.error("❌ Server failed to start:", error);
-  process.exit(1);
-}
-
-// Catch any unhandled errors in room logic
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Playground
+    app.use("/playground", playground());
+  }
 });
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+
+server.listen(process.env.PORT || 2567, () => {
+  console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 });
