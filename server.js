@@ -304,7 +304,7 @@ class FootballRoom extends Room {
   }
 }
 
-// ---------- defineServer (CORRECTED – no defineRoom wrapper) ----------
+// ---------- defineServer ----------
 const server = defineServer({
   rooms: {
     football: FootballRoom
