@@ -314,21 +314,23 @@ const server = defineServer({
   },
 
   express: (app) => {
-    // Allow everything the Playground needs
+    // Allow CORS from anywhere (Playground + your client)
     app.use(cors());
     app.use(express.json());
 
+    // ---- CSP that allows EVERYTHING the Playground needs ----
+    // It must be a single header; multiple headers overwrite each other.
     app.use((req, res, next) => {
       res.setHeader(
         "Content-Security-Policy",
-        "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * ws: wss:;"
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; frame-src *;"
       );
       next();
     });
 
     app.get("/health", (req, res) => res.send("OK"));
 
-    // Playground
+    // Mount the Playground
     app.use("/playground", playground());
   }
 });
