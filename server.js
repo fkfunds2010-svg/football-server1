@@ -91,13 +91,13 @@ const gameServer = new Server({
 });
 gameServer.define("football", FootballRoom);
 
-// ----- MANUAL MATCHMAKING ROUTES (FIXES THE JSON.parse ERROR FOREVER) -----
-// These routes handle the exact HTTP requests that the Playground and the client SDK make.
+
+
+// ----- MANUAL MATCHMAKING ROUTES (FIXED – capital M) -----
 app.post("/matchmake/create", async (req, res) => {
   try {
-    // The request body contains the room name and options.
     const options = req.body.options || req.body;
-    const room = await gameServer.matchmaker.create("football", options);
+    const room = await gameServer.matchMaker.create("football", options);
     res.json({ roomId: room.roomId });
     console.log(`✅ Room created: ${room.roomId}`);
   } catch (e) {
@@ -109,7 +109,7 @@ app.post("/matchmake/create", async (req, res) => {
 app.post("/matchmake/joinOrCreate", async (req, res) => {
   try {
     const options = req.body.options || req.body;
-    const room = await gameServer.matchmaker.joinOrCreate("football", options);
+    const room = await gameServer.matchMaker.joinOrCreate("football", options);
     res.json({ roomId: room.roomId });
     console.log(`✅ Room joined/created: ${room.roomId}`);
   } catch (e) {
@@ -121,7 +121,7 @@ app.post("/matchmake/joinOrCreate", async (req, res) => {
 app.post("/matchmake/joinById", async (req, res) => {
   try {
     const { roomId, options } = req.body;
-    const room = await gameServer.matchmaker.joinById(roomId, options || {});
+    const room = await gameServer.matchMaker.joinById(roomId, options || {});
     res.json({ roomId: room.roomId });
     console.log(`✅ Joined room by ID: ${room.roomId}`);
   } catch (e) {
