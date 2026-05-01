@@ -318,9 +318,9 @@ const server = defineServer({
     app.use(cors());
     app.use(express.json());
 
-    // Allow all resources
+      // CSP – now allows data: images for the Playground
     app.use((req, res, next) => {
-      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * ws: wss:;");
+      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval'; img-src * data:; connect-src * ws: wss:;");
       next();
     });
 
