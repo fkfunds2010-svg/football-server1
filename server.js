@@ -2,7 +2,7 @@ const { defineServer } = require("colyseus");
 const { Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
-const express = require("express");
+const cors = require("cors");
 
 // ---------- Schemas ----------
 class PlayerState extends Schema {
@@ -56,7 +56,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room (exactly as you already have it) ----------
+// ---------- Room ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -306,33 +306,31 @@ class FootballRoom extends Room {
   }
 }
 
-// ---------- Safe server startup ----------
-let server;
-try {
-  server = defineServer({
-    rooms: {
-      football: FootballRoom
-    },
-    express: (app) => {
-      // Allow everything needed by the Playground
-      app.use((req, res, next) => {
-        res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * ws: wss:;");
-        next();
-      });
+// ---------- defineServer with CORS ----------
+const server = defineServer({
+  rooms: {
+    football: FootballRoom
+  },
 
-      // Health check endpoint
-      app.get("/health", (req, res) => res.send("OK"));
+  express: (app) => {
+    // CORS for all origins (Playground and game client)
+    app.use(cors());
+    app.use(express.json());
 
-      // Mount the Playground
-      app.use("/playground", playground());
-    }
-  });
+    // Allow all resources
+    app.use((req, res, next) => {
+      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * ws: wss:;");
+      next();
+    });
 
-  server.listen(process.env.PORT || 2567, () => {
-    console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
-  });
+    // Health check
+    app.get("/health", (req, res) => res.send("OK"));
 
-} catch (error) {
-  console.error("❌ Server failed to start:", error);
-  process.exit(1);
-}
+    // Playground
+    app.use("/playground", playground());
+  }
+});
+
+server.listen(process.env.PORT || 2567, () => {
+  console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
+});
