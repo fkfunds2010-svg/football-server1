@@ -3,6 +3,7 @@ const { Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
 const cors = require("cors");
+const express = require("express");   // ← THIS WAS MISSING
 
 // ---------- Schemas ----------
 class PlayerState extends Schema {
