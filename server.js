@@ -339,12 +339,15 @@ const server = defineServer({
 
     app.get("/health", (req, res) => res.send("OK"));
 
+    // Use the matchmaker from the server's internal reference
     app.post("/matchmake/create", async (req, res) => {
       try {
         const options = req.body || {};
-        const room = await server.matchMaker.create("football", options);
+        const matchMaker = server.matchMaker;
+        const room = await matchMaker.create("football", options);
         res.json({ roomId: room.roomId, sessionId: room.sessionId });
       } catch (e) {
+        console.error("Create error:", e.message);
         res.status(400).json({ error: e.message });
       }
     });
@@ -352,9 +355,11 @@ const server = defineServer({
     app.post("/matchmake/joinOrCreate", async (req, res) => {
       try {
         const options = req.body || {};
-        const room = await server.matchMaker.joinOrCreate("football", options);
+        const matchMaker = server.matchMaker;
+        const room = await matchMaker.joinOrCreate("football", options);
         res.json({ roomId: room.roomId, sessionId: room.sessionId });
       } catch (e) {
+        console.error("JoinOrCreate error:", e.message);
         res.status(400).json({ error: e.message });
       }
     });
@@ -362,9 +367,11 @@ const server = defineServer({
     app.post("/matchmake/joinById", async (req, res) => {
       try {
         const { roomId, options } = req.body;
-        const room = await server.matchMaker.joinById(roomId, options || {});
+        const matchMaker = server.matchMaker;
+        const room = await matchMaker.joinById(roomId, options || {});
         res.json({ roomId: room.roomId, sessionId: room.sessionId });
       } catch (e) {
+        console.error("JoinById error:", e.message);
         res.status(400).json({ error: e.message });
       }
     });
