@@ -321,6 +321,15 @@ const server = defineServer({
     app.use(cors());
     app.use(express.json());
 
+    // ---- CRITICAL: Allow WebSocket upgrade requests to pass through ----
+    app.use((req, res, next) => {
+      if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
+        return next();
+      }
+      next();
+    });
+
+    // ---- CSP headers for Playground ----
     app.use((req, res, next) => {
       res.setHeader(
         "Content-Security-Policy",
