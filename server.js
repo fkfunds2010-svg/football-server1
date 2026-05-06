@@ -316,12 +316,12 @@ const server = defineServer({
   rooms: {
     football: FootballRoom
   },
-  express: (app) => {
+express: (app) => {
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
 
-    // ---- CRITICAL: Allow WebSocket upgrade requests to pass through ----
+    // Allow WebSocket upgrade requests to pass through
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
         return next();
@@ -329,31 +329,51 @@ const server = defineServer({
       next();
     });
 
-    // ---- CSP headers for Playground ----
+    // CSP headers - OVERRIDE any restrictive defaults
     app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
       res.setHeader(
         "Content-Security-Policy",
-        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; frame-src *;"
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; frame-src *; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';"
       );
       next();
     });
 
     app.get("/health", (req, res) => res.send("OK"));
 
-    // Serve Colyseus client library directly from server
-    app.get("/colyseus.js", (req, res) => {
+    // Manual matchmaking routes
+    app.post("/matchmake/create", async (req, res) => {
       try {
-        const filePath = require.resolve("colyseus.js/dist/colyseus.js");
-        res.sendFile(filePath);
+        const options = req.body || {};
+        const room = await server.matchMaker.create("football", options);
+        res.json({ roomId: room.roomId, sessionId: room.sessionId });
       } catch (e) {
-        res.status(404).send("Colyseus client library not found");
+        res.status(400).json({ error: e.message });
+      }
+    });
+
+    app.post("/matchmake/joinOrCreate", async (req, res) => {
+      try {
+        const options = req.body || {};
+        const room = await server.matchMaker.joinOrCreate("football", options);
+        res.json({ roomId: room.roomId, sessionId: room.sessionId });
+      } catch (e) {
+        res.status(400).json({ error: e.message });
+      }
+    });
+
+    app.post("/matchmake/joinById", async (req, res) => {
+      try {
+        const { roomId, options } = req.body;
+        const room = await server.matchMaker.joinById(roomId, options || {});
+        res.json({ roomId: room.roomId, sessionId: room.sessionId });
+      } catch (e) {
+        res.status(400).json({ error: e.message });
       }
     });
 
     app.use("/playground", playground());
   }
-});
-
 server.listen(process.env.PORT || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 });
