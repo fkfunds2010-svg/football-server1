@@ -316,12 +316,11 @@ const server = defineServer({
   rooms: {
     football: FootballRoom
   },
-express: (app) => {
+  express: (app) => {
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
 
-    // Allow WebSocket upgrade requests to pass through
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
         return next();
@@ -329,7 +328,6 @@ express: (app) => {
       next();
     });
 
-    // CSP headers - OVERRIDE any restrictive defaults
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader(
@@ -341,7 +339,6 @@ express: (app) => {
 
     app.get("/health", (req, res) => res.send("OK"));
 
-    // Manual matchmaking routes
     app.post("/matchmake/create", async (req, res) => {
       try {
         const options = req.body || {};
@@ -374,6 +371,8 @@ express: (app) => {
 
     app.use("/playground", playground());
   }
+});
+
 server.listen(process.env.PORT || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 });
