@@ -3,11 +3,17 @@
   "version": "1.0.0",
   "dependencies": {
     "colyseus": "0.17.10",
+    "@colyseus/core": "0.17.43",
     "@colyseus/tools": "0.17.18",
     "@colyseus/schema": "4.0.21",
     "@colyseus/auth": "0.17.8",
     "@colyseus/playground": "0.17.12",
     "@colyseus/ws-transport": "0.17.9",
+    "@colyseus/better-call": "1.3.1",
+    "@colyseus/redis-driver": "0.17.9",
+    "@colyseus/redis-presence": "0.17.9",
+    "@colyseus/uwebsockets-transport": "0.17.9",
+    "typescript": "5.0.0",
     "cors": "^2.8.5",
     "express": "^4.21.1"
   },
