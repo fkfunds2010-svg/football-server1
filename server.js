@@ -52,4 +52,4 @@ listen({
   express: (app) => {
     app.get("/health", (req, res) => res.send("OK"));
   }
-}, process.env.PORT || 2567);
+}, Number(process.env.PORT) || 2567);
