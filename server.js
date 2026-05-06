@@ -1,16 +1,14 @@
-const { listen } = require("@colyseus/tools");
-const { Room } = require("@colyseus/core");
+const { defineServer, Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
+const { playground } = require("@colyseus/playground");
+const cors = require("cors");
+const express = require("express");
 
-// ---------- Prevent unexpected crashes ----------
-process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err.message);
-});
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection:', reason);
-});
+// ---------- Global error handlers ----------
+process.on('uncaughtException', (err) => console.error('❌ Uncaught Exception:', err.message));
+process.on('unhandledRejection', (reason, promise) => console.error('❌ Unhandled Rejection:', reason));
 
-// ---------- Schemas (unchanged) ----------
+// ---------- Schemas ----------
 class PlayerState extends Schema {
   constructor() { super(); this.x = 150; this.y = 415; this.vx = 0; this.vy = 0; this.isJumping = false; this.color = "#ff00ff"; this.side = "left"; this.name = ""; this.ready = false; this.accelX = 0; this.reconnecting = false; this.disconnectTime = 0; }
 }
@@ -31,7 +29,7 @@ class GameState extends Schema {
 }
 GameState._schema = { players: { map: PlayerState }, ball: BallState, keeper1: KeeperState, keeper2: KeeperState, p1Score: "number", p2Score: "number", timeLeft: "number", gameOver: "boolean", winnerMessage: "string", matchState: "string", hostId: "string", roomCode: "string", countdown: "number", goalFreeze: "number", password: "string", lastWinner: "string" };
 
-// ---------- Room (with crash‑safe simulation) ----------
+// ---------- Room ----------
 class FootballRoom extends Room {
   constructor() { super(); this.maxClients = 2; this.state = new GameState(); this.inputs = {}; this.targetGoals = 10; this.reconnectTimers = {}; }
   static onAuth(client, options, request) { return true; }
@@ -44,13 +42,8 @@ class FootballRoom extends Room {
     this.onMessage("emote", (client, em) => { const p = this.state.players.get(client.sessionId); if (p) this.broadcast("emote", { playerName: p.name, emoteId: em }); });
     this.onMessage("ping", (client, d) => client.send("pong", d));
     this.onMessage("rematch", (client) => { if (this.state.matchState !== "end") return; this.state.players.forEach(p => { p.x = p.side === "left" ? 150 : 820; p.y = 415; p.vx = 0; p.vy = 0; p.isJumping = false; p.ready = false; }); this.state.ball.x = 500; this.state.ball.y = 250; this.state.ball.vx = 5; this.state.ball.vy = -3; this.state.p1Score = 0; this.state.p2Score = 0; this.state.timeLeft = 120; this.state.gameOver = false; this.state.winnerMessage = ""; this.state.matchState = "waiting"; this.state.countdown = -1; this.state.goalFreeze = 0; this.broadcast("rematch"); this.broadcastPlayerInfo(); });
-    // ---------- Safe simulation interval ----------
     this.setSimulationInterval((dt) => {
-      try {
-        this.gameTick();
-      } catch (e) {
-        console.error("❌ gameTick error:", e.message);
-      }
+      try { this.gameTick(); } catch(e) { console.error("❌ gameTick error:", e.message); }
     }, 1000 / 30);
   }
   onJoin(client, options) { const pass = options?.password; if (pass && pass !== this.state.password) { client.send("error", { message: "Incorrect password" }); client.leave(); return; } const ep = this.state.players.get(client.sessionId); if (ep) { ep.reconnecting = false; if (this.reconnectTimers[client.sessionId]) { clearTimeout(this.reconnectTimers[client.sessionId]); delete this.reconnectTimers[client.sessionId]; } this.broadcast("playerReconnected", {}); this.broadcastPlayerInfo(); return; } if (this.clients.length >= 2) { client.send("error", { message: "Room is full" }); client.leave(); return; } const player = new PlayerState(); const isP1 = this.clients.length === 1; if (isP1) this.state.hostId = client.sessionId; player.x = isP1 ? 150 : 820; player.y = 415; player.color = isP1 ? "#ff00ff" : "#00f2ff"; player.side = isP1 ? "left" : "right"; this.state.players.set(client.sessionId, player); this.broadcastPlayerInfo(); }
@@ -60,10 +53,24 @@ class FootballRoom extends Room {
   gameTick() { if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return; if (this.state.goalFreeze > 0) { this.state.goalFreeze--; if (this.state.goalFreeze === 0) this.broadcast("event", { type: "FREEZE_END" }); return; } const FIXED_DT = 1 / 30; const ball = this.state.ball; this.state.players.forEach((player, sid) => { const input = this.inputs[sid] || {}; const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y, hasBall = dx * dx + dy * dy < 2500; if (hasBall && (input.shoot || input.turbo)) { player.vx = 0; const speed = input.turbo ? 45 : 20; ball.vx = player.side === "left" ? speed : -speed; if (input.up && !input.down) ball.vy = -14; else if (input.down) ball.vy = 10; else ball.vy = -2; this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } }); } else { const accel = 0.6; if (input.left) player.accelX -= accel; if (input.right) player.accelX += accel; if (!input.left && !input.right) player.accelX *= 0.85; player.accelX = Math.min(Math.max(player.accelX, -3), 3); player.vx += player.accelX; player.vx *= 0.9; if (input.up && !player.isJumping) { player.vy = -14; player.isJumping = true; } if (input.down) player.vy += 1; } }); ball.x += ball.vx * FIXED_DT * 60; ball.y += ball.vy * FIXED_DT * 60; ball.vy += 0.25 * FIXED_DT * 60; ball.vx *= 0.995; if (ball.y > 480) { ball.y = 480; ball.vy *= -0.7; } if (ball.y < 10) { ball.y = 10; ball.vy *= -0.7; } [{ x: 5, k: this.state.keeper1 }, { x: 983, k: this.state.keeper2 }].forEach(({ x: kx, k }) => { if (ball.x + 10 > kx && ball.x - 10 < kx + 12 && ball.y + 10 > k.y && ball.y - 10 < k.y + 60) { if (Math.abs(ball.vx) > 25) this.broadcast("event", { type: "SHOT", data: { turbo: false, color: "#fff" } }); ball.vx *= -1.1; ball.x = kx < 500 ? 25 : 970; } }); this.state.players.forEach(p => { if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) { const rvx = ball.vx - p.vx, rvy = ball.vy - p.vy; ball.vx = p.vx - rvx * 0.6; ball.vy = p.vy - rvy * 0.6; ball.x = ball.x < p.x + 15 ? p.x - 11 : p.x + 31; } }); if (ball.x < 0 || ball.x > 1000) { if (ball.y > 150 && ball.y < 350) { if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++; this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ? "#00f2ff" : "#ff00ff" } }); this.state.goalFreeze = 60; ball.x = 500; ball.y = 250; ball.vx = (Math.random() > 0.5 ? 5 : -5); ball.vy = -3; if (this.state.p1Score >= this.targetGoals || this.state.p2Score >= this.targetGoals) { this.state.gameOver = true; this.state.matchState = "end"; this.state.winnerMessage = this.state.p1Score >= this.targetGoals ? "Player 1 Wins!" : "Player 2 Wins!"; this.state.lastWinner = this.state.p1Score >= this.targetGoals ? "p1" : "p2"; } } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; } } const targetY = ball.y - 30; [this.state.keeper1, this.state.keeper2].forEach((k, i) => { k.vy += (targetY - k.y) * (i === 0 ? 0.12 : 0.1); k.vy *= 0.7; k.y += k.vy * FIXED_DT * 60; k.y = Math.min(295, Math.max(155, k.y)); }); this.state.players.forEach(p => { p.vy += 0.7; p.x += p.vx * FIXED_DT * 60; p.y += p.vy * FIXED_DT * 60; p.vx *= 0.85; if (p.y > 415) { p.y = 415; p.vy = 0; p.isJumping = false; } p.x = Math.min(930, Math.max(40, p.x)); }); if (this.state.timeLeft > 0) { this.state.timeLeft -= FIXED_DT; if (this.state.timeLeft <= 0) { this.state.gameOver = true; this.state.matchState = "end"; this.state.winnerMessage = this.state.p1Score > this.state.p2Score ? "Player 1 Wins!" : (this.state.p2Score > this.state.p1Score ? "Player 2 Wins!" : "Draw!"); this.state.lastWinner = this.state.p1Score > this.state.p2Score ? "p1" : (this.state.p2Score > this.state.p1Score ? "p2" : "draw"); } } }
 }
 
-// ---------- Start server ----------
-listen({
+// ---------- Server setup ----------
+const server = defineServer({
   rooms: { football: FootballRoom },
   express: (app) => {
+    app.set("trust proxy", 1);
+    app.use(cors());
+    app.use(express.json());
+    app.use((req, res, next) => { if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') { return next(); } next(); });
+    app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; frame-src *; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';");
+      next();
+    });
     app.get("/health", (req, res) => res.send("OK"));
+    app.use("/playground", playground());
   }
-}, Number(process.env.PORT) || 2567);
+});
+
+server.listen(Number(process.env.PORT) || 2567, () => {
+  console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
+});
