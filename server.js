@@ -4,7 +4,6 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Global error handlers ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
@@ -126,7 +125,6 @@ const server = defineServer({
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') return next();
       next();
     });
-    // CSP headers
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; frame-src *; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';");
