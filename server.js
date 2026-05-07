@@ -4,7 +4,7 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Prevent unexpected crashes ----------
+// ---------- Prevent crashes ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
@@ -114,12 +114,11 @@ class FootballRoom extends Room {
 }
 
 // ---------- Server setup ----------
-let app; // We'll store the Express app reference here
-
+let app;
 const server = defineServer({
   rooms: { football: FootballRoom },
   express: (expressApp) => {
-    app = expressApp;  // ⬅️ Capture the Express instance
+    app = expressApp;
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
@@ -132,11 +131,9 @@ const server = defineServer({
   }
 });
 
-// Start listening, then add the matchmaking routes when the matchmaker is ready
 server.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 
-  // These routes are now guaranteed to have access to the matchmaker
   app.post("/matchmake/create", async (req, res) => {
     try {
       const { roomName = "football", ...options } = req.body;
