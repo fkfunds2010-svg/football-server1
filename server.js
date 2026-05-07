@@ -4,7 +4,7 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Prevent crashes ----------
+// ---------- Global error handlers ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
@@ -114,7 +114,7 @@ class FootballRoom extends Room {
 }
 
 // ---------- Server setup ----------
-let app;
+let app; // store Express app reference
 const server = defineServer({
   rooms: { football: FootballRoom },
   express: (expressApp) => {
@@ -126,11 +126,18 @@ const server = defineServer({
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') return next();
       next();
     });
+    // CSP headers
+    app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; frame-src *; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';");
+      next();
+    });
     app.get("/health", (req, res) => res.send("OK"));
     app.use("/playground", playground());
   }
 });
 
+// Start listening, then add matchmaking routes when the matchmaker is ready
 server.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 
@@ -143,7 +150,6 @@ server.listen(Number(process.env.PORT) || 2567, () => {
       res.status(400).json({ error: e.message });
     }
   });
-
   app.post("/matchmake/joinOrCreate", async (req, res) => {
     try {
       const { roomName = "football", ...options } = req.body;
@@ -153,7 +159,6 @@ server.listen(Number(process.env.PORT) || 2567, () => {
       res.status(400).json({ error: e.message });
     }
   });
-
   app.post("/matchmake/joinById", async (req, res) => {
     try {
       const { roomId, ...options } = req.body;
