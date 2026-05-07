@@ -4,7 +4,7 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Global crash protection ----------
+// ---------- Prevent unexpected crashes ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
@@ -114,9 +114,12 @@ class FootballRoom extends Room {
 }
 
 // ---------- Server setup ----------
+let app; // We'll store the Express app reference here
+
 const server = defineServer({
   rooms: { football: FootballRoom },
-  express: (app) => {
+  express: (expressApp) => {
+    app = expressApp;  // ⬅️ Capture the Express instance
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
@@ -129,16 +132,11 @@ const server = defineServer({
   }
 });
 
-// ✅ Matchmaking routes registered AFTER the server starts listening
+// Start listening, then add the matchmaking routes when the matchmaker is ready
 server.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 
-  // Now the matchmaker is available
-  server.on("matchmake", (req, res) => {
-    // not used; we add manual routes instead
-  });
-
-  const app = server.express; // access the Express app
+  // These routes are now guaranteed to have access to the matchmaker
   app.post("/matchmake/create", async (req, res) => {
     try {
       const { roomName = "football", ...options } = req.body;
@@ -148,6 +146,7 @@ server.listen(Number(process.env.PORT) || 2567, () => {
       res.status(400).json({ error: e.message });
     }
   });
+
   app.post("/matchmake/joinOrCreate", async (req, res) => {
     try {
       const { roomName = "football", ...options } = req.body;
@@ -157,6 +156,7 @@ server.listen(Number(process.env.PORT) || 2567, () => {
       res.status(400).json({ error: e.message });
     }
   });
+
   app.post("/matchmake/joinById", async (req, res) => {
     try {
       const { roomId, ...options } = req.body;
