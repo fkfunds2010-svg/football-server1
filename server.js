@@ -4,72 +4,31 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Prevent crashes ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
 // ---------- Schemas ----------
 class PlayerState extends Schema {
-  constructor() {
-    super();
-    this.x = 150; this.y = 415; this.vx = 0; this.vy = 0;
-    this.isJumping = false; this.color = "#ff00ff"; this.side = "left";
-    this.name = ""; this.ready = false; this.accelX = 0;
-    this.reconnecting = false; this.disconnectTime = 0;
-  }
+  constructor() { super(); this.x = 150; this.y = 415; this.vx = 0; this.vy = 0; this.isJumping = false; this.color = "#ff00ff"; this.side = "left"; this.name = ""; this.ready = false; this.accelX = 0; this.reconnecting = false; this.disconnectTime = 0; }
 }
-PlayerState._schema = {
-  x: "number", y: "number", vx: "number", vy: "number",
-  isJumping: "boolean", color: "string", side: "string",
-  name: "string", ready: "boolean", accelX: "number",
-  reconnecting: "boolean", disconnectTime: "number"
-};
-class BallState extends Schema {
-  constructor() { super(); this.x = 500; this.y = 250; this.vx = 5; this.vy = -3; }
-}
+PlayerState._schema = { x: "number", y: "number", vx: "number", vy: "number", isJumping: "boolean", color: "string", side: "string", name: "string", ready: "boolean", accelX: "number", reconnecting: "boolean", disconnectTime: "number" };
+
+class BallState extends Schema { constructor() { super(); this.x = 500; this.y = 250; this.vx = 5; this.vy = -3; } }
 BallState._schema = { x: "number", y: "number", vx: "number", vy: "number" };
-class KeeperState extends Schema {
-  constructor() { super(); this.y = 250; this.vy = 0; }
-}
+class KeeperState extends Schema { constructor() { super(); this.y = 250; this.vy = 0; } }
 KeeperState._schema = { y: "number", vy: "number" };
+
 class GameState extends Schema {
-  constructor() {
-    super();
-    this.players = new MapSchema();
-    this.ball = new BallState();
-    this.keeper1 = new KeeperState();
-    this.keeper2 = new KeeperState();
-    this.p1Score = 0; this.p2Score = 0; this.timeLeft = 120;
-    this.gameOver = false; this.winnerMessage = "";
-    this.matchState = "waiting"; this.hostId = ""; this.roomCode = "";
-    this.countdown = -1; this.goalFreeze = 0;
-    this.password = ""; this.lastWinner = "";
-  }
+  constructor() { super(); this.players = new MapSchema(); this.ball = new BallState(); this.keeper1 = new KeeperState(); this.keeper2 = new KeeperState(); this.p1Score = 0; this.p2Score = 0; this.timeLeft = 120; this.gameOver = false; this.winnerMessage = ""; this.matchState = "waiting"; this.hostId = ""; this.roomCode = ""; this.countdown = -1; this.goalFreeze = 0; this.password = ""; this.lastWinner = ""; }
 }
-GameState._schema = {
-  players: { map: PlayerState },
-  ball: BallState, keeper1: KeeperState, keeper2: KeeperState,
-  p1Score: "number", p2Score: "number", timeLeft: "number",
-  gameOver: "boolean", winnerMessage: "string",
-  matchState: "string", hostId: "string", roomCode: "string",
-  countdown: "number", goalFreeze: "number",
-  password: "string", lastWinner: "string"
-};
+GameState._schema = { players: { map: PlayerState }, ball: BallState, keeper1: KeeperState, keeper2: KeeperState, p1Score: "number", p2Score: "number", timeLeft: "number", gameOver: "boolean", winnerMessage: "string", matchState: "string", hostId: "string", roomCode: "string", countdown: "number", goalFreeze: "number", password: "string", lastWinner: "string" };
 
 // ---------- Room ----------
 class FootballRoom extends Room {
-  constructor() {
-    super();
-    this.maxClients = 2;
-    this.state = new GameState();
-    this.inputs = {};
-    this.targetGoals = 10;
-    this.reconnectTimers = {};
-  }
+  constructor() { super(); this.maxClients = 2; this.state = new GameState(); this.inputs = {}; this.targetGoals = 10; this.reconnectTimers = {}; }
   static onAuth(client, options, request) { return true; }
   onCreate(options) {
-    this.state.roomCode = this.roomId;
-    this.state.password = options.password || Math.random().toString(36).substr(2, 6);
+    this.state.roomCode = this.roomId; this.state.password = options.password || Math.random().toString(36).substr(2, 6);
     this.onMessage("setName", (client, name) => { const p = this.state.players.get(client.sessionId); if (p) p.name = name; this.broadcastPlayerInfo(); });
     this.onMessage("ready", (client) => { const p = this.state.players.get(client.sessionId); if (p) p.ready = !p.ready; this.broadcastPlayerInfo(); if (this.state.players.size === 2 && [...this.state.players.values()].every(pl => pl.ready)) { this.state.matchState = "ready_check"; this.startCountdown(); } });
     this.onMessage("move", (client, input) => { if (typeof input === "object") this.inputs[client.sessionId] = { left: !!input.left, right: !!input.right, up: !!input.up, down: !!input.down, shoot: !!input.shoot, turbo: !!input.turbo }; });
@@ -79,20 +38,42 @@ class FootballRoom extends Room {
     this.onMessage("rematch", (client) => { if (this.state.matchState !== "end") return; this.state.players.forEach(p => { p.x = p.side === "left" ? 150 : 820; p.y = 415; p.vx = 0; p.vy = 0; p.isJumping = false; p.ready = false; }); this.state.ball.x = 500; this.state.ball.y = 250; this.state.ball.vx = 5; this.state.ball.vy = -3; this.state.p1Score = 0; this.state.p2Score = 0; this.state.timeLeft = 120; this.state.gameOver = false; this.state.winnerMessage = ""; this.state.matchState = "waiting"; this.state.countdown = -1; this.state.goalFreeze = 0; this.broadcast("rematch"); this.broadcastPlayerInfo(); });
     this.setSimulationInterval((dt) => { try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); } }, 1000 / 30);
   }
+
   onJoin(client, options) {
     const pass = options?.password;
     if (pass && pass !== this.state.password) { client.send("error", { message: "Incorrect password" }); client.leave(); return; }
+
     const ep = this.state.players.get(client.sessionId);
-    if (ep) { ep.reconnecting = false; if (this.reconnectTimers[client.sessionId]) { clearTimeout(this.reconnectTimers[client.sessionId]); delete this.reconnectTimers[client.sessionId]; } this.broadcast("playerReconnected", {}); this.broadcastPlayerInfo(); return; }
+    if (ep) {
+      ep.reconnecting = false;
+      if (this.reconnectTimers[client.sessionId]) {
+        clearTimeout(this.reconnectTimers[client.sessionId]);
+        delete this.reconnectTimers[client.sessionId];
+      }
+      this.broadcast("playerReconnected", {});
+      this.broadcastPlayerInfo();
+      return;
+    }
+
     if (this.clients.length >= 2) { client.send("error", { message: "Room is full" }); client.leave(); return; }
+
     const player = new PlayerState();
     const isP1 = this.clients.length === 1;
     if (isP1) this.state.hostId = client.sessionId;
-    player.x = isP1 ? 150 : 820; player.y = 415;
-    player.color = isP1 ? "#ff00ff" : "#00f2ff"; player.side = isP1 ? "left" : "right";
+    player.x = isP1 ? 150 : 820;
+    player.y = 415;
+    player.color = isP1 ? "#ff00ff" : "#00f2ff";
+    player.side = isP1 ? "left" : "right";
     this.state.players.set(client.sessionId, player);
-    this.broadcastPlayerInfo();
+
+    // ✅ Give the client a short moment to set up its message handlers
+    if (this.clients.length === 1) {
+      setTimeout(() => this.broadcastPlayerInfo(), 100);
+    } else {
+      this.broadcastPlayerInfo();
+    }
   }
+
   onLeave(client) {
     const player = this.state.players.get(client.sessionId);
     if (!player) return;
@@ -129,11 +110,6 @@ const server = defineServer({
 
 server.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
-
-  // Matchmaking routes that EXACTLY match your working HTML client:
-  // POST /matchmake/create/football
-  // POST /matchmake/joinOrCreate/football
-  // POST /matchmake/joinById/<roomId>
 
   app.post("/matchmake/create/:roomName", async (req, res) => {
     try {
