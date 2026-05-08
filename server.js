@@ -114,7 +114,7 @@ class FootballRoom extends Room {
 }
 
 // ---------- Server setup ----------
-let app; // store Express app reference
+let app;
 const server = defineServer({
   rooms: { football: FootballRoom },
   express: (expressApp) => {
@@ -127,13 +127,18 @@ const server = defineServer({
   }
 });
 
-// Start listening, then add matchmaking routes when the matchmaker is ready
 server.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 
-  app.post("/matchmake/create", async (req, res) => {
+  // Matchmaking routes that match the client's URL pattern:
+  // POST /matchmake/create/football
+  // POST /matchmake/joinOrCreate/football
+  // POST /matchmake/joinById/<roomId>
+
+  app.post("/matchmake/create/:roomName", async (req, res) => {
     try {
-      const { roomName = "football", ...options } = req.body;
+      const { roomName } = req.params;
+      const options = req.body || {};
       const room = await server.matchmaker.create(roomName, options);
       res.json({ roomId: room.roomId, sessionId: room.sessionId });
     } catch (e) {
@@ -141,9 +146,10 @@ server.listen(Number(process.env.PORT) || 2567, () => {
     }
   });
 
-  app.post("/matchmake/joinOrCreate", async (req, res) => {
+  app.post("/matchmake/joinOrCreate/:roomName", async (req, res) => {
     try {
-      const { roomName = "football", ...options } = req.body;
+      const { roomName } = req.params;
+      const options = req.body || {};
       const room = await server.matchmaker.joinOrCreate(roomName, options);
       res.json({ roomId: room.roomId, sessionId: room.sessionId });
     } catch (e) {
@@ -151,9 +157,10 @@ server.listen(Number(process.env.PORT) || 2567, () => {
     }
   });
 
-  app.post("/matchmake/joinById", async (req, res) => {
+  app.post("/matchmake/joinById/:roomId", async (req, res) => {
     try {
-      const { roomId, ...options } = req.body;
+      const { roomId } = req.params;
+      const options = req.body || {};
       const room = await server.matchmaker.joinById(roomId, options);
       res.json({ roomId: room.roomId, sessionId: room.sessionId });
     } catch (e) {
