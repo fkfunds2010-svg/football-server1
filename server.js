@@ -4,7 +4,7 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Global crash protection ----------
+// ---------- Prevent crashes ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
@@ -130,7 +130,7 @@ const server = defineServer({
 server.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 
-  // Matchmaking routes that match the client's URL pattern:
+  // Matchmaking routes that EXACTLY match your working HTML client:
   // POST /matchmake/create/football
   // POST /matchmake/joinOrCreate/football
   // POST /matchmake/joinById/<roomId>
