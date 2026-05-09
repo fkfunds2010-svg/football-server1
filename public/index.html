@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
+  <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
+  <style>
+    *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
+    html, body {
+      margin:0; padding:0; width:100%; height:100%; overflow:hidden;
+      background:#050110; touch-action: none; -webkit-touch-callout: none;
+      -webkit-user-select: none; user-select: none;
+    }
+    #app {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      display:flex; justify-content:center; align-items:center;
+      background:radial-gradient(circle at 20% 20%,#1a2b1a,#050110);
+    }
+    .game-wrapper {
+      width:100%; max-width:1200px; height:100%; max-height:100vh;
+      background:rgba(5,1,16,0.8); backdrop-filter:blur(8px);
+      border-radius:clamp(10px,3vw,40px); padding:clamp(5px,2vw,20px);
+      box-shadow:0 0 30px #00ff0040; border:2px solid #00ff00;
+      display:flex; flex-direction:column; justify-content:center;
+      overflow:hidden;
+    }
+    .panel{display:flex;flex-direction:column;gap:clamp(10px,2vw,20px);flex:1;overflow-y:auto}
+    h1{color:#fff;text-shadow:0 0 20px #00ff00;text-align:center;font-size:clamp(1.5rem,5vw,2.5rem)}
+    .btn{background:#111;border:2px solid #00ff00;border-radius:60px;padding:clamp(8px,2vw,14px) clamp(16px,4vw,28px);font-size:clamp(0.9rem,2.5vw,1.2rem);font-weight:bold;color:#00ff00;cursor:pointer;text-transform:uppercase;transition:0.2s;white-space:nowrap}
+    .btn:disabled{opacity:0.5;pointer-events:none}
+    .btn.secondary{border-color:#00f2ff;color:#00f2ff}
+    .input-field{background:#0a0f0a;border:2px solid #00ff00;border-radius:40px;padding:14px 24px;color:#fff;width:100%;outline:none;font-size:1rem}
+    .room-info{background:#0a1a0a;padding:16px 24px;border-radius:40px;color:#cfc;display:flex;justify-content:space-between;flex-wrap:wrap}
+    .players-box{display:flex;gap:20px;flex-wrap:wrap}
+    .player-card{background:#132013;border-radius:30px;padding:16px;flex:1;min-width:150px;text-align:center;border:2px solid #00ff00;color:white}
+    .ready-badge{background:#444;padding:6px 18px;border-radius:30px}
+    .ready-badge.ready{background:#2e9a6e}
+    canvas{background:radial-gradient(circle,#1a2b1a 0%,#051005 100%);border:4px solid #00ff00;border-radius:20px;width:100%;aspect-ratio:2/1;touch-action:none;display:block}
+    .scoreboard{display:flex;justify-content:space-between;font-size:clamp(1.5rem,5vw,3rem);color:#fff;text-shadow:0 0 20px #00f2ff;padding:0 20px}
+    #goalBanner{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:clamp(3rem,10vw,100px);color:#fff;text-shadow:0 0 30px #00ff00;transition:0.3s;z-index:100;pointer-events:none}
+    #goalBanner.show{transform:translate(-50%,-50%) scale(1)}
+    #commentary{position:fixed;top:70%;left:50%;transform:translateX(-50%);font-size:clamp(1.2rem,4vw,28px);color:#ffcc00;text-shadow:0 0 10px #000;opacity:0;transition:0.3s;text-transform:uppercase;z-index:90}
+    #commentary.show{opacity:1}
+    #winnerMsg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(2rem,6vw,60px);color:#00ff00;text-shadow:0 0 30px #fff;display:none;z-index:300}
+    #warning{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);font-size:clamp(2rem,5vw,50px);color:#ff0000;display:none;z-index:200}
+    #pingDisplay{position:fixed;bottom:20px;right:20px;color:#0f0;background:rgba(0,0,0,0.5);padding:5px 10px;border-radius:20px;z-index:400;font-size:0.9rem}
+    #statusBar{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#fff;padding:5px 15px;border-radius:20px;font-size:clamp(0.8rem,2vw,16px);z-index:50}
+    #countdownOverlay{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(3rem,10vw,80px);color:#fff;text-shadow:0 0 40px #00ff00;display:none;z-index:310}
+    .hidden{display:none!important}
+
+    /* Mobile controls */
+    #mobileControls {
+      display:none;
+      position:absolute; bottom:20px; left:0; right:0;
+      justify-content:space-between; padding:0 20px;
+    }
+    .dpad {
+      display:grid; grid-template-columns:60px 60px 60px; grid-template-rows:60px 60px 60px;
+      gap:2px; justify-content:center; align-items:center;
+    }
+    .dpad button {
+      width:60px; height:60px; background:rgba(255,255,255,0.15);
+      border:2px solid #0f0; border-radius:10px; font-size:24px; color:#0f0;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .action-buttons {
+      display:flex; flex-direction:column; align-items:flex-end; gap:10px;
+    }
+    #shootBtn, #turboBtn {
+      width:80px; height:80px; background:rgba(255,255,255,0.15);
+      border:2px solid #0f0; border-radius:50%; font-size:20px; font-weight:bold;
+      color:#0f0; display:flex; align-items:center; justify-content:center;
+    }
+    #turboBtn { width:60px; height:60px; font-size:16px; }
+    .aim-indicator {
+      position:absolute; background:rgba(255,255,0,0.3); border-radius:50%;
+      pointer-events:none; transition:0.1s;
+    }
+    .shake{animation: shake 0.5s ease-in-out}
+    @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-5px,10px)}50%{transform:translate(5px,-10px)}75%{transform:translate(-5px,-5px)}}
+
+    /* Modal */
+    .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:1000}
+    .modal-box{background:#111;border:2px solid #00ff00;border-radius:20px;padding:clamp(20px,5vw,30px);text-align:center;color:#fff;min-width:min(90vw,300px);max-width:90%;box-shadow:0 0 30px #00ff00}
+    .modal-box h2{margin:0 0 15px}
+    .modal-box input{margin:10px 0;padding:12px;width:100%;background:#0a0f0a;border:1px solid #0f0;color:#fff;border-radius:10px;outline:none}
+    .modal-box button{margin:10px 5px;padding:12px 25px}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="game-wrapper">
+    <div id="goalBanner">GOAL!</div>
+    <div id="commentary">GREAT SHOT!</div>
+    <div id="warning">2 MINUTES LEFT!</div>
+    <div id="winnerMsg"></div>
+    <div id="countdownOverlay"></div>
+    <div id="pingDisplay">Ping: -- ms</div>
+    <div id="statusBar">⚪ WAITING</div>
+
+    <!-- START PANEL -->
+    <div id="startPanel" class="panel"><h1>🏆 FRANKLIN FOOTBALL 2026</h1><button class="btn" id="startBtn">START GAME</button></div>
+
+    <!-- MENU PANEL -->
+    <div id="menuPanel" class="panel hidden"><h1>🏆 FRANKLIN FOOTBALL 2026</h1>
+      <button class="btn" id="createRoomBtn">✨ CREATE ROOM</button>
+      <button class="btn secondary" id="joinRoomBtn">🔍 JOIN ROOM</button>
+      <div id="joinSection" class="hidden">
+        <input type="text" id="roomCodeInput" class="input-field" placeholder="Room code">
+        <input type="password" id="passwordInput" class="input-field" placeholder="Room password">
+        <button class="btn secondary" id="confirmJoinBtn">🚪 JOIN</button>
+      </div>
+    </div>
+
+    <!-- LOBBY PANEL -->
+    <div id="lobbyPanel" class="panel hidden">
+      <div class="room-info">
+        <span>🏟️ ROOM CODE: <span id="roomCodeDisplay">-</span></span>
+        <span id="connectionStatus">⚡ waiting...</span>
+      </div>
+      <div id="passwordDisplay" style="color:#cfc; background:#0a1a0a; padding:10px; border-radius:10px; display:none;">
+        🔑 PASSWORD: <span id="passwordText"></span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span>🌍 Region:</span>
+        <select id="regionSelect" style="color:#fff; background:#0a0f0a; border:1px solid #0f0; padding:5px 10px; border-radius:10px;">
+          <option value="europe" selected="selected">Europe</option>
+          <option value="north-america">North America</option>
+          <option value="south-america">South America</option>
+          <option value="africa">Africa</option>
+          <option value="asia">Asia</option>
+          <option value="middle-east">Middle East</option>
+        </select>
+      </div>
+      <div class="players-box">
+        <div class="player-card"><div>🥅 PLAYER 1 (HOST)</div><div id="p1Name">—</div><div id="p1ReadyBadge" class="ready-badge">⚪ NOT READY</div></div>
+        <div class="player-card"><div>🥅 PLAYER 2</div><div id="p2Name">—</div><div id="p2ReadyBadge" class="ready-badge">⚪ NOT READY</div></div>
+      </div>
+      <div id="chatMessages" style="max-height:150px;overflow-y:auto;background:#0b1c0b;padding:10px;border-radius:10px;"><div>💬 Welcome!</div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input type="text" id="chatInput" class="input-field" placeholder="type a message..." style="flex:1;min-width:120px">
+        <button class="btn" id="sendChatBtn">Send</button>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;">
+        <button class="btn" onclick="sendEmote('🔥')">🔥 Nice</button>
+        <button class="btn" onclick="sendEmote('😢')">😢 Oops</button>
+        <button class="btn" onclick="sendEmote('⚽')">⚽ Goal</button>
+        <button class="btn" onclick="sendEmote('😂')">😂 LOL</button>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <button class="btn" id="readyBtn">✅ I'M READY</button>
+        <button class="btn secondary" id="leaveLobbyBtn">🚪 LEAVE</button>
+      </div>
+      <button id="rematchBtn" class="btn hidden" onclick="sendRematch()">⚔️ REMATCH</button>
+    </div>
+
+    <!-- GAME PANEL -->
+    <div id="gamePanel" class="panel hidden" style="position:relative; flex:1; display:flex; flex-direction:column;">
+      <div class="scoreboard"><span id="p1Score" style="color:#ff00ff">0</span><span>⚡</span><span id="p2Score" style="color:#00f2ff">0</span></div>
+      <canvas id="gameCanvas" width="1000" height="500"></canvas>
+      <button class="btn secondary" id="leaveGameBtn" style="align-self:center; margin:10px 0">🚪 LEAVE</button>
+      <p style="color:#9f9;text-align:center;font-size:clamp(0.7rem,2vw,1rem)">P1: WASD+1 · P2: Arrows+Up · Hold Up+Shoot = Turbo</p>
+
+      <!-- Mobile Controls -->
+      <div id="mobileControls">
+        <div class="dpad">
+          <div></div> <button id="btnUp">▲</button> <div></div>
+          <button id="btnLeft">◀</button> <button id="btnCenter" style="visibility:hidden;"></button> <button id="btnRight">▶</button>
+          <div></div> <button id="btnDown">▼</button> <div></div>
+        </div>
+        <div class="action-buttons">
+          <button id="turboBtn">⚡ TURBO</button>
+          <button id="shootBtn">⚽ SHOOT</button>
+        </div>
+        <div id="aimIndicator" class="aim-indicator" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Reconnect Overlay -->
+    <div id="reconnectOverlay" class="modal-overlay" style="display:none;">
+      <div class="modal-box"><h2>🌀 Opponent reconnecting…</h2><p>Please wait</p></div>
+    </div>
+
+    <audio id="goalHorn" src="https://drive.google.com/uc?export=download&id=1WQbvcH0DGMpvxhfrpCAvk7JOnRvaeh4d" preload="auto"></audio>
+    <audio id="bgMusic" loop=""></audio>
+  </div>
+</div>
+
+<script>
+  // ==================== CONFIG ====================
+  const SERVER_URL = "wss://football-server1.onrender.com";
+  // ==================== GLOBAL STATE ====================
+  let client, room, myPlayerId, amIHost, gameActive = false;
+  let keys = {};
+  let lastInputStr, serverState, localPlayer, remotePlayer;
+  let predictedX, predictedY, predictedVx, predictedVy;
+  let ping = 0, reconnectAttempts = 0;
+  let goalFreeze = false, countdownValue = -1, matchStatus = "waiting";
+  let inputInterval, pingInterval;
+  let roomPassword = "";
+  let selectedRegion = "europe";
+
+  // Mobile touch state
+  let touchDir = { up: false, down: false, left: false, right: false };
+  let shootPressed = false, turboPressed = false, aimMode = false;
+  let aimStartX = 0, aimStartY = 0;
+
+  // UI Elements
+  const panels = {
+    start: document.getElementById('startPanel'), menu: document.getElementById('menuPanel'),
+    lobby: document.getElementById('lobbyPanel'), game: document.getElementById('gamePanel')
+  };
+  const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+  const goalHorn = document.getElementById('goalHorn');
+  const commentaryDiv = document.getElementById('commentary'), goalBanner = document.getElementById('goalBanner');
+  const warningDiv = document.getElementById('warning'), winnerMsgDiv = document.getElementById('winnerMsg');
+  const pingEl = document.getElementById('pingDisplay'), statusBar = document.getElementById('statusBar');
+  const countdownEl = document.getElementById('countdownOverlay');
+  const rematchBtn = document.getElementById('rematchBtn');
+  const passwordDisplay = document.getElementById('passwordDisplay'), passwordText = document.getElementById('passwordText');
+  const reconnectOverlay = document.getElementById('reconnectOverlay');
+  const regionSelect = document.getElementById('regionSelect');
+  const mobileControls = document.getElementById('mobileControls');
+  const aimIndicator = document.getElementById('aimIndicator');
+
+  // 🎵 Music Playlist – DIRECT Google Drive links
+  const playlist = [
+    'https://drive.google.com/uc?export=download&id=1eM_b8LdjIoxxx_yBaOk4wU7x02altW7d',
+    'https://drive.google.com/uc?export=download&id=1mlY6W6FnZ-Nvd7X2S89_ft9Y8vCYcgjk',
+    'https://drive.google.com/uc?export=download&id=1UHVwqo-eQIOezp9f-t3tlne5vRvHu50r',
+    'https://drive.google.com/uc?export=download&id=1ans6MxGJfcCJkjOTCI_W6lX6vPaCAd7V',
+    'https://drive.google.com/uc?export=download&id=1IvIHZEgIyVqMic7lnhXSyMQk4cnTrcrk'
+  ];
+  let currentTrack = 0;
+  const bgMusic = document.getElementById('bgMusic');
+  bgMusic.volume = 0.6;
+
+  function playNextTrack() {
+    if (!gameActive) return;
+    bgMusic.src = playlist[currentTrack];
+    bgMusic.play().catch(() => {});
+    currentTrack = (currentTrack + 1) % playlist.length;
+  }
+  bgMusic.addEventListener('ended', playNextTrack);
+
+  function comment(msg, c = "#ffcc00") {
+    commentaryDiv.innerText = msg;
+    commentaryDiv.style.color = c;
+    commentaryDiv.classList.add('show');
+    setTimeout(() => commentaryDiv.classList.remove('show'), 2000);
+  }
+  function goalAnimation(color) {
+    goalBanner.style.textShadow = `0 0 30px ${color},0 0 60px ${color}`;
+    goalBanner.classList.add('show');
+    setTimeout(() => goalBanner.classList.remove('show'), 1500);
+  }
+  function sendEmote(emoji) { if (room) room.send("emote", emoji); }
+  function sendRematch() { if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); } }
+  regionSelect.addEventListener('change', () => { selectedRegion = regionSelect.value; });
+
+  // ==================== MOBILE CONTROLS SETUP ====================
+  function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
+
+  function showMobileControls() {
+    if (isMobile()) mobileControls.style.display = 'flex';
+  }
+
+  function setupDpad() {
+    const btnUp = document.getElementById('btnUp');
+    const btnDown = document.getElementById('btnDown');
+    const btnLeft = document.getElementById('btnLeft');
+    const btnRight = document.getElementById('btnRight');
+
+    function setTouchDir(dir, val) { touchDir[dir] = val; }
+    btnUp.addEventListener('touchstart', e => { e.preventDefault(); setTouchDir('up', true); });
+    btnUp.addEventListener('touchend', e => { e.preventDefault(); setTouchDir('up', false); });
+    btnDown.addEventListener('touchstart', e => { e.preventDefault(); setTouchDir('down', true); });
+    btnDown.addEventListener('touchend', e => { e.preventDefault(); setTouchDir('down', false); });
+    btnLeft.addEventListener('touchstart', e => { e.preventDefault(); setTouchDir('left', true); });
+    btnLeft.addEventListener('touchend', e => { e.preventDefault(); setTouchDir('left', false); });
+    btnRight.addEventListener('touchstart', e => { e.preventDefault(); setTouchDir('right', true); });
+    btnRight.addEventListener('touchend', e => { e.preventDefault(); setTouchDir('right', false); });
+  }
+
+  function setupActionButtons() {
+    const shootBtn = document.getElementById('shootBtn');
+    const turboBtn = document.getElementById('turboBtn');
+
+    shootBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      aimMode = true;
+      shootPressed = true;
+      const touch = e.touches[0];
+      aimStartX = touch.clientX; aimStartY = touch.clientY;
+      aimIndicator.style.display = 'block';
+    });
+    shootBtn.addEventListener('touchmove', e => {
+      if (!aimMode) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      aimIndicator.style.left = (aimStartX - 25) + 'px';
+      aimIndicator.style.top = (aimStartY - 25) + 'px';
+      aimIndicator.style.width = '50px'; aimIndicator.style.height = '50px';
+    });
+    shootBtn.addEventListener('touchend', e => {
+      e.preventDefault();
+      aimMode = false; shootPressed = false;
+      aimIndicator.style.display = 'none';
+    });
+
+    turboBtn.addEventListener('touchstart', e => { e.preventDefault(); turboPressed = true; });
+    turboBtn.addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
+  }
+
+  function getTouchInput() {
+    return {
+      left: touchDir.left,
+      right: touchDir.right,
+      up: touchDir.up,
+      down: touchDir.down,
+      shoot: shootPressed,
+      turbo: turboPressed,
+    };
+  }
+
+  // Keyboard input
+  window.addEventListener('keydown', e => {
+    const tag = e.target.tagName;
+    const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
+    if (!isInput) e.preventDefault();
+    keys[e.code] = true;
+  });
+  window.addEventListener('keyup', e => {
+    const tag = e.target.tagName;
+    const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
+    if (!isInput) e.preventDefault();
+    keys[e.code] = false;
+  });
+
+  // ==================== INPUT COMBINATION ====================
+  function getInput() {
+    const touch = getTouchInput();
+    if (myPlayerId === 'p1') {
+      return {
+        left: keys['KeyA'] || touch.left,
+        right: keys['KeyD'] || touch.right,
+        up: keys['KeyW'] || touch.up,
+        down: keys['KeyS'] || touch.down,
+        shoot: keys['Digit1'] || touch.shoot,
+        turbo: (keys['KeyW'] && keys['Digit1']) || touch.turbo
+      };
+    } else {
+      return {
+        left: keys['ArrowLeft'] || touch.left,
+        right: keys['ArrowRight'] || touch.right,
+        up: keys['ArrowUp'] || touch.up,
+        down: keys['ArrowDown'] || touch.down,
+        shoot: keys['ArrowUp'] || touch.shoot,
+        turbo: (keys['ArrowUp'] && (keys['ArrowLeft'] || keys['ArrowRight'])) || touch.turbo
+      };
+    }
+  }
+
+  // ==================== NETWORKING ====================
+  async function createRoom() {
+    const hostName = await showPrompt("Enter your display name", "Your name");
+    if (!hostName) return;
+    const password = await showPrompt("Set a room password", "Leave empty for random", true);
+    if (password === null) return;
+    const pass = password || Math.random().toString(36).substr(2,6);
+    selectedRegion = regionSelect.value;
+    client = new Colyseus.Client(SERVER_URL);
+    try {
+      room = await client.create("football", { password: pass, region: selectedRegion });
+      amIHost = true; myPlayerId = 'p1'; roomPassword = pass;
+      room.send("setName", hostName);
+    } catch(e) {
+      alert("Failed to create room. Is server running? " + e.message);
+      return;
+    }
+    setupRoom(); enterLobby();
+    passwordDisplay.style.display = 'block'; passwordText.innerText = pass;
+  }
+
+  async function joinRoom() {
+    const code = document.getElementById('roomCodeInput').value.trim();
+    const pass = document.getElementById('passwordInput').value.trim();
+    if (!code) return;
+    client = new Colyseus.Client(SERVER_URL);
+    try {
+      room = await client.joinById(code, { password: pass });
+      amIHost = false; myPlayerId = 'p2';
+      const name = prompt("Enter your display name:", "Player2");
+      room.send("setName", name || "P2");
+    } catch(e) {
+      alert("Invalid room code or password. " + e.message);
+      return;
+    }
+    setupRoom(); enterLobby();
+    passwordDisplay.style.display = 'none';
+  }
+
+  function setupRoom() {
+    if (room._handlersSet) return; room._handlersSet = true;
+
+    // ✅ Catch state that arrived before we registered the callback
+    if (room.state) {
+      const state = room.state;
+      document.getElementById('roomCodeDisplay').innerText = state.roomCode || "—";
+      serverState = state;
+    }
+
+    room.onMessage("playerNames", data => {
+      document.getElementById('p1Name').innerText = data.p1; document.getElementById('p2Name').innerText = data.p2;
+      document.getElementById('p1ReadyBadge').className = `ready-badge ${data.p1Ready?'ready':''}`; document.getElementById('p1ReadyBadge').innerText = data.p1Ready?'✅ READY':'⚪ NOT READY';
+      document.getElementById('p2ReadyBadge').className = `ready-badge ${data.p2Ready?'ready':''}`; document.getElementById('p2ReadyBadge').innerText = data.p2Ready?'✅ READY':'⚪ NOT READY';
+      if (data.password && amIHost) { passwordText.innerText = data.password; }
+      document.getElementById('connectionStatus').innerText = '⚡ connected';
+    });
+    room.onMessage("gameStarted", () => {
+      panels.lobby.classList.add('hidden'); panels.game.classList.remove('hidden');
+      gameActive = true; rematchBtn.classList.add('hidden');
+      playNextTrack(); showMobileControls();
+      predictedX = 150; predictedY = 415; predictedVx = 0; predictedVy = 0;
+      statusBar.innerText = '🟢 LIVE';
+    });
+    room.onMessage("countdown", data => {
+      countdownValue = data.value;
+      if (countdownValue > 0) { countdownEl.style.display='block'; countdownEl.innerText = countdownValue; }
+      else { countdownEl.innerText = 'GO!'; setTimeout(()=>countdownEl.style.display='none',500); }
+    });
+    room.onMessage("event", ev => {
+      if (ev.type === "GOAL") {
+        goalAnimation(ev.data.color); goalHorn.currentTime=0; goalHorn.play().catch(()=>{});
+        comment(ev.data.scorer==='p1'?"GOAL! PLAYER 1 SCORES!":"GOAL! PLAYER 2 SCORES!",ev.data.color);
+        document.getElementById('app').classList.add('shake'); setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
+        goalFreeze = true;
+      } else if (ev.type === "SHOT") comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
+      else if (ev.type === "MUSIC_NEXT") playNextTrack();
+      else if (ev.type === "FREEZE_END") goalFreeze = false;
+    });
+    room.onMessage("emote", data => {
+      const div = document.createElement('div'); div.innerText = `${data.playerName} ${data.emoteId}`;
+      document.getElementById('chatMessages').appendChild(div);
+    });
+    room.onMessage("opponentReconnecting", () => { reconnectOverlay.style.display = 'flex'; });
+    room.onMessage("playerReconnected", () => { reconnectOverlay.style.display = 'none'; });
+    room.onMessage("playerLeft", () => { alert("Opponent left."); leaveRoom(); });
+    room.onMessage("rematch", () => {
+      panels.game.classList.add('hidden'); panels.lobby.classList.remove('hidden');
+      gameActive = false; rematchBtn.classList.add('hidden');
+      winnerMsgDiv.style.display = 'none'; warningDiv.style.display = 'none';
+      statusBar.innerText = '⚪ WAITING';
+      if (inputInterval) clearInterval(inputInterval); if (pingInterval) clearInterval(pingInterval);
+      inputInterval = pingInterval = null;
+    });
+    room.onMessage("chat", msg => {
+      const div = document.createElement('div'); div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
+      document.getElementById('chatMessages').appendChild(div);
+    });
+    room.onMessage("error", msg => { alert(msg.message); });
+
+    room.onStateChange(state => {
+      serverState = state;
+      document.getElementById('roomCodeDisplay').innerText = state.roomCode || "—";
+      matchStatus = state.matchState;
+      statusBar.innerText = {"waiting":"⚪ WAITING","ready_check":"🟡 READY CHECK","countdown":"🟡 COUNTDOWN","live":"🟢 LIVE","end":"🔴 END"}[matchStatus]||matchStatus;
+      if (state.gameOver) {
+        gameActive = false;
+        winnerMsgDiv.innerText = state.winnerMessage;
+        winnerMsgDiv.style.display = 'block';
+        rematchBtn.classList.remove('hidden');
+      }
+      warningDiv.style.display = state.timeLeft<=120?'block':'none';
+      if (!gameActive) return;
+      state.players.forEach((p,sid)=>{ if(sid===room.sessionId) localPlayer=p; else remotePlayer=p; });
+      document.getElementById('p1Score').innerText = state.p1Score; document.getElementById('p2Score').innerText = state.p2Score;
+
+      if (localPlayer) {
+        if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
+        const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) { predictedX += dx*0.3; predictedY += dy*0.3; }
+        else { predictedX = localPlayer.x; predictedY = localPlayer.y; }
+        predictedVx = localPlayer.vx; predictedVy = localPlayer.vy;
+      }
+    });
+    room.onError(() => handleDisconnect());
+    room.onLeave(() => { if (gameActive) handleDisconnect(); });
+
+    inputInterval = setInterval(() => {
+      if (!room || !gameActive) return;
+      const inp = getInput();
+      const str = JSON.stringify(inp);
+      if (str !== lastInputStr) { room.send("move", inp); lastInputStr = str; }
+    }, 33);
+    pingInterval = setInterval(() => { if (room) room.send("ping", Date.now()); }, 2000);
+    room.onMessage("pong", clientTime => { ping = Date.now() - clientTime; pingEl.innerText = `Ping: ${ping}ms`; reconnectAttempts = 0; });
+  }
+
+  function enterLobby() {
+    panels.menu.classList.add('hidden'); panels.lobby.classList.remove('hidden');
+  }
+
+  function handleDisconnect() {
+    if (reconnectAttempts < 1) {
+      console.warn("Connection lost. The SDK will try to reconnect automatically.");
+      reconnectAttempts++;
+    } else {
+      alert("Connection lost permanently. Please refresh the page.");
+      leaveRoom();
+    }
+  }
+
+  // ==================== PREDICTION & RENDERING ====================
+  function applyPrediction() {
+    if (!gameActive || !localPlayer) return;
+    const inp = getInput();
+    const accel = 0.6;
+    if (inp.left) predictedVx -= accel; if (inp.right) predictedVx += accel;
+    if (!inp.left && !inp.right) predictedVx *= 0.85;
+    predictedVx = Math.min(Math.max(predictedVx, -3), 3);
+    if (inp.up && !(predictedY >= 415)) predictedVy = -14;
+    if (inp.down) predictedVy += 1;
+    predictedVy += 0.7; predictedX += predictedVx; predictedY += predictedVy;
+    predictedVx *= 0.9;
+    if (predictedY > 415) { predictedY = 415; predictedVy = 0; }
+    predictedX = Math.min(930, Math.max(40, predictedX));
+  }
+
+  let prevBallX, prevBallY;
+  function draw() {
+    ctx.clearRect(0,0,1000,500);
+    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.strokeRect(0,150,40,200); ctx.strokeRect(960,150,40,200);
+    ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
+
+    if (serverState && serverState.ball) {
+      const ball = serverState.ball;
+      if (prevBallX === undefined) { prevBallX = ball.x; prevBallY = ball.y; }
+      prevBallX += (ball.x - prevBallX) * 0.4; prevBallY += (ball.y - prevBallY) * 0.4;
+      ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(prevBallX, prevBallY, 10, 0, Math.PI*2); ctx.fill();
+      if (localPlayer) { ctx.fillStyle = localPlayer.color; ctx.fillRect(predictedX, predictedY, 30, 65); }
+      if (remotePlayer) {
+        if (!remotePlayer._dx) { remotePlayer._dx = remotePlayer.x; remotePlayer._dy = remotePlayer.y; }
+        remotePlayer._dx += (remotePlayer.x - remotePlayer._dx) * 0.4; remotePlayer._dy += (remotePlayer.y - remotePlayer._dy) * 0.4;
+        ctx.fillStyle = remotePlayer.color; ctx.fillRect(remotePlayer._dx, remotePlayer._dy, 30, 65);
+      }
+      ctx.fillStyle = "#ff00ff"; ctx.fillRect(5, serverState.keeper1.y, 12, 60);
+      ctx.fillStyle = "#00f2ff"; ctx.fillRect(983, serverState.keeper2.y, 12, 60);
+    }
+  }
+  function loop() { if (gameActive) applyPrediction(); draw(); requestAnimationFrame(loop); }
+  loop();
+
+  // ==================== UI EVENTS ====================
+  function showPrompt(title, placeholder, isPassword=false) {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div'); overlay.className='modal-overlay';
+      overlay.innerHTML = `<div class="modal-box"><h2>${title}</h2><input type="${isPassword?'password':'text'}" id="modalInput" class="input-field" placeholder="${placeholder}"><div><button class="btn" id="modalConfirm">Confirm</button><button class="btn secondary" id="modalCancel">Cancel</button></div></div>`;
+      document.body.appendChild(overlay);
+      document.getElementById('modalConfirm').onclick = () => { const val = document.getElementById('modalInput').value; document.body.removeChild(overlay); resolve(val); };
+      document.getElementById('modalCancel').onclick = () => { document.body.removeChild(overlay); resolve(null); };
+    });
+  }
+
+  document.getElementById('startBtn').onclick = () => { panels.start.classList.add('hidden'); panels.menu.classList.remove('hidden'); bgMusic.play().catch(()=>{}); };
+  document.getElementById('createRoomBtn').onclick = createRoom;
+  document.getElementById('joinRoomBtn').onclick = () => document.getElementById('joinSection').classList.toggle('hidden');
+  document.getElementById('confirmJoinBtn').onclick = joinRoom;
+  document.getElementById('readyBtn').onclick = () => room.send("ready");
+  document.getElementById('sendChatBtn').onclick = () => {
+    const msg = document.getElementById('chatInput').value.trim();
+    if (msg) { room.send("chat", msg); document.getElementById('chatInput').value = ''; }
+  };
+  document.getElementById('leaveLobbyBtn').onclick = leaveRoom;
+  document.getElementById('leaveGameBtn').onclick = leaveRoom;
+
+  function leaveRoom() {
+    if (room) room.leave();
+    room = null; gameActive = false;
+    if (inputInterval) clearInterval(inputInterval);
+    if (pingInterval) clearInterval(pingInterval);
+    panels.game.classList.add('hidden'); panels.lobby.classList.add('hidden'); panels.menu.classList.remove('hidden');
+    winnerMsgDiv.style.display = 'none'; warningDiv.style.display = 'none';
+    countdownEl.style.display = 'none'; statusBar.innerText = '⚪ WAITING';
+    reconnectOverlay.style.display = 'none'; rematchBtn.classList.add('hidden');
+    passwordDisplay.style.display = 'none'; mobileControls.style.display = 'none';
+    predictedX = predictedY = predictedVx = predictedVy = undefined;
+    lastInputStr = null; serverState = null; localPlayer = null; remotePlayer = null;
+  }
+
+  // Initialize mobile controls
+  if (isMobile()) { setupDpad(); setupActionButtons(); }
+</script>
+
+</body></html>
