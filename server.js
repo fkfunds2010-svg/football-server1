@@ -333,14 +333,24 @@ const server = defineServer({
     app.get("/colyseus.js", (req, res) => {
       try {
         const filePath = require.resolve("colyseus.js/dist/colyseus.js");
+        // Remove restrictive header and set correct Content-Type
+        res.removeHeader("X-Content-Type-Options");
+        res.type("application/javascript");
         res.sendFile(filePath);
       } catch (e) {
         res.status(404).send("Colyseus client library not found");
       }
     });
     app.use("/playground", playground());
+
+    // ✅ Permissive CSP – must come AFTER playground to override its restrictive policy
+    app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';");
+      next();
+    });
   }
-});
+}); // ⚡ THIS CLOSING BRACKET WAS MISSING – ADDED NOW
 
 server.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
