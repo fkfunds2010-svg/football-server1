@@ -342,8 +342,8 @@ app.post("/matchmake/create/:roomName", async (req, res) => {
   try {
     const { roomName } = req.params;
     const options = req.body || {};
-    const room = await matchMaker.createRoom(roomName, options);
-    res.json({ roomId: room.roomId, sessionId: room.sessionId });
+    const reservation = await matchMaker.create(roomName, options);
+    res.json({ roomId: reservation.room.roomId, sessionId: reservation.sessionId });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
@@ -369,8 +369,6 @@ app.post("/matchmake/joinById/:roomId", async (req, res) => {
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
-});
-
-httpServer.listen(Number(process.env.PORT) || 2567, () => {
+});httpServer.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 });
