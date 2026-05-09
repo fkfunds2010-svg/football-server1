@@ -170,11 +170,9 @@ class FootballRoom extends Room {
     player.side = isP1 ? "left" : "right";
     this.state.players.set(client.sessionId, player);
 
-    if (this.clients.length === 1) {
-      setTimeout(() => this.broadcastPlayerInfo(), 100);
-    } else {
-      this.broadcastPlayerInfo();
-    }
+    // ✅ Delay broadcast for BOTH players so client can register handlers
+    // This ensures the room code and state are captured after setupRoom() runs
+    setTimeout(() => this.broadcastPlayerInfo(), 200);
   }
 
   onLeave(client) {
@@ -328,6 +326,15 @@ const server = defineServer({
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
+
+    // ⚡ Handle CORS preflight requests explicitly
+    app.options('*', (req, res) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.sendStatus(200);
+    });
+
     app.get("/health", (req, res) => res.send("OK"));
     app.get("/colyseus.js", (req, res) => {
       try {
