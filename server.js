@@ -1,8 +1,8 @@
-const { defineServer, Room, matchMaker } = require("colyseus");
+const { defineServer, Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
-const express = require("express");
 const cors = require("cors");
+const express = require("express");
 
 // ---------- Prevent crashes ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
@@ -320,23 +320,53 @@ class FootballRoom extends Room {
 }
 
 // ==================== SERVER SETUP ====================
-const app = express();
-app.set("trust proxy", 1);
-app.use(cors());
-app.use(express.json());
-app.get("/health", (req, res) => res.send("OK"));
-app.use("/playground", playground);
-
-// ✅ Use defineServer - it automatically handles matchmaking routes
+let app;
 const server = defineServer({
-  rooms: {
-    football: FootballRoom
-  },
-  express: (app) => {
-    // The health route is already defined above, but we can add more here
+  rooms: { football: FootballRoom },
+  express: (expressApp) => {
+    app = expressApp;
+    app.set("trust proxy", 1);
+    app.use(cors());
+    app.use(express.json());
+    app.get("/health", (req, res) => res.send("OK"));
+    app.use("/playground", playground());
   }
 });
 
 server.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
+
+  // Matchmaking routes that match your HTML client
+  app.post("/matchmake/create/:roomName", async (req, res) => {
+    try {
+      const { roomName } = req.params;
+      const options = req.body || {};
+      const room = await server.matchmaker.create(roomName, options);
+      res.json({ roomId: room.roomId, sessionId: room.sessionId });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.post("/matchmake/joinOrCreate/:roomName", async (req, res) => {
+    try {
+      const { roomName } = req.params;
+      const options = req.body || {};
+      const room = await server.matchmaker.joinOrCreate(roomName, options);
+      res.json({ roomId: room.roomId, sessionId: room.sessionId });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.post("/matchmake/joinById/:roomId", async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const options = req.body || {};
+      const room = await server.matchmaker.joinById(roomId, options);
+      res.json({ roomId: room.roomId, sessionId: room.sessionId });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
 });
