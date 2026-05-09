@@ -320,6 +320,14 @@ class FootballRoom extends Room {
 const server = defineServer({
   rooms: { football: FootballRoom },
   express: (app) => {
+    // ⚡ CRITICAL: Let WebSocket upgrade requests pass through to Colyseus
+    app.use((req, res, next) => {
+      if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
+        return next();
+      }
+      next();
+    });
+
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
@@ -336,7 +344,7 @@ const server = defineServer({
     // Playground MUST come BEFORE the CSP override
     app.use("/playground", playground());
 
-    // Override any restrictive CSP – placed AFTER playground but BEFORE static
+    // ✅ Override any restrictive CSP – placed AFTER playground but BEFORE static
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader(
@@ -346,7 +354,7 @@ const server = defineServer({
       next();
     });
 
-    // Serve your game and music files from the "public" folder
+    // Now serve your game and music files from the "public" folder
     app.use(express.static("public"));
   }
 });
