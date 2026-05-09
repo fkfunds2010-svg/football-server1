@@ -4,7 +4,6 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Prevent crashes ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
@@ -59,7 +58,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room (full game logic) ----------
+// ---------- Room ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -70,11 +69,16 @@ class FootballRoom extends Room {
     this.reconnectTimers = {};
   }
 
-  static onAuth(client, options, request) { return true; }
+  static onAuth(client, options, request) {
+    console.log("onAuth called for client", client.sessionId);
+    return true;
+  }
 
   onCreate(options) {
+    console.log("onCreate started with options:", options);
     this.state.roomCode = this.roomId;
     this.state.password = options.password || Math.random().toString(36).substr(2, 6);
+    console.log("Room code set to:", this.state.roomCode);
 
     this.onMessage("setName", (client, name) => {
       const p = this.state.players.get(client.sessionId);
@@ -133,40 +137,59 @@ class FootballRoom extends Room {
     this.setSimulationInterval((dt) => {
       try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
     }, 1000 / 30);
+
+    console.log("onCreate finished successfully");
   }
 
   onJoin(client, options) {
-    const pass = options?.password;
-    if (pass && pass !== this.state.password) {
-      client.send("error", { message: "Incorrect password" });
-      client.leave();
-      return;
-    }
-    const ep = this.state.players.get(client.sessionId);
-    if (ep) {
-      ep.reconnecting = false;
-      if (this.reconnectTimers[client.sessionId]) {
-        clearTimeout(this.reconnectTimers[client.sessionId]);
-        delete this.reconnectTimers[client.sessionId];
+    console.log("onJoin called - sessionId:", client.sessionId, "options:", options);
+    try {
+      const pass = options?.password;
+      if (pass && pass !== this.state.password) {
+        console.log("Password mismatch");
+        client.send("error", { message: "Incorrect password" });
+        client.leave();
+        return;
       }
-      this.broadcast("playerReconnected", {});
-      this.broadcastPlayerInfo();
-      return;
+
+      const ep = this.state.players.get(client.sessionId);
+      if (ep) {
+        console.log("Existing player reconnecting");
+        ep.reconnecting = false;
+        if (this.reconnectTimers[client.sessionId]) {
+          clearTimeout(this.reconnectTimers[client.sessionId]);
+          delete this.reconnectTimers[client.sessionId];
+        }
+        this.broadcast("playerReconnected", {});
+        this.broadcastPlayerInfo();
+        return;
+      }
+
+      if (this.clients.length >= 2) {
+        console.log("Room full");
+        client.send("error", { message: "Room is full" });
+        client.leave();
+        return;
+      }
+
+      const player = new PlayerState();
+      const isP1 = this.clients.length === 1;
+      if (isP1) this.state.hostId = client.sessionId;
+      player.x = isP1 ? 150 : 820;
+      player.y = 415;
+      player.color = isP1 ? "#ff00ff" : "#00f2ff";
+      player.side = isP1 ? "left" : "right";
+      this.state.players.set(client.sessionId, player);
+      console.log("Player added, total players:", this.state.players.size);
+
+      setTimeout(() => {
+        console.log("Broadcasting player info");
+        this.broadcastPlayerInfo();
+      }, 200);
+    } catch (err) {
+      console.error("CRASH in onJoin:", err.message);
+      throw err;
     }
-    if (this.clients.length >= 2) {
-      client.send("error", { message: "Room is full" });
-      client.leave();
-      return;
-    }
-    const player = new PlayerState();
-    const isP1 = this.clients.length === 1;
-    if (isP1) this.state.hostId = client.sessionId;
-    player.x = isP1 ? 150 : 820;
-    player.y = 415;
-    player.color = isP1 ? "#ff00ff" : "#00f2ff";
-    player.side = isP1 ? "left" : "right";
-    this.state.players.set(client.sessionId, player);
-    setTimeout(() => this.broadcastPlayerInfo(), 200);
   }
 
   onLeave(client) {
@@ -307,28 +330,21 @@ class FootballRoom extends Room {
   }
 }
 
-// ==================== SERVER SETUP – OFFICIAL PATTERN ====================
+// ==================== SERVER SETUP ====================
 const server = defineServer({
   rooms: { football: FootballRoom },
   express: (app) => {
-    // 1. Pass WebSocket upgrades to Colyseus (avoids Express intercepting them)
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
-        return next();   // Colyseus handles this before Express ever sends a response
+        return next();
       }
       next();
     });
-
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
-
     app.get("/health", (req, res) => res.send("OK"));
-
-    // Playground BEFORE CSP
     app.use("/playground", playground());
-
-    // Permissive CSP for your game assets
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader(
@@ -337,8 +353,6 @@ const server = defineServer({
       );
       next();
     });
-
-    // Serve your game and audio files from the public folder
     app.use(express.static("public"));
   }
 });
