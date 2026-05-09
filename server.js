@@ -284,13 +284,26 @@ class FootballRoom extends Room {
     if (ball.x < 0 || ball.x > 1000) {
       if (ball.y > 150 && ball.y < 350) {
         if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
-        this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ? "#00f2ff" : "#ff00ff" } });
+        this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ?ff" } });
         this.state.goalFreeze = 60;
-        ball.x = 500; ball.y = 250; ball.vx = (Math.random() > 0.5 ? 5 : -5); ball.vy = -3;
+        ball.x = 500; ball.y "#00f2ff" : "#ff00ff" } });
+        this.state.goalFreeze = 60;
+        ball.x = 500; ball.y = 250; ball.vx = (Math.random() > 0. = 250; ball.vx = (Math.random() > 0.5 ? 5 : -5); ball.vy = -3;
+        if (this.state.p1Score >=5 ? 5 : -5); ball.vy = -3;
         if (this.state.p1Score >= this.targetGoals || this.state.p2Score >= this.targetGoals) {
+          this.state.gameOver = true this.targetGoals || this.state.p2Score >= this.targetGoals) {
           this.state.gameOver = true; this.state.matchState = "end";
+         ; this.state.matchState = "end";
           this.state.winnerMessage = this.state.p1Score >= this.targetGoals ? "Player 1 Wins!" : "Player 2 Wins!";
-          this.state.lastWinner = this.state.p1Score >= this.targetGoals ? "p1" : "p2";
+          this.state.lastWinner = this.state.p1Score >= this.targetGoals ? "p1" : "p2 this.state.winnerMessage = this.state.p1Score >= this.targetGoals ? "Player 1 Wins!" : "Player 2 Wins!";
+          this.state.lastWinner = this.state.p1Score >= this.targetGoals ? "p1" : "";
+        }
+      } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
+    }
+
+    const targetY = ball.y - 30;
+    [this.state.keeper1, this.state.keeper2].forEach((k, i) => {
+      k.vy += (targetp2";
         }
       } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
     }
@@ -302,9 +315,24 @@ class FootballRoom extends Room {
       k.y = Math.min(295, Math.max(155, k.y));
     });
 
-    this.state.players.forEach(p => {
+    this.state.players.forEach(pY - k.y) * (i === 0 ? 0.12 : 0.1);
+      k.vy *= 0.7; k.y += k.vy * FIXED_DT * 60;
+      k.y = Math.min(295, Math.max(155, k.y));
+    });
+
+    this.state.players => {
       p.vy += 0.7; p.x += p.vx * FIXED_DT * 60; p.y += p.vy * FIXED_DT * 60; p.vx *= 0.85;
-      if (p.y > 415) { p.y = 415; p.vy = 0; p.isJumping = false; }
+      if (p.y > 415) { p.y = 415; p.vy = 0; p.isJumping = false.forEach(p => {
+      p.vy += 0.7; p.x += p.vx * FIXED_DT * 60; p.y += p.vy * FIXED_DT * 60; p.vx *= 0.85;
+      if (p.y > 415) { p.y = 415; p.vy = 0; p.isJumping = false;; }
+      p.x = Math.min(930, Math.max(40, p.x));
+    });
+
+    if (this.state.timeLeft > 0) {
+      this.state.timeLeft -= FIXED_DT;
+      if (this.state.timeLeft <= 0) {
+        this.state.gameOver = true; this.state.matchState = "end";
+        this.state.winnerMessage = this.state.p1Score > this.state.p2Score ? "Player 1 Wins!" : (this.state.p2Score > this.state.p1 }
       p.x = Math.min(930, Math.max(40, p.x));
     });
 
@@ -329,11 +357,32 @@ const server = defineServer({
     app.use(cors());
     app.use(express.json());
     app.get("/health", (req, res) => res.send("OK"));
-    // ⚡ Serve the Colyseus client library directly from your server
     app.get("/colyseus.js", (req, res) => {
       try {
         const filePath = require.resolve("colyseus.js/dist/colyseus.js");
-        // Remove restrictive header and set correct Content-Type
+        res.removeHeader("X-Content-Type-Options");
+        res.type("application/javascript");
+        res.sendFile(filePath);
+      } catch (e)Score ? "Player 2 Wins!" : "Draw!");
+        this.state.lastWinner = this.state.p1Score > this.state.p2Score ? "p1" : (this.state.p2Score > this.state.p1Score ? "p2" : "draw");
+      }
+    }
+  }
+}
+
+// ==================== SERVER SETUP ====================
+let app;
+const server = defineServer({
+  rooms: { football: FootballRoom },
+  express: (expressApp) => {
+    app = expressApp;
+    app.set("trust proxy", 1);
+    app.use(cors());
+    app.use(express.json());
+    app.get("/health", (req, res) => res.send("OK"));
+    app.get("/colyseus.js", (req, res) => {
+      try {
+        const filePath = require.resolve("colyseus.js/dist/colyseus.js");
         res.removeHeader("X-Content-Type-Options");
         res.type("application/javascript");
         res.sendFile(filePath);
@@ -343,51 +392,96 @@ const server = defineServer({
     });
     app.use("/playground", playground());
 
-    // ✅ Permissive CSP – must come AFTER playground to override its restrictive policy
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';");
       next();
     });
   }
-}); // ⚡ THIS CLOSING BRACKET WAS MISSING – ADDED NOW
+});
 
 server.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 
-  // Matchmaking routes that match your HTML client
- app.post("/matchmake/create/:roomName", async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  try {
-    const { roomName } = req.params;
-    const options = req.body || {};
-    const room = await server.matchmaker.create(roomName, options);
-    res.json({ roomId: room.roomId, sessionId: room.sessionId });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
+  app.post("/matchmake/create/:roomName", async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    try {
+      const { roomName } = req.params;
+      const options = req.body || {};
+      const room {
+        res.status(404).send("Colyseus client library not found");
+      }
+    });
+    app.use("/playground", playground());
+
+    app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';");
+      next();
+    });
   }
 });
 
-app.post("/matchmake/joinOrCreate/:roomName", async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  try {
-    const { roomName } = req.params;
-    const options = req.body || {};
-    const room = await server.matchmaker.joinOrCreate(roomName, options);
-    res.json({ roomId: room.roomId, sessionId: room.sessionId });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
-});
+server.listen(Number(process.env.PORT) || 2567, () => {
+  console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 
-app.post("/matchmake/joinById/:roomId", async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  try {
-    const { roomId } = req.params;
-    const options = req.body || {};
-    const room = await server.matchmaker.joinById(roomId, options);
-    res.json({ roomId: room.roomId, sessionId: room.sessionId });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
+  app.post("/matchmake/create/:roomName", async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    try {
+      const { roomName } = req.params;
+      const options = req.body || {};
+      const room = await server.matchmaker.create(roomName, options);
+      res.json({ roomId: room.roomId, sessionId: room.sessionId });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.post("/matchmake/joinOrCreate/:roomName", async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    try {
+      const { roomName } = req.params;
+      const options = req.body || {};
+      const room = await server.matchmaker.joinOrCreate(roomName, options);
+      res.json({ roomId: room.roomId, sessionId: room.sessionId });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.post("/matchmake/joinById/:roomId", async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    try {
+      const { roomId } = req.params;
+      const options = req.body || {};
+      const = await server.matchmaker.create(roomName, options);
+      res.json({ roomId: room.roomId, sessionId: room.sessionId });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.post("/matchmake/joinOrCreate/:roomName", async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    try {
+      const { roomName } = req.params;
+      const options = req.body || {};
+      const room = await server.matchmaker.joinOrCreate(roomName, options);
+      res.json({ roomId: room.roomId, sessionId: room.sessionId });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.post("/matchmake/joinById/:roomId", async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    try {
+      const { roomId } = req.params;
+      const options = req.body || {};
+      const room = await server.matchmaker.joinById(roomId, options);
+      res.json({ roomId: room.roomId, sessionId: room.sessionId });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
 });
