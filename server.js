@@ -1,4 +1,4 @@
-const { defineServer, Room } = require("colyseus");
+const { defineServer, defineRoom, Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
 const cors = require("cors");
@@ -170,7 +170,6 @@ class FootballRoom extends Room {
     player.side = isP1 ? "left" : "right";
     this.state.players.set(client.sessionId, player);
 
-    // ⚡ Delay broadcast to give client time to register message handlers
     setTimeout(() => this.broadcastPlayerInfo(), 200);
   }
 
@@ -318,7 +317,9 @@ class FootballRoom extends Room {
 
 // ==================== SERVER SETUP ====================
 const server = defineServer({
-  rooms: { football: FootballRoom },
+  rooms: {
+    football: FootballRoom  // ✅ NO defineRoom wrapper needed
+  },
   express: (app) => {
     app.set("trust proxy", 1);
     app.use(cors());
