@@ -1,6 +1,4 @@
-const http = require("http");
-const { Server, Room, matchMaker } = require("colyseus");
-const { WebSocketTransport } = require("@colyseus/ws-transport");
+const { defineServer, Room, matchMaker } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
 const express = require("express");
@@ -172,7 +170,6 @@ class FootballRoom extends Room {
     player.side = isP1 ? "left" : "right";
     this.state.players.set(client.sessionId, player);
 
-    // Delay broadcast to allow client to register handlers
     if (this.clients.length === 1) {
       setTimeout(() => this.broadcastPlayerInfo(), 100);
     } else {
@@ -330,47 +327,19 @@ app.use(express.json());
 app.get("/health", (req, res) => res.send("OK"));
 app.use("/playground", playground);
 
-const httpServer = http.createServer(app);
-
-const gameServer = new Server({
-  transport: new WebSocketTransport({ server: httpServer })
-});
-gameServer.define("football", FootballRoom);
-
-// ✅ Matchmaking routes
-app.post("/matchmake/create/:roomName", async (req, res) => {
-  try {
-    const { roomName } = req.params;
-    const clientOptions = { ...(req.body || {}), auth: {} };
-    const reservation = await matchMaker.create(roomName, clientOptions);
-    res.json({ roomId: reservation.room.roomId, sessionId: reservation.sessionId });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
+const server = defineServer({
+  rooms: { football: FootballRoom },
+  express: (app) => {
+    app.set("trust proxy", 1);
+    app.use(cors());
+    app.use(express.json());
+    app.get("/health", (req, res) => res.send("OK"));
+    app.use("/playground", playground);
+    // ✅ Expose matchmaking routes automatically (handles auth correctly)
+    matchMaker.controller.exposeRoutes(app);
   }
 });
 
-app.post("/matchmake/joinOrCreate/:roomName", async (req, res) => {
-  try {
-    const { roomName } = req.params;
-    const clientOptions = { ...(req.body || {}), auth: {} };
-    const reservation = await matchMaker.joinOrCreate(roomName, clientOptions);
-    res.json({ roomId: reservation.room.roomId, sessionId: reservation.sessionId });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-app.post("/matchmake/joinById/:roomId", async (req, res) => {
-  try {
-    const { roomId } = req.params;
-    const clientOptions = { ...(req.body || {}), auth: {} };
-    const reservation = await matchMaker.joinById(roomId, clientOptions);
-    res.json({ roomId: reservation.room.roomId, sessionId: reservation.sessionId });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-httpServer.listen(Number(process.env.PORT) || 2567, () => {
+server.listen(Number(process.env.PORT) || 2567, () => {
   console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
 });
