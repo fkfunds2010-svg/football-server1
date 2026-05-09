@@ -68,6 +68,8 @@ class FootballRoom extends Room {
     this.inputs = {};
     this.targetGoals = 10;
     this.reconnectTimers = {};
+    this._readyClients = new Set();       // track which clients sent "client_ready"
+    this._initTimeout = null;             // fallback timeout
   }
 
   static onAuth(client, options, request) { return true; }
@@ -76,6 +78,27 @@ class FootballRoom extends Room {
     this.state.roomCode = this.roomId;
     this.state.password = options.password || Math.random().toString(36).substr(2, 6);
 
+    // ----- Handshake: wait for client to signal readiness -----
+    this.onMessage("client_ready", (client) => {
+      this._readyClients.add(client.sessionId);
+      // Once all connected clients are ready, broadcast the initial state
+      if (this._readyClients.size === this.clients.length) {
+        this.broadcastPlayerInfo();
+        if (this._initTimeout) {
+          clearTimeout(this._initTimeout);
+          this._initTimeout = null;
+        }
+      }
+    });
+
+    // Fallback: after 5 seconds, broadcast even if some client hasn't sent ready
+    this._initTimeout = setTimeout(() => {
+      if (this.state.players.size > 0) {
+        this.broadcastPlayerInfo();
+      }
+    }, 5000);
+
+    // ----- All other message handlers (unchanged) -----
     this.onMessage("setName", (client, name) => {
       const p = this.state.players.get(client.sessionId);
       if (p) p.name = name;
@@ -143,6 +166,7 @@ class FootballRoom extends Room {
       return;
     }
 
+    // Reconnection – broadcast immediately, no handshake needed
     const ep = this.state.players.get(client.sessionId);
     if (ep) {
       ep.reconnecting = false;
@@ -161,6 +185,7 @@ class FootballRoom extends Room {
       return;
     }
 
+    // New player – wait for "client_ready" before broadcasting
     const player = new PlayerState();
     const isP1 = this.clients.length === 1;
     if (isP1) this.state.hostId = client.sessionId;
@@ -170,9 +195,11 @@ class FootballRoom extends Room {
     player.side = isP1 ? "left" : "right";
     this.state.players.set(client.sessionId, player);
 
-    // ✅ Delay broadcast for BOTH players so client can register handlers
-    // This ensures the room code and state are captured after setupRoom() runs
-    setTimeout(() => this.broadcastPlayerInfo(), 200);
+    // Clear the fallback timeout once both players are physically connected
+    if (this.clients.length === 2 && this._initTimeout) {
+      clearTimeout(this._initTimeout);
+      this._initTimeout = null;
+    }
   }
 
   onLeave(client) {
