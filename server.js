@@ -329,6 +329,15 @@ const server = defineServer({
     app.use(cors());
     app.use(express.json());
     app.get("/health", (req, res) => res.send("OK"));
+    // ⚡ Serve the Colyseus client library directly from your server
+    app.get("/colyseus.js", (req, res) => {
+      try {
+        const filePath = require.resolve("colyseus.js/dist/colyseus.js");
+        res.sendFile(filePath);
+      } catch (e) {
+        res.status(404).send("Colyseus client library not found");
+      }
+    });
     app.use("/playground", playground());
   }
 });
