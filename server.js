@@ -321,17 +321,6 @@ const server = defineServer({
   rooms: { football: FootballRoom },
   express: (app) => {
     app.set("trust proxy", 1);
-
-    // ✅ Permissive CSP – must be FIRST to override any default restrictive policy
-    app.use((req, res, next) => {
-      res.removeHeader("Content-Security-Policy");
-      res.setHeader(
-        "Content-Security-Policy",
-        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';"
-      );
-      next();
-    });
-
     app.use(cors());
     app.use(express.json());
 
@@ -344,10 +333,21 @@ const server = defineServer({
 
     app.get("/health", (req, res) => res.send("OK"));
 
-    // ✅ Serve the game HTML and any other static files from the "public" folder
-    app.use(express.static("public"));
-
+    // ---- Playground must be mounted BEFORE the CSP override ----
     app.use("/playground", playground());
+
+    // ✅ Override any restrictive CSP – placed AFTER playground but BEFORE static
+    app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.setHeader(
+        "Content-Security-Policy",
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';"
+      );
+      next();
+    });
+
+    // Now serve the game – it will have the correct CSP header
+    app.use(express.static("public"));
   }
 });
 
