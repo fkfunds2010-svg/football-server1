@@ -332,6 +332,10 @@ const server = defineServer({
     });
 
     app.get("/health", (req, res) => res.send("OK"));
+
+    // ✅ Serve the game HTML and any other static files from the "public" folder
+    app.use(express.static("public"));
+
     app.use("/playground", playground());
 
     app.use((req, res, next) => {
