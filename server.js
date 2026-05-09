@@ -284,7 +284,7 @@ class FootballRoom extends Room {
     if (ball.x < 0 || ball.x > 1000) {
       if (ball.y > 150 && ball.y < 350) {
         if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
-        this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ?ff" } });
+        this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ? "#00f2ff" : "#ff00ff" } });
         this.state.goalFreeze = 60;
         ball.x = 500; ball.y "#00f2ff" : "#ff00ff" } });
         this.state.goalFreeze = 60;
