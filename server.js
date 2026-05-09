@@ -327,16 +327,13 @@ app.use(express.json());
 app.get("/health", (req, res) => res.send("OK"));
 app.use("/playground", playground);
 
+// ✅ Use defineServer - it automatically handles matchmaking routes
 const server = defineServer({
-  rooms: { football: FootballRoom },
+  rooms: {
+    football: FootballRoom
+  },
   express: (app) => {
-    app.set("trust proxy", 1);
-    app.use(cors());
-    app.use(express.json());
-    app.get("/health", (req, res) => res.send("OK"));
-    app.use("/playground", playground);
-    // ✅ Expose matchmaking routes automatically (handles auth correctly)
-    matchMaker.controller.exposeRoutes(app);
+    // The health route is already defined above, but we can add more here
   }
 });
 
