@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<title>Franklin Football 2026:FK GAME (PvP Only)</title>
+<style>
+body { margin:0; background:#050110; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:'Segoe UI', Arial, sans-serif;}
+.scoreboard { position:absolute; top:20px; font-size:45px; font-weight:bold; color:white; display:flex; gap:40px; text-shadow:0 0 15px #00f2ff; z-index:10;}
+canvas { background: radial-gradient(circle,#1a2b1a 0%,#051005 100%); border:4px solid #00ff00; border-radius:10px; transition:border-color 0.1s;}
+#goalBanner { position:absolute; top:40%; left:50%; transform:translate(-50%, -50%) scale(0); font-size:100px; font-weight:900; color:#fff; text-shadow:0 0 30px #00ff00; z-index:100; pointer-events:none; transition:transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); font-style:italic;}
+#goalBanner.show { transform:translate(-50%, -50%) scale(1);}
+#commentary { position:absolute; top:70%; left:50%; transform:translateX(-50%); font-size:28px; font-weight:bold; color:#ffcc00; text-shadow:0 0 10px #000; z-index:90; opacity:0; transition:opacity 0.3s; text-transform:uppercase; letter-spacing:2px;}
+#commentary.show { opacity:1;}
+.match-banner { position:absolute; top:85px; font-size:20px; font-weight:bold; color:#fff; text-shadow:0 0 10px #ff0000; display:none; text-transform:uppercase; animation:pulse 1s infinite;}
+@keyframes pulse {0%,100%{opacity:0.3;}50%{opacity:1;}}
+.match-point { animation:flicker 0.3s infinite;}
+@keyframes flicker {0%,100%{border-color:#00ff00;}50%{border-color:#ffffff;box-shadow:0 0 40px #ffffff;}}
+.controls { position:absolute; bottom:20px; display:flex; gap:10px; flex-wrap:wrap;}
+button, select { background:#111; border:2px solid #00f2ff; color:#00f2ff; padding:8px 15px; cursor:pointer; font-weight:bold; text-transform:uppercase;}
+button.active { background:#ff00ff; border-color:white; color:white;}
+
+#warning { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-size:50px; font-weight:bold; color:#ff0000; text-shadow:0 0 20px #fff; display:none; z-index:200;}
+#winnerMsg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:60px; font-weight:bold; color:#00ff00; text-shadow:0 0 30px #fff; display:none; z-index:300;}
+#lastGoalLight { position:absolute; top:10px; right:50px; width:30px; height:30px; border-radius:50%; background:#ff0000; box-shadow:0 0 15px #ff0000; display:none; z-index:400;}
+/* Pre-Game Start Button Page */
+#startPage {
+    position:absolute;
+    top:0; left:0; width:100%; height:100%;
+    display:flex; justify-content:center; align-items:center; flex-direction:column;
+    background:#050110; z-index:500;
+}
+#startPage h1 { color:#fff; font-size:60px; text-shadow:0 0 20px #00ff00; margin-bottom:30px;}
+#startPage button { font-size:30px; padding:20px 40px; border:2px solid #00ff00; background:#111; color:#00ff00; border-radius:10px; cursor:pointer;}
+#startPage button:hover { background:#00ff00; color:#111; }
+</style>
+</head>
+<body>
+<div id="startPage">
+  <h1>Franklin Football 2026</h1>
+  <button id="startBtn">START GAME</button>
+</div>
+<div class="scoreboard">
+<span id="p1Score" style="color:#ff00ff">0</span>
+<span style="color:white;opacity:0.5">|</span>
+<span id="p2Score" style="color:#00f2ff">0</span>
+</div>
+<div id="matchBanner" class="match-banner">MATCH POINT!</div>
+<div id="goalBanner">GOAL!</div>
+<div id="commentary">GREAT SHOT!</div>
+<div id="warning">2 MINUTES LEFT!</div>
+<div id="winnerMsg"></div>
+<div id="lastGoalLight"></div>
+
+<!-- Goal Horn -->
+<audio id="goalHorn" src="9.mp3"></audio>
+
+<!-- Background Music -->
+<audio id="bgMusic"></audio>
+<canvas id="fbCanvas" width="1000" height="500"></canvas>
+
+<div class="controls">
+    <!-- All AI and Laptop PvP buttons removed. Only Human vs Human active. -->
+
+<select id="timeSelect" onchange="setGameTime(this.value)">
+<option value="" selected="selected">Select Time (min)</option>
+<option value="2">2</option>
+<option value="4">4</option>
+<option value="6">6</option>
+<option value="8">8</option>
+<option value="10">10</option>
+<option value="12">12</option>
+<option value="14">14</option>
+<option value="16">16</option>
+<option value="18">18</option>
+<option value="20">20</option>
+</select>
+
+<select id="goalSelect" onchange="setGameGoal(this.value)">
+<option value="" selected="selected">First X Goals</option>
+<option value="10">1st 10</option>
+<option value="20">1st 20</option>
+<option value="30">1st 30</option>
+</select>
+
+<!-- AI Difficulty select removed -->
+
+<button onclick="resetMatch()" style="border-color:white;color:white;">Restart</button>
+</div>
+
+<script>
+    // ---------- GLOBAL VARIABLES ----------
+    let gameStarted = false;
+    const canvas = document.getElementById("fbCanvas");
+    const ctx = canvas.getContext("2d");
+    let p1Score = 0, p2Score = 0, gameOver = false, goalFlash = 0;
+    let totalTime = 0, timeLeft = 0, gameType = 10;
+    const keys = {};
+
+    // ---------- START GAME (removes intro) ----------
+    document.getElementById('startBtn').addEventListener('click', () => {
+        gameStarted = true;
+        document.getElementById('startPage').style.display = 'none';
+        const bg = document.getElementById("bgMusic");
+        bg.volume = 1;
+        bg.play().catch(()=>{});
+        // Music playlist starts on first click
+        playNextTrack();
+    });
+
+    // ---------- KEYBOARD ----------
+    document.addEventListener("keydown", e => keys[e.code] = true);
+    document.addEventListener("keyup", e => keys[e.code] = false);
+
+    // ---------- COMMENTARY ----------
+    function postCommentary(msg, color = "#ffcc00") {
+        const comm = document.getElementById('commentary');
+        comm.innerText = msg;
+        comm.style.color = color;
+        comm.classList.add('show');
+        setTimeout(() => comm.classList.remove('show'), 2000);
+    }
+
+    // ---------- BALL ----------
+    class Ball {
+        constructor() { this.reset(); }
+        reset() {
+            this.x = 500; this.y = 250;
+            this.vx = (Math.random() > 0.5 ? 5 : -5);
+            this.vy = -3;
+        }
+        update(k1, k2, players) {
+            if (gameOver) return;
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vy += 0.25;
+            this.vx *= 0.995;
+
+            // Ground / ceiling
+            if (this.y > 480) { this.y = 480; this.vy *= -0.7; }
+            if (this.y < 10) { this.y = 10; this.vy *= -0.7; }
+
+            // Keeper collisions
+            [k1, k2].forEach(k => {
+                if (this.x + 10 > k.x && this.x - 10 < k.x + 12 &&
+                    this.y + 10 > k.y && this.y - 10 < k.y + 60) {
+                    if (Math.abs(this.vx) > 25) postCommentary("WHAT A SAVE!", "#fff");
+                    this.vx *= -1.1;
+                    this.x = (k.x < 500) ? 25 : 970;
+                }
+            });
+
+            // Player collisions
+            players.forEach(p => {
+                if (this.x + 10 > p.x && this.x - 10 < p.x + 30 &&
+                    this.y + 10 > p.y && this.y - 10 < p.y + 65) {
+                    this.vx *= -0.5;
+                    this.x = (this.x < p.x + 15) ? p.x - 11 : p.x + 31;
+                }
+            });
+
+            // Goal check
+            if (this.x < 0 || this.x > 1000) this.checkGoal();
+        }
+
+        checkGoal() {
+            if (this.y > 150 && this.y < 350) {
+                if (this.x < 0) p2Score++; else p1Score++;
+                goalFlash = 25;
+                showGoalBanner(this.x < 0 ? "#00f2ff" : "#ff00ff");
+                flashLastGoalLight();
+                const horn = document.getElementById('goalHorn');
+                horn.pause();
+                horn.currentTime = 0;
+                horn.play().catch(()=>{});
+
+                if (p1Score >= gameType || p2Score >= gameType) {
+                    gameOver = true;
+                    document.getElementById('winnerMsg').innerText = (p1Score >= gameType) ? "Player 1 Wins!" : "Player 2 Wins!";
+                    document.getElementById('winnerMsg').style.display = "block";
+                }
+                this.reset();
+            } else {
+                this.vx *= -1;
+                this.x = this.x < 0 ? 5 : 995;
+            }
+        }
+    }
+
+    function showGoalBanner(color) {
+        const el = document.getElementById('goalBanner');
+        el.style.textShadow = `0 0 30px ${color},0 0 60px ${color}`;
+        el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 1500);
+    }
+
+    function flashLastGoalLight() {
+        const light = document.getElementById('lastGoalLight');
+        light.style.display = 'block';
+        setTimeout(() => light.style.display = 'none', 1500);
+    }
+
+    // ---------- GOALKEEPER ----------
+    class Keeper {
+        constructor(x, skill = 1) {
+            this.x = x;
+            this.y = 250;
+            this.vy = 0;
+            this.skill = skill;
+        }
+        update(ball) {
+            let targetY = ball.y - 30;
+            let delta = (targetY - this.y) * 0.1 * this.skill;
+            this.vy += delta;
+            this.vy *= 0.7;
+            this.y += this.vy;
+            if (this.y < 155) this.y = 155;
+            if (this.y > 295) this.y = 295;
+        }
+    }
+
+    // ---------- PLAYER (HUMAN ONLY, NO AI) ----------
+    class Player {
+        constructor(x, y, color, controls, side) {
+            this.x = x; this.y = y; this.color = color;
+            this.controls = controls; this.side = side;
+            this.vx = 0; this.vy = 0; this.isJumping = false;
+        }
+        update(ball) {
+            const dx = (this.x + 15) - ball.x;
+            const dy = (this.y + 32) - ball.y;
+            const hasBall = (dx * dx + dy * dy) < 2500;
+            let isTurbo = (this.side === 'left') ? keys['KeyW'] : (keys['ArrowUp'] && (keys['ArrowLeft'] || keys['ArrowRight']));
+            let attemptingShot = (this.side === 'left') ? keys['Key1'] : keys['ArrowUp'];
+
+            if (hasBall && (attemptingShot || isTurbo)) {
+                this.vx = 0;
+                let speed = isTurbo ? 45 : 20;
+                ball.vx = (this.side === 'left') ? speed : -speed;
+                if (isTurbo) postCommentary("TURBO SHOT!", this.color);
+                else postCommentary("POWER SHOT!", "#fff");
+
+                if (this.side === 'left') {
+                    if (keys['KeyW'] && !keys['KeyS']) ball.vy = -14;
+                    else if (keys['KeyS']) ball.vy = 10;
+                    else ball.vy = -2;
+                } else {
+                    if (keys['ArrowUp'] && !keys['ArrowDown']) ball.vy = -14;
+                    else if (keys['ArrowDown']) ball.vy = 10;
+                    else ball.vy = -2;
+                }
+            } else {
+                // Movement (both players always human)
+                if (keys[this.controls.left]) this.vx -= 1.1;
+                if (keys[this.controls.right]) this.vx += 1.1;
+                if (keys[this.controls.up] && !this.isJumping) {
+                    this.vy = -14;
+                    this.isJumping = true;
+                }
+                if (keys[this.controls.down]) this.vy += 1;
+            }
+
+            // Physics
+            this.vy += 0.7;
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vx *= 0.85;
+            if (this.y > 415) { this.y = 415; this.vy = 0; this.isJumping = false; }
+            if (this.x < 40) this.x = 40;
+            if (this.x > 930) this.x = 930;
+        }
+    }
+
+    // ---------- INSTANCES ----------
+    let ball = new Ball();
+    let k1 = new Keeper(5, 1.2);
+    let k2 = new Keeper(983, 1);
+    let p1 = new Player(150, 415, "#ff00ff", { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, 'left');
+    let p2 = new Player(820, 415, "#00f2ff", { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }, 'right');
+
+    // ---------- GAME SETTINGS ----------
+    function setGameTime(min) {
+        totalTime = parseInt(min) || 0;
+        timeLeft = totalTime * 60;
+        resetMatch();
+    }
+    function setGameGoal(goal) {
+        gameType = parseInt(goal) || 10;
+        resetMatch();
+    }
+
+    // ---------- DRAWING ----------
+    function drawScene() {
+        ctx.clearRect(0, 0, 1000, 500);
+        ctx.strokeStyle = "rgba(255,255,255,0.1)";
+        ctx.strokeRect(0, 150, 40, 200);
+        ctx.strokeRect(960, 150, 40, 200);
+        ctx.beginPath(); ctx.moveTo(500, 0); ctx.lineTo(500, 500); ctx.stroke();
+
+        if (goalFlash > 0) {
+            ctx.fillStyle = `rgba(255,255,255,${goalFlash / 10})`;
+            ctx.fillRect(0, 0, 1000, 500);
+            goalFlash--;
+        }
+
+        ctx.fillStyle = "white";
+        ctx.beginPath(); ctx.arc(ball.x, ball.y, 10, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = p1.color; ctx.fillRect(p1.x, p1.y, 30, 65);
+        ctx.fillStyle = p2.color; ctx.fillRect(p2.x, p2.y, 30, 65);
+        ctx.fillStyle = "#ff00ff"; ctx.fillRect(5, k1.y, 12, 60);
+        ctx.fillStyle = "#00f2ff"; ctx.fillRect(983, k2.y, 12, 60);
+    }
+
+    // ---------- GAME LOOP ----------
+    function gameLoop() {
+        if (!gameStarted) {
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+        if (!gameOver) {
+            ball.update(k1, k2, [p1, p2]);
+            k1.update(ball);
+            k2.update(ball);
+            p1.update(ball);
+            p2.update(ball);
+
+            if (totalTime > 0) {
+                timeLeft -= 1 / 60;
+                if (timeLeft <= 120) document.getElementById('warning').style.display = 'block';
+                if (timeLeft <= 0) {
+                    gameOver = true;
+                    document.getElementById('winnerMsg').innerText = (p1Score > p2Score) ? "Player 1 Wins!" : (p2Score > p1Score ? "Player 2 Wins!" : "Draw!");
+                    document.getElementById('winnerMsg').style.display = "block";
+                }
+            }
+
+            document.getElementById('p1Score').innerText = p1Score;
+            document.getElementById('p2Score').innerText = p2Score;
+        }
+        drawScene();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // ---------- RESET MATCH ----------
+    function resetMatch() {
+        p1Score = 0; p2Score = 0; gameOver = false;
+        ball.reset();
+        k1 = new Keeper(5, 1.2);
+        k2 = new Keeper(983, 1);
+        p1 = new Player(150, 415, "#ff00ff", { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, 'left');
+        p2 = new Player(820, 415, "#00f2ff", { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }, 'right');
+        document.getElementById('warning').style.display = 'none';
+        document.getElementById('winnerMsg').style.display = 'none';
+        document.getElementById('lastGoalLight').style.display = 'none';
+        if (totalTime > 0) timeLeft = totalTime * 60;
+    }
+
+    // Expose functions to global scope for HTML onclick
+    window.setGameTime = setGameTime;
+    window.setGameGoal = setGameGoal;
+    window.resetMatch = resetMatch;
+
+    // ---------- BACKGROUND MUSIC PLAYLIST ----------
+    const bgMusic = document.getElementById('bgMusic');
+    const playlist = ['1.mp3', '3.mp3', '4.mp3', '5.MP3', '6.mp3'];
+    let currentTrack = 0;
+    bgMusic.volume = 1.0;
+    function playNextTrack() {
+        bgMusic.src = playlist[currentTrack];
+        bgMusic.play().catch(()=>{});
+        currentTrack = (currentTrack + 1) % playlist.length;
+    }
+    bgMusic.addEventListener('ended', playNextTrack);
+
+    // Preload goal horn
+    document.getElementById('goalHorn').load();
+
+    // Start the game loop
+    gameLoop();
+</script>
+</body></html>
