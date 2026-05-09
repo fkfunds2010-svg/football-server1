@@ -170,8 +170,7 @@ class FootballRoom extends Room {
     player.side = isP1 ? "left" : "right";
     this.state.players.set(client.sessionId, player);
 
-    // ✅ Delay broadcast for BOTH players so client has time to register handlers
-    // No handshake – just a simple timeout that always works.
+    // ⚡ Delay broadcast to give client time to register message handlers
     setTimeout(() => this.broadcastPlayerInfo(), 200);
   }
 
@@ -318,16 +317,14 @@ class FootballRoom extends Room {
 }
 
 // ==================== SERVER SETUP ====================
-let app;
 const server = defineServer({
   rooms: { football: FootballRoom },
-  express: (expressApp) => {
-    app = expressApp;
+  express: (app) => {
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
 
-    // ⚡ Handle CORS preflight requests explicitly
+    // Handle CORS preflight
     app.options('*', (req, res) => {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -336,17 +333,9 @@ const server = defineServer({
     });
 
     app.get("/health", (req, res) => res.send("OK"));
-    app.get("/colyseus.js", (req, res) => {
-      try {
-        const filePath = require.resolve("colyseus.js/dist/colyseus.js");
-        res.removeHeader("X-Content-Type-Options");
-        res.type("application/javascript");
-        res.sendFile(filePath);
-      } catch (e) {
-        res.status(404).send("Colyseus client library not found");
-      }
-    });
     app.use("/playground", playground());
+
+    // Allow all resources (CSP)
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';");
@@ -355,42 +344,4 @@ const server = defineServer({
   }
 });
 
-server.listen(Number(process.env.PORT) || 2567, () => {
-  console.log(`⚡ Server listening on port ${process.env.PORT || 2567}`);
-
-  app.post("/matchmake/create/:roomName", async (req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    try {
-      const { roomName } = req.params;
-      const options = req.body || {};
-      const room = await server.matchmaker.create(roomName, options);
-      res.json({ roomId: room.roomId, sessionId: room.sessionId });
-    } catch (e) {
-      res.status(400).json({ error: e.message });
-    }
-  });
-
-  app.post("/matchmake/joinOrCreate/:roomName", async (req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    try {
-      const { roomName } = req.params;
-      const options = req.body || {};
-      const room = await server.matchmaker.joinOrCreate(roomName, options);
-      res.json({ roomId: room.roomId, sessionId: room.sessionId });
-    } catch (e) {
-      res.status(400).json({ error: e.message });
-    }
-  });
-
-  app.post("/matchmake/joinById/:roomId", async (req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    try {
-      const { roomId } = req.params;
-      const options = req.body || {};
-      const room = await server.matchmaker.joinById(roomId, options);
-      res.json({ roomId: room.roomId, sessionId: room.sessionId });
-    } catch (e) {
-      res.status(400).json({ error: e.message });
-    }
-  });
-});
+server.listen(Number(process.env.PORT) || 2567);
