@@ -182,7 +182,9 @@
       <div class="modal-box"><h2>🌀 Opponent reconnecting…</h2><p>Please wait</p></div>
     </div>
 
-    <audio id="goalHorn" src="https://drive.google.com/uc?export=download&id=1WQbvcH0DGMpvxhfrpCAvk7JOnRvaeh4d" preload="auto"></audio>
+    <!-- Goal horn loaded from your server's public folder -->
+    <audio id="goalHorn" src="/9.mp3" preload="auto"></audio>
+    <!-- Background music (playlist) -->
     <audio id="bgMusic" loop=""></audio>
   </div>
 </div>
@@ -224,13 +226,12 @@
   const mobileControls = document.getElementById('mobileControls');
   const aimIndicator = document.getElementById('aimIndicator');
 
-  // 🎵 Music Playlist – DIRECT Google Drive links
+  // 🎵 Music Playlist – LOCAL FILES from your server
   const playlist = [
-    'https://drive.google.com/uc?export=download&id=1eM_b8LdjIoxxx_yBaOk4wU7x02altW7d',
-    'https://drive.google.com/uc?export=download&id=1mlY6W6FnZ-Nvd7X2S89_ft9Y8vCYcgjk',
-    'https://drive.google.com/uc?export=download&id=1UHVwqo-eQIOezp9f-t3tlne5vRvHu50r',
-    'https://drive.google.com/uc?export=download&id=1ans6MxGJfcCJkjOTCI_W6lX6vPaCAd7V',
-    'https://drive.google.com/uc?export=download&id=1IvIHZEgIyVqMic7lnhXSyMQk4cnTrcrk'
+    '/1.mp3',
+    '/3.mp3',
+    '/4.mp3',
+    '/5.mp3'
   ];
   let currentTrack = 0;
   const bgMusic = document.getElementById('bgMusic');
@@ -404,7 +405,7 @@
   function setupRoom() {
     if (room._handlersSet) return; room._handlersSet = true;
 
-    // ✅ Catch state that arrived before we registered the callback
+    // Catch state that arrived before we registered the callback
     if (room.state) {
       const state = room.state;
       document.getElementById('roomCodeDisplay').innerText = state.roomCode || "—";
