@@ -321,6 +321,17 @@ const server = defineServer({
   rooms: { football: FootballRoom },
   express: (app) => {
     app.set("trust proxy", 1);
+
+    // ✅ Permissive CSP – must be FIRST to override any default restrictive policy
+    app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.setHeader(
+        "Content-Security-Policy",
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';"
+      );
+      next();
+    });
+
     app.use(cors());
     app.use(express.json());
 
@@ -337,12 +348,6 @@ const server = defineServer({
     app.use(express.static("public"));
 
     app.use("/playground", playground());
-
-    app.use((req, res, next) => {
-      res.removeHeader("Content-Security-Policy");
-      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';");
-      next();
-    });
   }
 });
 
