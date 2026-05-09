@@ -4,11 +4,11 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Prevent crashes ----------
+// --------- Prevent crashes ---------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
-// ---------- Schemas ----------
+// --------- Schemas ---------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -59,7 +59,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room ----------
+// --------- Room ---------
 class FootballRoom extends Room {
   constructor() {
     super();
