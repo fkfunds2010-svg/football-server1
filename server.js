@@ -333,10 +333,10 @@ const server = defineServer({
 
     app.get("/health", (req, res) => res.send("OK"));
 
-    // ---- Playground must be mounted BEFORE the CSP override ----
+    // Playground MUST come BEFORE the CSP override
     app.use("/playground", playground());
 
-    // ✅ Override any restrictive CSP – placed AFTER playground but BEFORE static
+    // Override any restrictive CSP – placed AFTER playground but BEFORE static
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader(
@@ -346,7 +346,7 @@ const server = defineServer({
       next();
     });
 
-    // Now serve the game – it will have the correct CSP header
+    // Serve your game and music files from the "public" folder
     app.use(express.static("public"));
   }
 });
