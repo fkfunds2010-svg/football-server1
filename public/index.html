@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
-  <!-- ✅ Correct Colyseus SDK for 0.17 -->
+  <!-- ✅ Official @colyseus/sdk 0.17 CDN -->
   <script src="https://unpkg.com/@colyseus/sdk/dist/colyseus.js"></script>
   <style>
     *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
@@ -227,12 +227,7 @@
   const aimIndicator = document.getElementById('aimIndicator');
 
   // 🎵 Music Playlist
-  const playlist = [
-    '/1.mp3',
-    '/3.mp3',
-    '/4.mp3',
-    '/5.mp3'
-  ];
+  const playlist = ['/1.mp3', '/3.mp3', '/4.mp3', '/5.mp3'];
   let currentTrack = 0;
   const bgMusic = document.getElementById('bgMusic');
   bgMusic.volume = 0.6;
@@ -256,9 +251,8 @@
     goalBanner.classList.add('show');
     setTimeout(() => goalBanner.classList.remove('show'), 1500);
   }
-  // ✅ Updated to 0.17 API
-  function sendEmote(emoji) { if (room) room.messages.send("emote", emoji); }
-  function sendRematch() { if (room) { room.messages.send("rematch"); rematchBtn.classList.add('hidden'); } }
+  function sendEmote(emoji) { if (room) room.send("emote", emoji); }
+  function sendRematch() { if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); } }
   regionSelect.addEventListener('change', () => { selectedRegion = regionSelect.value; });
 
   // ==================== MOBILE CONTROLS SETUP ====================
@@ -364,7 +358,7 @@
     }
   }
 
-  // ==================== NETWORKING (Updated API) ====================
+  // ==================== NETWORKING (Official @colyseus/sdk API) ====================
   async function createRoom() {
     const hostName = await showPrompt("Enter your display name", "Your name");
     if (!hostName) return;
@@ -376,7 +370,7 @@
     try {
       room = await client.create("football", { password: pass, region: selectedRegion });
       amIHost = true; myPlayerId = 'p1'; roomPassword = pass;
-      room.messages.send("setName", hostName);
+      room.send("setName", hostName);
     } catch(e) {
       alert("Failed to create room. Is server running? " + e.message);
       return;
@@ -394,7 +388,7 @@
       room = await client.joinById(code, { password: pass });
       amIHost = false; myPlayerId = 'p2';
       const name = prompt("Enter your display name:", "Player2");
-      room.messages.send("setName", name || "P2");
+      room.send("setName", name || "P2");
     } catch(e) {
       alert("Invalid room code or password. " + e.message);
       return;
@@ -413,26 +407,26 @@
       serverState = state;
     }
 
-    room.messages.on("playerNames", data => {
+    room.onMessage("playerNames", data => {
       document.getElementById('p1Name').innerText = data.p1; document.getElementById('p2Name').innerText = data.p2;
       document.getElementById('p1ReadyBadge').className = `ready-badge ${data.p1Ready?'ready':''}`; document.getElementById('p1ReadyBadge').innerText = data.p1Ready?'✅ READY':'⚪ NOT READY';
       document.getElementById('p2ReadyBadge').className = `ready-badge ${data.p2Ready?'ready':''}`; document.getElementById('p2ReadyBadge').innerText = data.p2Ready?'✅ READY':'⚪ NOT READY';
       if (data.password && amIHost) { passwordText.innerText = data.password; }
       document.getElementById('connectionStatus').innerText = '⚡ connected';
     });
-    room.messages.on("gameStarted", () => {
+    room.onMessage("gameStarted", () => {
       panels.lobby.classList.add('hidden'); panels.game.classList.remove('hidden');
       gameActive = true; rematchBtn.classList.add('hidden');
       playNextTrack(); showMobileControls();
       predictedX = 150; predictedY = 415; predictedVx = 0; predictedVy = 0;
       statusBar.innerText = '🟢 LIVE';
     });
-    room.messages.on("countdown", data => {
+    room.onMessage("countdown", data => {
       countdownValue = data.value;
       if (countdownValue > 0) { countdownEl.style.display='block'; countdownEl.innerText = countdownValue; }
       else { countdownEl.innerText = 'GO!'; setTimeout(()=>countdownEl.style.display='none',500); }
     });
-    room.messages.on("event", ev => {
+    room.onMessage("event", ev => {
       if (ev.type === "GOAL") {
         goalAnimation(ev.data.color); goalHorn.currentTime=0; goalHorn.play().catch(()=>{});
         comment(ev.data.scorer==='p1'?"GOAL! PLAYER 1 SCORES!":"GOAL! PLAYER 2 SCORES!",ev.data.color);
@@ -442,14 +436,14 @@
       else if (ev.type === "MUSIC_NEXT") playNextTrack();
       else if (ev.type === "FREEZE_END") goalFreeze = false;
     });
-    room.messages.on("emote", data => {
+    room.onMessage("emote", data => {
       const div = document.createElement('div'); div.innerText = `${data.playerName} ${data.emoteId}`;
       document.getElementById('chatMessages').appendChild(div);
     });
-    room.messages.on("opponentReconnecting", () => { reconnectOverlay.style.display = 'flex'; });
-    room.messages.on("playerReconnected", () => { reconnectOverlay.style.display = 'none'; });
-    room.messages.on("playerLeft", () => { alert("Opponent left."); leaveRoom(); });
-    room.messages.on("rematch", () => {
+    room.onMessage("opponentReconnecting", () => { reconnectOverlay.style.display = 'flex'; });
+    room.onMessage("playerReconnected", () => { reconnectOverlay.style.display = 'none'; });
+    room.onMessage("playerLeft", () => { alert("Opponent left."); leaveRoom(); });
+    room.onMessage("rematch", () => {
       panels.game.classList.add('hidden'); panels.lobby.classList.remove('hidden');
       gameActive = false; rematchBtn.classList.add('hidden');
       winnerMsgDiv.style.display = 'none'; warningDiv.style.display = 'none';
@@ -457,11 +451,11 @@
       if (inputInterval) clearInterval(inputInterval); if (pingInterval) clearInterval(pingInterval);
       inputInterval = pingInterval = null;
     });
-    room.messages.on("chat", msg => {
+    room.onMessage("chat", msg => {
       const div = document.createElement('div'); div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
       document.getElementById('chatMessages').appendChild(div);
     });
-    room.messages.on("error", msg => { alert(msg.message); });
+    room.onMessage("error", msg => { alert(msg.message); });
 
     room.onStateChange(state => {
       serverState = state;
@@ -494,10 +488,10 @@
       if (!room || !gameActive) return;
       const inp = getInput();
       const str = JSON.stringify(inp);
-      if (str !== lastInputStr) { room.messages.send("move", inp); lastInputStr = str; }
+      if (str !== lastInputStr) { room.send("move", inp); lastInputStr = str; }
     }, 33);
-    pingInterval = setInterval(() => { if (room) room.messages.send("ping", Date.now()); }, 2000);
-    room.messages.on("pong", clientTime => { ping = Date.now() - clientTime; pingEl.innerText = `Ping: ${ping}ms`; reconnectAttempts = 0; });
+    pingInterval = setInterval(() => { if (room) room.send("ping", Date.now()); }, 2000);
+    room.onMessage("pong", clientTime => { ping = Date.now() - clientTime; pingEl.innerText = `Ping: ${ping}ms`; reconnectAttempts = 0; });
   }
 
   function enterLobby() {
@@ -570,10 +564,10 @@
   document.getElementById('createRoomBtn').onclick = createRoom;
   document.getElementById('joinRoomBtn').onclick = () => document.getElementById('joinSection').classList.toggle('hidden');
   document.getElementById('confirmJoinBtn').onclick = joinRoom;
-  document.getElementById('readyBtn').onclick = () => room.messages.send("ready");
+  document.getElementById('readyBtn').onclick = () => room.send("ready");
   document.getElementById('sendChatBtn').onclick = () => {
     const msg = document.getElementById('chatInput').value.trim();
-    if (msg) { room.messages.send("chat", msg); document.getElementById('chatInput').value = ''; }
+    if (msg) { room.send("chat", msg); document.getElementById('chatInput').value = ''; }
   };
   document.getElementById('leaveLobbyBtn').onclick = leaveRoom;
   document.getElementById('leaveGameBtn').onclick = leaveRoom;
