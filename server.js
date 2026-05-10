@@ -3,6 +3,7 @@ const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
+const path = require("path");
 
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
@@ -58,7 +59,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room – full game logic ----------
+// ---------- Room ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -134,7 +135,6 @@ class FootballRoom extends Room {
     }, 1000 / 30);
   }
 
-  // No password check – anyone can join
   onJoin(client, options) {
     const ep = this.state.players.get(client.sessionId);
     if (ep) {
@@ -306,24 +306,32 @@ const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
   express: (app) => {
-    // ⚡ CRITICAL – let WebSocket upgrades pass through to Colyseus
+    // ⚡ WebSocket passthrough
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
         return next();
       }
       next();
     });
+
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
+
     app.get("/health", (req, res) => res.send("OK"));
     app.use("/playground", playground());
+
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
       next();
     });
-    app.use(express.static("public"));
+
+    // ✅ Serve your game HTML explicitly
+    app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+    // Serve other static files, but do NOT serve index.html automatically
+    app.use(express.static("public", { index: false }));
   }
 });
 
