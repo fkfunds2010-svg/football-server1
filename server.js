@@ -309,10 +309,11 @@ const server = defineServer({
     // ⚡ WebSocket pass‑through – MUST be first
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
-        return next();
+        return;   // ← THE ONLY CHANGE
       }
       next();
     });
+    // … rest of your code stays exactly as it is …
 
     app.set("trust proxy", 1);
     app.use(cors());
