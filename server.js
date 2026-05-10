@@ -5,8 +5,17 @@ const cors = require("cors");
 const express = require("express");
 const path = require("path");
 
-process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
-process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
+// ✅ NEW: store the last crash error
+let lastCrash = '';
+
+process.on('uncaughtException', (err) => {
+  lastCrash = err.stack || err.message;
+  console.error('Uncaught:', lastCrash);
+});
+process.on('unhandledRejection', (reason) => {
+  lastCrash = reason.stack || reason.message || String(reason);
+  console.error('Unhandled:', lastCrash);
+});
 
 // ---------- Schemas ----------
 class PlayerState extends Schema {
@@ -309,11 +318,15 @@ const server = defineServer({
     // ⚡ WebSocket pass‑through – MUST be first
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
-        return;   // ← THE ONLY CHANGE
+        return;   // ← stops Express from handling the upgrade
       }
       next();
     });
-    // … rest of your code stays exactly as it is …
+
+    // ✅ NEW: serve the last crash error
+    app.get("/crash", (req, res) => {
+      res.type("text/plain").send(lastCrash || "No crash recorded yet.");
+    });
 
     app.set("trust proxy", 1);
     app.use(cors());
