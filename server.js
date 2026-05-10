@@ -1,19 +1,12 @@
-const { defineServer, Room } = require("colyseus");
+const { defineServer, Room, matchMaker } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-let lastCrash = '';   // will hold the last crash message
-
-process.on('uncaughtException', (err) => {
-  lastCrash = err.stack || err.message;
-  console.error('Uncaught:', lastCrash);
-});
-process.on('unhandledRejection', (reason) => {
-  lastCrash = reason.stack || reason.message || String(reason);
-  console.error('Unhandled:', lastCrash);
-});
+// ---------- Prevent crashes ----------
+process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
+process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
 // ---------- Schemas ----------
 class PlayerState extends Schema {
@@ -318,13 +311,41 @@ const server = defineServer({
     app.use(cors());
     app.use(express.json());
 
-    // ✅ Route to show the last crash error
-    app.get("/crash-log", (req, res) => {
-      res.type("text/plain");
-      res.send(lastCrash || "No crash recorded yet.");
+    // Slow‑request logger (helps detect hanging routes)
+    app.use((req, res, next) => {
+      const start = Date.now();
+      res.on('finish', () => {
+        const ms = Date.now() - start;
+        if (ms > 5000) console.warn(`SLOW: ${req.method} ${req.path} took ${ms}ms`);
+      });
+      next();
+    });
+
+    // ✅ Custom join endpoint – NEVER times out
+    app.post("/custom-join", async (req, res) => {
+      try {
+        const { roomId, password } = req.body;
+        const room = matchMaker.getRoomById(roomId);
+        if (!room) return res.status(404).json({ error: "Room not found" });
+
+        // Create a fresh seat reservation (synchronous, no timeout)
+        const sessionId = matchMaker.generateId();
+        room.reservedSeats.push({ sessionId });  // manually add seat
+        // Inject the client via the room’s internal methods
+        const ip = req.ip || req.socket.remoteAddress;
+        const client = room._createClient(sessionId, req, ip);
+        room._onJoin(client, { password });
+        
+        res.json({ roomId, sessionId });
+      } catch (err) {
+        console.error("/custom-join error:", err.message);
+        res.status(500).json({ error: err.message });
+      }
     });
 
     app.get("/health", (req, res) => res.send("OK"));
+
+    // Permissive CSP
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader(
@@ -333,6 +354,7 @@ const server = defineServer({
       );
       next();
     });
+
     app.use("/playground", playground());
     app.use(express.static("public"));
   }
