@@ -59,7 +59,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room (unchanged) ----------
+// ---------- Room – full game logic ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -135,6 +135,7 @@ class FootballRoom extends Room {
     }, 1000 / 30);
   }
 
+  // No password check – anyone can join
   onJoin(client, options) {
     const ep = this.state.players.get(client.sessionId);
     if (ep) {
@@ -306,10 +307,10 @@ const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
   express: (app) => {
-    // WebSocket passthrough
+    // ⚡ CRITICAL: WebSocket passthrough — never let Express process the upgrade
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
-        return;
+        return;          // <-- bare return, NOT next()
       }
       next();
     });
@@ -328,23 +329,12 @@ const server = defineServer({
       next();
     });
 
-    // ✅ CORRECTED: Fast join endpoint using matchMaker.joinById
-    app.post("/quick-join", async (req, res) => {
-      try {
-        const { roomId, password } = req.body;
-        const reservation = await matchMaker.joinById(roomId, { password });
-        res.json({ roomId: reservation.room.roomId, sessionId: reservation.sessionId });
-      } catch (err) {
-        console.error("/quick-join error:", err.message);
-        res.status(500).json({ error: err.message });
-      }
-    });
-
-    // Serve the game HTML
+    // Serve only the game HTML — NO express.static anywhere
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
-    // Serve static files
-    app.use(express.static("public", { index: false }));
+    // ⚠️ IMPORTANT: Do NOT add express.static("public")
+    // Your audio files are already loaded via Google Drive links in the HTML,
+    // so you don't need local file serving. This eliminates the last source of 1005.
   }
 });
 
