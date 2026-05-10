@@ -555,7 +555,7 @@
       passwordDisplay.style.display = 'flex'; passwordText.innerText = pass;
     }
 
- async function joinRoom() {
+async function joinRoom() {
   const code = document.getElementById('roomCodeInput').value.trim();
   const pass = document.getElementById('passwordInput').value.trim();
   if (!code) return;
@@ -571,7 +571,7 @@
     const name = prompt("Enter your display name:", "Player2");
     room.send("setName", name || "P2");
   } catch(e) {
-    alert("Invalid room code or password. " + e.message);
+    alert(e.message);
     return;
   }
   setupRoom();
