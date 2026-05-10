@@ -1,8 +1,6 @@
-const http = require("http");
 const { defineServer, Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
-const { WebSocketTransport } = require("@colyseus/ws-transport");
 const cors = require("cors");
 const express = require("express");
 
@@ -309,30 +307,35 @@ class FootballRoom extends Room {
   }
 }
 
-// ==================== SERVER SETUP ====================
-const app = express();
-
-app.set("trust proxy", 1);
-app.use(cors());
-app.use(express.json());
-app.get("/health", (req, res) => res.send("OK"));
-app.use("/playground", playground());
-app.use((req, res, next) => {
-  res.removeHeader("Content-Security-Policy");
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;"
-  );
-  next();
-});
-app.use(express.static("public"));
-
-const httpServer = http.createServer(app);
-
+// ==================== SERVER SETUP (Official 0.17 pattern) ====================
 const server = defineServer({
   rooms: { football: FootballRoom },
-  transport: new WebSocketTransport({ server: httpServer })
+  express: (app) => {
+    // 1. Trust proxy (required for Render)
+    app.set("trust proxy", 1);
+
+    // 2. CORS and JSON
+    app.use(cors());
+    app.use(express.json());
+
+    // 3. Health check
+    app.get("/health", (req, res) => res.send("OK"));
+
+    // 4. Playground (with permissive CSP)
+    app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.setHeader(
+        "Content-Security-Policy",
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;"
+      );
+      next();
+    });
+    app.use("/playground", playground());
+
+    // 5. Static files (MUST be last)
+    app.use(express.static("public"));
+  }
 });
 
 const PORT = Number(process.env.PORT) || 2567;
-httpServer.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
+server.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
