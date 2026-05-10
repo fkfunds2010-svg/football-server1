@@ -559,31 +559,31 @@
     }
 
     // ✅ JOIN FIX: only send password if field is not empty
-    async function joinRoom() {
-      const code = document.getElementById('roomCodeInput').value.trim();
-      const pass = document.getElementById('passwordInput').value.trim();
-      if (!code) return;
-
-      const options = pass ? { password: pass } : {};
-
-      console.log("Joining room:", code, "options:", options);
-      client = new Colyseus.Client(SERVER_URL);
-      try {
-        room = await client.joinById(code, options);
-        console.log("Join successful, sessionId:", room.sessionId);
-        amIHost = false;
-        myPlayerId = 'p2';
-        const name = prompt("Enter your display name:", "Player2");
-        room.send("setName", name || "P2");
-        setupRoom();
-        enterLobby();
-        passwordDisplay.style.display = 'none';
-      } catch(e) {
-        console.error("Join failed:", e);
-        alert(e.message);
-      }
-    }
-
+async function joinRoom() {
+  const code = document.getElementById('roomCodeInput').value.trim();
+  const pass = document.getElementById('passwordInput').value.trim();
+  if (!code) return;
+  const options = pass ? { password: pass } : {};
+  client = new Colyseus.Client(SERVER_URL);
+  try {
+    // use the new fast route
+    const resp = await fetch(`${SERVER_URL.replace('wss','https')}/custom-join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: code, password: pass || undefined })
+    });
+    const { roomId, sessionId } = await resp.json();
+    room = await client.consumeSeatReservation({ roomId, sessionId });
+    console.log("Join successful");
+    amIHost = false; myPlayerId = 'p2';
+    const name = prompt("Enter your display name:", "Player2");
+    room.send("setName", name || "P2");
+    setupRoom(); enterLobby();
+    passwordDisplay.style.display = 'none';
+  } catch(e) {
+    alert(e.message);
+  }
+}
     function setupRoom() {
       if (room._handlersSet) return; room._handlersSet = true;
 
