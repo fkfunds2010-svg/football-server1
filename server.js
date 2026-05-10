@@ -1,6 +1,8 @@
-const { defineServer, Room, matchMaker } = require("colyseus");
+const http = require("http");
+const { defineServer, Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
+const { WebSocketTransport } = require("@colyseus/ws-transport");
 const cors = require("cors");
 const express = require("express");
 
@@ -8,7 +10,7 @@ const express = require("express");
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
-// ---------- Schemas ----------
+// ---------- Schemas (exactly as you originally had) ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -59,7 +61,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room – full game logic ----------
+// ---------- Room class (your full game logic) ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -135,8 +137,8 @@ class FootballRoom extends Room {
     }, 1000 / 30);
   }
 
-  // ✅ No password check – anyone can join
   onJoin(client, options) {
+    // No password check – anyone can join
     const ep = this.state.players.get(client.sessionId);
     if (ep) {
       ep.reconnecting = false;
@@ -302,63 +304,37 @@ class FootballRoom extends Room {
   }
 }
 
-// ==================== SERVER SETUP ====================
+// ==================== SERVER SETUP (official 0.17 + Express) ====================
+const app = express();
+
+app.set("trust proxy", 1);
+app.use(cors());
+app.use(express.json());
+
+app.get("/health", (req, res) => res.send("OK"));
+
+// Permissive CSP
+app.use((req, res, next) => {
+  res.removeHeader("Content-Security-Policy");
+  res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
+  next();
+});
+
+app.use("/playground", playground());
+app.use(express.static("public"));
+
+// Create the HTTP server manually
+const httpServer = http.createServer(app);
+
+// Define the game server with the WebSocketTransport
 const server = defineServer({
   rooms: { football: FootballRoom },
-  reservationTimeInSeconds: 30,
-  express: (app) => {
-    app.set("trust proxy", 1);
-    app.use(cors());
-    app.use(express.json());
-
-    // Slow‑request logger (helps detect hanging routes)
-    app.use((req, res, next) => {
-      const start = Date.now();
-      res.on('finish', () => {
-        const ms = Date.now() - start;
-        if (ms > 5000) console.warn(`SLOW: ${req.method} ${req.path} took ${ms}ms`);
-      });
-      next();
-    });
-
-    // ✅ Custom join endpoint – NEVER times out
-    app.post("/custom-join", async (req, res) => {
-      try {
-        const { roomId, password } = req.body;
-        const room = matchMaker.getRoomById(roomId);
-        if (!room) return res.status(404).json({ error: "Room not found" });
-
-        // Create a fresh seat reservation (synchronous, no timeout)
-        const sessionId = matchMaker.generateId();
-        room.reservedSeats.push({ sessionId });  // manually add seat
-        // Inject the client via the room’s internal methods
-        const ip = req.ip || req.socket.remoteAddress;
-        const client = room._createClient(sessionId, req, ip);
-        room._onJoin(client, { password });
-        
-        res.json({ roomId, sessionId });
-      } catch (err) {
-        console.error("/custom-join error:", err.message);
-        res.status(500).json({ error: err.message });
-      }
-    });
-
-    app.get("/health", (req, res) => res.send("OK"));
-
-    // Permissive CSP
-    app.use((req, res, next) => {
-      res.removeHeader("Content-Security-Policy");
-      res.setHeader(
-        "Content-Security-Policy",
-        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;"
-      );
-      next();
-    });
-
-    app.use("/playground", playground());
-    app.use(express.static("public"));
-  }
+  reservationTimeInSeconds: 60,                // long enough for Render
+  transport: new WebSocketTransport({
+    server: httpServer,                        // Colyseus handles upgrades directly
+    verifyClient: (info, next) => next(true)   // accept all WebSocket connections
+  })
 });
 
 const PORT = Number(process.env.PORT) || 2567;
-server.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
+httpServer.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
