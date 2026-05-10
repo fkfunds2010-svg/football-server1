@@ -5,7 +5,6 @@ const cors = require("cors");
 const express = require("express");
 const path = require("path");
 
-// Global crash logger
 let lastCrash = '';
 
 process.on('uncaughtException', (err) => {
@@ -17,7 +16,7 @@ process.on('unhandledRejection', (reason) => {
   console.error('Unhandled:', lastCrash);
 });
 
-// ---------- Schemas (unchanged) ----------
+// ---------- Schemas ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -80,6 +79,12 @@ class FootballRoom extends Room {
   }
 
   static onAuth(client, options, request) { return true; }
+
+  // ✅ OFFICIAL COLYSEUS ERROR HANDLER – captures any internal crash
+  onError(err) {
+    lastCrash = `${err.message}\n${err.stack}`;
+    console.error("Room onError:", lastCrash);
+  }
 
   onCreate(options) {
     try {
