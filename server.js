@@ -4,9 +4,16 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Prevent crashes ----------
-process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
-process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
+let lastCrash = '';   // will hold the last crash message
+
+process.on('uncaughtException', (err) => {
+  lastCrash = err.stack || err.message;
+  console.error('Uncaught:', lastCrash);
+});
+process.on('unhandledRejection', (reason) => {
+  lastCrash = reason.stack || reason.message || String(reason);
+  console.error('Unhandled:', lastCrash);
+});
 
 // ---------- Schemas ----------
 class PlayerState extends Schema {
@@ -135,7 +142,7 @@ class FootballRoom extends Room {
     }, 1000 / 30);
   }
 
-  // ✅ PASSWORD CHECK REMOVED – everyone can join
+  // ✅ No password check – anyone can join
   onJoin(client, options) {
     const ep = this.state.players.get(client.sessionId);
     if (ep) {
@@ -302,14 +309,21 @@ class FootballRoom extends Room {
   }
 }
 
-// ==================== SERVER SETUP (Official 0.17 pattern) ====================
+// ==================== SERVER SETUP ====================
 const server = defineServer({
   rooms: { football: FootballRoom },
-  reservationTimeInSeconds: 30,    // ← THE FIX (increased from default 5s)
+  reservationTimeInSeconds: 30,
   express: (app) => {
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
+
+    // ✅ Route to show the last crash error
+    app.get("/crash-log", (req, res) => {
+      res.type("text/plain");
+      res.send(lastCrash || "No crash recorded yet.");
+    });
+
     app.get("/health", (req, res) => res.send("OK"));
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
