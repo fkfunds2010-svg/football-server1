@@ -342,6 +342,8 @@ const server = defineServer({
     verifyClient: (info, next) => next(true)   // accept all WebSocket connections
   })
 });
+// ✅ THIS IS THE MISSING LINE – it registers all /matchmake routes
+server.attach({ server: httpServer });
 
 const PORT = Number(process.env.PORT) || 2567;
 httpServer.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
