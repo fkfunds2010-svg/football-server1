@@ -135,7 +135,7 @@ class FootballRoom extends Room {
     }, 1000 / 30);
   }
 
-  // ✅ ONLY CHANGE: Password check removed so anyone can join
+  // ✅ PASSWORD CHECK REMOVED – everyone can join
   onJoin(client, options) {
     const ep = this.state.players.get(client.sessionId);
     if (ep) {
