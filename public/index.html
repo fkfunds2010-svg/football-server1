@@ -555,24 +555,29 @@
       passwordDisplay.style.display = 'flex'; passwordText.innerText = pass;
     }
 
-    async function joinRoom() {
-      const code = document.getElementById('roomCodeInput').value.trim();
-      const pass = document.getElementById('passwordInput').value.trim();
-      if (!code) return;
-      client = new Colyseus.Client(SERVER_URL);
-      try {
-        room = await client.joinById(code, { password: pass });
-        amIHost = false; myPlayerId = 'p2';
-        const name = prompt("Enter your display name:", "Player2");
-        room.send("setName", name || "P2");
-      } catch(e) {
-        alert("Invalid room code or password. " + e.message);
-        return;
-      }
-      setupRoom(); enterLobby();
-      passwordDisplay.style.display = 'none';
-    }
+ async function joinRoom() {
+  const code = document.getElementById('roomCodeInput').value.trim();
+  const pass = document.getElementById('passwordInput').value.trim();
+  if (!code) return;
 
+  // Only send password if the field is not empty
+  const options = pass ? { password: pass } : {};
+
+  client = new Colyseus.Client(SERVER_URL);
+  try {
+    room = await client.joinById(code, options);
+    amIHost = false;
+    myPlayerId = 'p2';
+    const name = prompt("Enter your display name:", "Player2");
+    room.send("setName", name || "P2");
+  } catch(e) {
+    alert("Invalid room code or password. " + e.message);
+    return;
+  }
+  setupRoom();
+  enterLobby();
+  passwordDisplay.style.display = 'none';
+}
     function setupRoom() {
       if (room._handlersSet) return; room._handlersSet = true;
 
