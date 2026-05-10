@@ -189,6 +189,60 @@
 </div>
 
 <script>
+  // ==================== CLIENT SCHEMA DEFINITIONS (Official 0.17) ====================
+  const Schema = Colyseus.Schema;
+  const MapSchema = Colyseus.MapSchema;
+
+  class PlayerState extends Schema {
+    constructor() {
+      super();
+      this.x = 150; this.y = 415; this.vx = 0; this.vy = 0;
+      this.isJumping = false; this.color = "#ff00ff"; this.side = "left";
+      this.name = ""; this.ready = false; this.accelX = 0;
+      this.reconnecting = false; this.disconnectTime = 0;
+    }
+  }
+  PlayerState._schema = {
+    x: "number", y: "number", vx: "number", vy: "number",
+    isJumping: "boolean", color: "string", side: "string",
+    name: "string", ready: "boolean", accelX: "number",
+    reconnecting: "boolean", disconnectTime: "number"
+  };
+
+  class BallState extends Schema {
+    constructor() { super(); this.x = 500; this.y = 250; this.vx = 5; this.vy = -3; }
+  }
+  BallState._schema = { x: "number", y: "number", vx: "number", vy: "number" };
+
+  class KeeperState extends Schema {
+    constructor() { super(); this.y = 250; this.vy = 0; }
+  }
+  KeeperState._schema = { y: "number", vy: "number" };
+
+  class GameState extends Schema {
+    constructor() {
+      super();
+      this.players = new MapSchema();
+      this.ball = new BallState();
+      this.keeper1 = new KeeperState();
+      this.keeper2 = new KeeperState();
+      this.p1Score = 0; this.p2Score = 0; this.timeLeft = 120;
+      this.gameOver = false; this.winnerMessage = "";
+      this.matchState = "waiting"; this.hostId = ""; this.roomCode = "";
+      this.countdown = -1; this.goalFreeze = 0;
+      this.password = ""; this.lastWinner = "";
+    }
+  }
+  GameState._schema = {
+    players: { map: PlayerState },
+    ball: BallState, keeper1: KeeperState, keeper2: KeeperState,
+    p1Score: "number", p2Score: "number", timeLeft: "number",
+    gameOver: "boolean", winnerMessage: "string",
+    matchState: "string", hostId: "string", roomCode: "string",
+    countdown: "number", goalFreeze: "number",
+    password: "string", lastWinner: "string"
+  };
+
   // ==================== CONFIG ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
   
@@ -358,7 +412,7 @@
     }
   }
 
-  // ==================== NETWORKING (Official @colyseus/sdk API) ====================
+  // ==================== NETWORKING ====================
   async function createRoom() {
     const hostName = await showPrompt("Enter your display name", "Your name");
     if (!hostName) return;
@@ -400,12 +454,10 @@
   function setupRoom() {
     if (room._handlersSet) return; room._handlersSet = true;
 
-    // Catch state that arrived before we registered the callback
-    if (room.state) {
-      const state = room.state;
-      document.getElementById('roomCodeDisplay').innerText = state.roomCode || "—";
-      serverState = state;
-    }
+    // The state is now a proper GameState object because of our client schema
+    serverState = room.state;
+    document.getElementById('roomCodeDisplay').innerText = serverState.roomCode || room.roomId;
+    console.log("Room code:", serverState.roomCode);
 
     room.onMessage("playerNames", data => {
       document.getElementById('p1Name').innerText = data.p1; document.getElementById('p2Name').innerText = data.p2;
@@ -459,7 +511,7 @@
 
     room.onStateChange(state => {
       serverState = state;
-      document.getElementById('roomCodeDisplay').innerText = state.roomCode || "—";
+      document.getElementById('roomCodeDisplay').innerText = state.roomCode || room.roomId;
       matchStatus = state.matchState;
       statusBar.innerText = {"waiting":"⚪ WAITING","ready_check":"🟡 READY CHECK","countdown":"🟡 COUNTDOWN","live":"🟢 LIVE","end":"🔴 END"}[matchStatus]||matchStatus;
       if (state.gameOver) {
