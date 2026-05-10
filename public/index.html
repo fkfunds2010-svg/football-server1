@@ -4,12 +4,43 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
-  <!-- ✅ Load the Schema library first (provides global Schema & MapSchema) -->
-  <script src="https://unpkg.com/@colyseus/schema@4.0.21/dist/colyseus-schema.js"></script>
-  <!-- ✅ Official @colyseus/sdk 0.17 -->
+  <!-- ✅ Official @colyseus/sdk 0.17 CDN -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
-  <!-- ✅ Stop favicon requests -->
-  <link rel="icon" href="data:,">
+  <!-- ✅ Embedded Schema & MapSchema (no CDN dependency) -->
+  <script>
+    (function() {
+      class Schema {
+        constructor() {
+          if (this.constructor._schema) {
+            const schema = this.constructor._schema;
+            for (const key in schema) {
+              const type = schema[key];
+              if (type === 'number') this[key] = 0;
+              else if (type === 'string') this[key] = '';
+              else if (type === 'boolean') this[key] = false;
+              else if (typeof type === 'object') {
+                if (type.map) this[key] = new MapSchema();
+                else if (typeof type === 'function') this[key] = new type();
+                else this[key] = undefined;
+              } else {
+                this[key] = undefined;
+              }
+            }
+          }
+        }
+      }
+      class MapSchema {
+        constructor() { this._map = new Map(); }
+        forEach(cb) { this._map.forEach((v,k) => cb(v,k)); }
+        get(k) { return this._map.get(k); }
+        set(k,v) { this._map.set(k,v); }
+        get size() { return this._map.size; }
+        values() { return this._map.values(); }
+      }
+      window.Schema = Schema;
+      window.MapSchema = MapSchema;
+    })();
+  </script>
   <style>
     *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
     html, body {
@@ -193,9 +224,7 @@
 </div>
 
 <script>
-  // ==================== CLIENT SCHEMA DEFINITIONS (Official 0.17) ====================
-  // Schema & MapSchema are now global thanks to the @colyseus/schema library
-
+  // ==================== CLIENT SCHEMA DEFINITIONS (Embedded Schema) ====================
   class PlayerState extends Schema {
     constructor() {
       super();
