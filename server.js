@@ -5,8 +5,16 @@ const cors = require("cors");
 const express = require("express");
 const path = require("path");
 
-process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
-process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
+// ⚡ CRASH TRACKER – saves the last fatal error
+let lastCrash = '';
+process.on('uncaughtException', (err) => {
+  lastCrash = err.stack || err.message;
+  console.error('Uncaught:', lastCrash);
+});
+process.on('unhandledRejection', (reason) => {
+  lastCrash = reason.stack || reason.message || String(reason);
+  console.error('Unhandled:', lastCrash);
+});
 
 // ---------- Schemas (unchanged) ----------
 class PlayerState extends Schema {
@@ -135,7 +143,6 @@ class FootballRoom extends Room {
     }, 1000 / 30);
   }
 
-  // No password check – anyone can join
   onJoin(client, options) {
     const ep = this.state.players.get(client.sessionId);
     if (ep) {
@@ -307,12 +314,17 @@ const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
   express: (app) => {
-    // ⚡ CRITICAL: WebSocket passthrough — never let Express process the upgrade
+    // WebSocket passthrough
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
-        return;          // <-- bare return, NOT next()
+        return;
       }
       next();
+    });
+
+    // ✅ CRASH LOG ENDPOINT – shows the last error
+    app.get("/crash", (req, res) => {
+      res.type("text/plain").send(lastCrash || "No crash recorded yet.");
     });
 
     app.set("trust proxy", 1);
@@ -329,12 +341,8 @@ const server = defineServer({
       next();
     });
 
-    // Serve only the game HTML — NO express.static anywhere
+    // Serve index.html
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-
-    // ⚠️ IMPORTANT: Do NOT add express.static("public")
-    // Your audio files are already loaded via Google Drive links in the HTML,
-    // so you don't need local file serving. This eliminates the last source of 1005.
   }
 });
 
