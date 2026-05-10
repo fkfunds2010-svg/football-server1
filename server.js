@@ -4,7 +4,6 @@ const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 
-// ---------- Prevent crashes ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
@@ -135,7 +134,7 @@ class FootballRoom extends Room {
     }, 1000 / 30);
   }
 
-  // ✅ No password check – anyone can join
+  // No password check – anyone can join
   onJoin(client, options) {
     const ep = this.state.players.get(client.sessionId);
     if (ep) {
@@ -302,39 +301,28 @@ class FootballRoom extends Room {
   }
 }
 
-// ==================== SERVER SETUP (Official 0.17 pattern) ====================
+// ==================== SERVER SETUP ====================
 const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
   express: (app) => {
-    // ⚡ MUST BE FIRST – let WebSocket upgrades pass through to Colyseus
+    // ⚡ CRITICAL – let WebSocket upgrades pass through to Colyseus
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
-        return next();   // Colyseus handles the upgrade, Express stays out of the way
+        return next();
       }
       next();
     });
-
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
-
     app.get("/health", (req, res) => res.send("OK"));
-
-    // Playground (before CSP to allow its own scripts)
     app.use("/playground", playground());
-
-    // Permissive CSP (after Playground to override any restrictive headers)
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
-      res.setHeader(
-        "Content-Security-Policy",
-        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;"
-      );
+      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
       next();
     });
-
-    // Static files (your game HTML & audio)
     app.use(express.static("public"));
   }
 });
