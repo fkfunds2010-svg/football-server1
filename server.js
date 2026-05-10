@@ -5,18 +5,10 @@ const cors = require("cors");
 const express = require("express");
 const path = require("path");
 
-// ⚡ CRASH TRACKER – saves the last fatal error
-let lastCrash = '';
-process.on('uncaughtException', (err) => {
-  lastCrash = err.stack || err.message;
-  console.error('Uncaught:', lastCrash);
-});
-process.on('unhandledRejection', (reason) => {
-  lastCrash = reason.stack || reason.message || String(reason);
-  console.error('Unhandled:', lastCrash);
-});
+process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
+process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
-// ---------- Schemas (unchanged) ----------
+// ---------- Schemas ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -81,137 +73,173 @@ class FootballRoom extends Room {
   static onAuth(client, options, request) { return true; }
 
   onCreate(options) {
-    this.state.roomCode = this.roomId;
-    this.state.password = options.password || Math.random().toString(36).substr(2, 6);
+    try {
+      console.log("onCreate started, roomId:", this.roomId);
+      this.state.roomCode = this.roomId;
+      this.state.password = options.password || Math.random().toString(36).substr(2, 6);
 
-    this.onMessage("setName", (client, name) => {
-      const p = this.state.players.get(client.sessionId);
-      if (p) p.name = name;
-      this.broadcastPlayerInfo();
-    });
-
-    this.onMessage("ready", (client) => {
-      const p = this.state.players.get(client.sessionId);
-      if (p) p.ready = !p.ready;
-      this.broadcastPlayerInfo();
-      if (this.state.players.size === 2 && [...this.state.players.values()].every(pl => pl.ready)) {
-        this.state.matchState = "ready_check";
-        this.startCountdown();
-      }
-    });
-
-    this.onMessage("move", (client, input) => {
-      if (typeof input === "object") {
-        this.inputs[client.sessionId] = {
-          left: !!input.left, right: !!input.right, up: !!input.up, down: !!input.down,
-          shoot: !!input.shoot, turbo: !!input.turbo
-        };
-      }
-    });
-
-    this.onMessage("chat", (client, msg) => {
-      const s = this.state.players.get(client.sessionId)?.name || "Unknown";
-      this.broadcast("chat", { sender: s, text: (msg || "").substring(0, 200) });
-    });
-
-    this.onMessage("emote", (client, em) => {
-      const p = this.state.players.get(client.sessionId);
-      if (p) this.broadcast("emote", { playerName: p.name, emoteId: em });
-    });
-
-    this.onMessage("ping", (client, d) => client.send("pong", d));
-
-    this.onMessage("rematch", (client) => {
-      if (this.state.matchState !== "end") return;
-      this.state.players.forEach(p => {
-        p.x = p.side === "left" ? 150 : 820; p.y = 415; p.vx = 0; p.vy = 0;
-        p.isJumping = false; p.ready = false;
+      this.onMessage("setName", (client, name) => {
+        try {
+          const p = this.state.players.get(client.sessionId);
+          if (p) p.name = name;
+          this.broadcastPlayerInfo();
+        } catch (e) { console.error("setName error:", e.message); }
       });
-      this.state.ball.x = 500; this.state.ball.y = 250;
-      this.state.ball.vx = 5; this.state.ball.vy = -3;
-      this.state.p1Score = 0; this.state.p2Score = 0;
-      this.state.timeLeft = 120;
-      this.state.gameOver = false; this.state.winnerMessage = "";
-      this.state.matchState = "waiting"; this.state.countdown = -1;
-      this.state.goalFreeze = 0;
-      this.broadcast("rematch");
-      this.broadcastPlayerInfo();
-    });
 
-    this.setSimulationInterval((dt) => {
-      try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
-    }, 1000 / 30);
+      this.onMessage("ready", (client) => {
+        try {
+          const p = this.state.players.get(client.sessionId);
+          if (p) p.ready = !p.ready;
+          this.broadcastPlayerInfo();
+          if (this.state.players.size === 2 && [...this.state.players.values()].every(pl => pl.ready)) {
+            this.state.matchState = "ready_check";
+            this.startCountdown();
+          }
+        } catch (e) { console.error("ready error:", e.message); }
+      });
+
+      this.onMessage("move", (client, input) => {
+        try {
+          if (typeof input === "object") {
+            this.inputs[client.sessionId] = {
+              left: !!input.left, right: !!input.right, up: !!input.up, down: !!input.down,
+              shoot: !!input.shoot, turbo: !!input.turbo
+            };
+          }
+        } catch (e) { console.error("move error:", e.message); }
+      });
+
+      this.onMessage("chat", (client, msg) => {
+        try {
+          const s = this.state.players.get(client.sessionId)?.name || "Unknown";
+          this.broadcast("chat", { sender: s, text: (msg || "").substring(0, 200) });
+        } catch (e) { console.error("chat error:", e.message); }
+      });
+
+      this.onMessage("emote", (client, em) => {
+        try {
+          const p = this.state.players.get(client.sessionId);
+          if (p) this.broadcast("emote", { playerName: p.name, emoteId: em });
+        } catch (e) { console.error("emote error:", e.message); }
+      });
+
+      this.onMessage("ping", (client, d) => { try { client.send("pong", d); } catch (e) {} });
+
+      this.onMessage("rematch", (client) => {
+        try {
+          if (this.state.matchState !== "end") return;
+          this.state.players.forEach(p => {
+            p.x = p.side === "left" ? 150 : 820; p.y = 415; p.vx = 0; p.vy = 0;
+            p.isJumping = false; p.ready = false;
+          });
+          this.state.ball.x = 500; this.state.ball.y = 250;
+          this.state.ball.vx = 5; this.state.ball.vy = -3;
+          this.state.p1Score = 0; this.state.p2Score = 0;
+          this.state.timeLeft = 120;
+          this.state.gameOver = false; this.state.winnerMessage = "";
+          this.state.matchState = "waiting"; this.state.countdown = -1;
+          this.state.goalFreeze = 0;
+          this.broadcast("rematch");
+          this.broadcastPlayerInfo();
+        } catch (e) { console.error("rematch error:", e.message); }
+      });
+
+      this.setSimulationInterval((dt) => {
+        try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
+      }, 1000 / 30);
+
+      console.log("onCreate finished");
+    } catch (err) {
+      console.error("CRASH in onCreate:", err.message);
+    }
   }
 
   onJoin(client, options) {
-    const ep = this.state.players.get(client.sessionId);
-    if (ep) {
-      ep.reconnecting = false;
-      if (this.reconnectTimers[client.sessionId]) {
-        clearTimeout(this.reconnectTimers[client.sessionId]);
-        delete this.reconnectTimers[client.sessionId];
+    try {
+      console.log("onJoin called, sid:", client.sessionId);
+      const ep = this.state.players.get(client.sessionId);
+      if (ep) {
+        ep.reconnecting = false;
+        if (this.reconnectTimers[client.sessionId]) {
+          clearTimeout(this.reconnectTimers[client.sessionId]);
+          delete this.reconnectTimers[client.sessionId];
+        }
+        this.broadcast("playerReconnected", {});
+        this.broadcastPlayerInfo();
+        return;
       }
-      this.broadcast("playerReconnected", {});
-      this.broadcastPlayerInfo();
-      return;
+      if (this.clients.length >= 2) {
+        client.send("error", { message: "Room is full" });
+        client.leave();
+        return;
+      }
+      const player = new PlayerState();
+      const isP1 = this.clients.length === 1;
+      if (isP1) this.state.hostId = client.sessionId;
+      player.x = isP1 ? 150 : 820;
+      player.y = 415;
+      player.color = isP1 ? "#ff00ff" : "#00f2ff";
+      player.side = isP1 ? "left" : "right";
+      this.state.players.set(client.sessionId, player);
+      setTimeout(() => this.broadcastPlayerInfo(), 200);
+    } catch (err) {
+      console.error("CRASH in onJoin:", err.message);
     }
-    if (this.clients.length >= 2) {
-      client.send("error", { message: "Room is full" });
-      client.leave();
-      return;
-    }
-    const player = new PlayerState();
-    const isP1 = this.clients.length === 1;
-    if (isP1) this.state.hostId = client.sessionId;
-    player.x = isP1 ? 150 : 820;
-    player.y = 415;
-    player.color = isP1 ? "#ff00ff" : "#00f2ff";
-    player.side = isP1 ? "left" : "right";
-    this.state.players.set(client.sessionId, player);
-    setTimeout(() => this.broadcastPlayerInfo(), 200);
   }
 
   onLeave(client) {
-    const player = this.state.players.get(client.sessionId);
-    if (!player) return;
-    player.reconnecting = true;
-    player.disconnectTime = Date.now();
-    this.broadcast("opponentReconnecting", { sessionId: client.sessionId });
-    this.reconnectTimers[client.sessionId] = setTimeout(() => {
-      if (player.reconnecting) {
-        this.state.players.delete(client.sessionId);
-        this.broadcastPlayerInfo();
-        this.broadcast("playerLeft", {});
-      }
-    }, 30000);
+    try {
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      player.reconnecting = true;
+      player.disconnectTime = Date.now();
+      this.broadcast("opponentReconnecting", { sessionId: client.sessionId });
+      this.reconnectTimers[client.sessionId] = setTimeout(() => {
+        if (player.reconnecting) {
+          this.state.players.delete(client.sessionId);
+          this.broadcastPlayerInfo();
+          this.broadcast("playerLeft", {});
+        }
+      }, 30000);
+    } catch (err) {
+      console.error("CRASH in onLeave:", err.message);
+    }
   }
 
   broadcastPlayerInfo() {
-    const p1 = [...this.state.players.values()].find(p => p.side === "left");
-    const p2 = [...this.state.players.values()].find(p => p.side === "right");
-    this.broadcast("playerNames", {
-      p1: p1?.name || "—", p2: p2?.name || "—",
-      p1Ready: p1?.ready || false, p2Ready: p2?.ready || false,
-      password: this.state.password
-    });
+    try {
+      const p1 = [...this.state.players.values()].find(p => p.side === "left");
+      const p2 = [...this.state.players.values()].find(p => p.side === "right");
+      this.broadcast("playerNames", {
+        p1: p1?.name || "—", p2: p2?.name || "—",
+        p1Ready: p1?.ready || false, p2Ready: p2?.ready || false,
+        password: this.state.password
+      });
+    } catch (err) {
+      console.error("CRASH in broadcastPlayerInfo:", err.message);
+    }
   }
 
   startCountdown() {
-    this.state.matchState = "countdown";
-    this.state.countdown = 3;
-    this.broadcast("countdown", { value: this.state.countdown });
-    const interval = setInterval(() => {
-      if (this.state.matchState !== "countdown") { clearInterval(interval); return; }
-      this.state.countdown--;
-      if (this.state.countdown <= 0) {
-        clearInterval(interval);
-        this.state.matchState = "live";
-        this.broadcast("gameStarted");
-        this.broadcast("event", { type: "MUSIC_NEXT" });
-      } else {
-        this.broadcast("countdown", { value: this.state.countdown });
-      }
-    }, 1000);
+    try {
+      this.state.matchState = "countdown";
+      this.state.countdown = 3;
+      this.broadcast("countdown", { value: this.state.countdown });
+      const interval = setInterval(() => {
+        if (this.state.matchState !== "countdown") { clearInterval(interval); return; }
+        this.state.countdown--;
+        if (this.state.countdown <= 0) {
+          clearInterval(interval);
+          this.state.matchState = "live";
+          this.broadcast("gameStarted");
+          this.broadcast("event", { type: "MUSIC_NEXT" });
+        } else {
+          this.broadcast("countdown", { value: this.state.countdown });
+        }
+      }, 1000);
+    } catch (err) {
+      console.error("CRASH in startCountdown:", err.message);
+    }
   }
 
   gameTick() {
@@ -322,11 +350,6 @@ const server = defineServer({
       next();
     });
 
-    // ✅ CRASH LOG ENDPOINT – shows the last error
-    app.get("/crash", (req, res) => {
-      res.type("text/plain").send(lastCrash || "No crash recorded yet.");
-    });
-
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
@@ -341,7 +364,6 @@ const server = defineServer({
       next();
     });
 
-    // Serve index.html
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
   }
 });
