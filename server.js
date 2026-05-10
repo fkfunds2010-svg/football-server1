@@ -310,18 +310,12 @@ class FootballRoom extends Room {
 // ==================== SERVER SETUP (Official 0.17 pattern) ====================
 const server = defineServer({
   rooms: { football: FootballRoom },
+  reservationTimeInSeconds: 30,    // ← THE FIX (increased from default 5s)
   express: (app) => {
-    // 1. Trust proxy (required for Render)
     app.set("trust proxy", 1);
-
-    // 2. CORS and JSON
     app.use(cors());
     app.use(express.json());
-
-    // 3. Health check
     app.get("/health", (req, res) => res.send("OK"));
-
-    // 4. Playground (with permissive CSP)
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader(
@@ -331,8 +325,6 @@ const server = defineServer({
       next();
     });
     app.use("/playground", playground());
-
-    // 5. Static files (MUST be last)
     app.use(express.static("public"));
   }
 });
