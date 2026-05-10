@@ -1,15 +1,13 @@
-const http = require("http");
 const { defineServer, Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
-const { WebSocketTransport } = require("@colyseus/ws-transport");
 const cors = require("cors");
-const express = require("express");
 
+// ---------- Prevent crashes ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
-// ---------- Schemas ----------
+// ---------- Schemas (unchanged) ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -308,27 +306,26 @@ class FootballRoom extends Room {
   }
 }
 
-// ==================== FIXED SERVER SETUP ====================
-const app = express();
-
-app.set("trust proxy", 1);
-app.use(cors());
-app.use(express.json());
-app.get("/health", (req, res) => res.send("OK"));
-app.use("/playground", playground());
-app.use((req, res, next) => {
-  res.removeHeader("Content-Security-Policy");
-  res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
-  next();
-});
-app.use(express.static("public"));
-
-const httpServer = http.createServer(app);
-
+// ==================== CORRECTED SERVER SETUP ====================
 const server = defineServer({
   rooms: { football: FootballRoom },
-  transport: new WebSocketTransport({ server: httpServer })
+  express: (app) => {
+    app.set("trust proxy", 1);
+    app.use(cors());
+    app.use(express.json());
+    app.get("/health", (req, res) => res.send("OK"));
+    app.use("/playground", playground());
+    app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.setHeader(
+        "Content-Security-Policy",
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;"
+      );
+      next();
+    });
+    app.use(express.static("public"));
+  }
 });
 
 const PORT = Number(process.env.PORT) || 2567;
-httpServer.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
+server.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
