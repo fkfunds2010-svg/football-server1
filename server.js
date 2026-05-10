@@ -1,17 +1,14 @@
-const http = require("http");
 const { defineServer, Room, matchMaker } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
-const { WebSocketTransport } = require("@colyseus/ws-transport");
 const cors = require("cors");
 const express = require("express");
 const path = require("path");
 
-// ---------- Prevent crashes ----------
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
-// ---------- Schemas ----------
+// ---------- Schemas (unchanged) ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -139,7 +136,6 @@ class FootballRoom extends Room {
   }
 
   onJoin(client, options) {
-    // No password check – anyone can join
     const ep = this.state.players.get(client.sessionId);
     if (ep) {
       ep.reconnecting = false;
@@ -305,71 +301,65 @@ class FootballRoom extends Room {
   }
 }
 
-// ==================== SERVER SETUP ====================
-const app = express();
-
-app.set("trust proxy", 1);
-app.use(cors());
-app.use(express.json());
-
-// Health check
-app.get("/health", (req, res) => res.send("OK"));
-
-// Playground with permissive CSP
-app.use((req, res, next) => {
-  res.removeHeader("Content-Security-Policy");
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;"
-  );
-  next();
-});
-app.use("/playground", playground());
-
-// ✅ Custom fast join endpoint – NEVER times out
-app.post("/quick-join", async (req, res) => {
-  try {
-    const { roomId, password } = req.body;
-    const room = matchMaker.getRoomById(roomId);
-    if (!room) return res.status(404).json({ error: "Room not found" });
-
-    // Create a fresh seat reservation (synchronous)
-    const sessionId = matchMaker.generateId();
-    room.reservedSeats.push({ sessionId });
-
-    // Inject the client directly
-    const ip = req.ip || req.socket.remoteAddress;
-    const client = room._createClient(sessionId, req, ip);
-    room._onJoin(client, { password });
-
-    res.json({ roomId, sessionId });
-  } catch (err) {
-    console.error("/quick-join error:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Serve the game HTML
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-
-// Serve static files (audio, etc.) – but never index.html
-app.use(express.static("public", { index: false }));
-
-// Create HTTP server manually
-const httpServer = http.createServer(app);
-
-// Attach Colyseus with WebSocketTransport – this preserves matchmaking routes
+// ==================== SERVER SETUP (Express callback – guaranteed match‑making) ====================
 const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
-  transport: new WebSocketTransport({
-    server: httpServer,
-    verifyClient: (info, next) => next(true)   // accept all WebSocket connections
-  })
+  express: (app) => {
+    // ⚡ TRUE WebSocket passthrough – stops Express from touching upgrades
+    app.use((req, res, next) => {
+      if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
+        return;   // <-- Colyseus handles the upgrade directly
+      }
+      next();
+    });
+
+    app.set("trust proxy", 1);
+    app.use(cors());
+    app.use(express.json());
+
+    app.get("/health", (req, res) => res.send("OK"));
+
+    // Playground (before CSP)
+    app.use("/playground", playground());
+
+    // Permissive CSP (after Playground)
+    app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.setHeader(
+        "Content-Security-Policy",
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;"
+      );
+      next();
+    });
+
+    // ✅ Fast join endpoint – still available as a backup
+    app.post("/quick-join", async (req, res) => {
+      try {
+        const { roomId, password } = req.body;
+        const room = matchMaker.getRoomById(roomId);
+        if (!room) return res.status(404).json({ error: "Room not found" });
+
+        const sessionId = matchMaker.generateId();
+        room.reservedSeats.push({ sessionId });
+        const ip = req.ip || req.socket.remoteAddress;
+        const client = room._createClient(sessionId, req, ip);
+        room._onJoin(client, { password });
+
+        res.json({ roomId, sessionId });
+      } catch (err) {
+        console.error("/quick-join error:", err.message);
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // Serve the game HTML
+    app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+    // Serve audio files (but never index.html)
+    app.use(express.static("public", { index: false }));
+  }
 });
 
-// ⚡ Register all /matchmake routes (required for the standard create to work)
-server.attach({ server: httpServer });
-
 const PORT = Number(process.env.PORT) || 2567;
-httpServer.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
+server.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
