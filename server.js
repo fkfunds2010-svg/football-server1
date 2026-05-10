@@ -1,6 +1,8 @@
+const http = require("http");
 const { defineServer, Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
+const { WebSocketTransport } = require("@colyseus/ws-transport");
 const cors = require("cors");
 const express = require("express");
 const path = require("path");
@@ -59,7 +61,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room ----------
+// ---------- Room – full game logic ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -302,38 +304,44 @@ class FootballRoom extends Room {
 }
 
 // ==================== SERVER SETUP ====================
+const app = express();
+
+app.set("trust proxy", 1);
+app.use(cors());
+app.use(express.json());
+
+app.get("/health", (req, res) => res.send("OK"));
+
+// Permissive CSP (must be before playground)
+app.use((req, res, next) => {
+  res.removeHeader("Content-Security-Policy");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;"
+  );
+  next();
+});
+
+app.use("/playground", playground());
+
+// Serve the game HTML file explicitly
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+// Serve other static files (audio, etc.) but never index.html
+app.use(express.static("public", { index: false }));
+
+// Create HTTP server manually
+const httpServer = http.createServer(app);
+
+// Attach Colyseus with WebSocketTransport – this preserves matchmaking routes
 const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
-  express: (app) => {
-    // ⚡ WebSocket passthrough
-    app.use((req, res, next) => {
-      if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
-        return next();
-      }
-      next();
-    });
-
-    app.set("trust proxy", 1);
-    app.use(cors());
-    app.use(express.json());
-
-    app.get("/health", (req, res) => res.send("OK"));
-    app.use("/playground", playground());
-
-    app.use((req, res, next) => {
-      res.removeHeader("Content-Security-Policy");
-      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
-      next();
-    });
-
-    // ✅ Serve your game HTML explicitly
-    app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-
-    // Serve other static files, but do NOT serve index.html automatically
-    app.use(express.static("public", { index: false }));
-  }
+  transport: new WebSocketTransport({
+    server: httpServer,
+    verifyClient: (info, next) => next(true)   // accept all WebSocket connections
+  })
 });
 
 const PORT = Number(process.env.PORT) || 2567;
-server.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
+httpServer.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
