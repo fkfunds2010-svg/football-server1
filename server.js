@@ -5,10 +5,19 @@ const cors = require("cors");
 const express = require("express");
 const path = require("path");
 
-process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
-process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
+// Global crash logger
+let lastCrash = '';
 
-// ---------- Schemas ----------
+process.on('uncaughtException', (err) => {
+  lastCrash = err.stack || err.message;
+  console.error('Uncaught:', lastCrash);
+});
+process.on('unhandledRejection', (reason) => {
+  lastCrash = reason.stack || reason.message || String(reason);
+  console.error('Unhandled:', lastCrash);
+});
+
+// ---------- Schemas (unchanged) ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -83,7 +92,7 @@ class FootballRoom extends Room {
           const p = this.state.players.get(client.sessionId);
           if (p) p.name = name;
           this.broadcastPlayerInfo();
-        } catch (e) { console.error("setName error:", e.message); }
+        } catch (e) { lastCrash = "setName: " + e.message; console.error(lastCrash); }
       });
 
       this.onMessage("ready", (client) => {
@@ -95,7 +104,7 @@ class FootballRoom extends Room {
             this.state.matchState = "ready_check";
             this.startCountdown();
           }
-        } catch (e) { console.error("ready error:", e.message); }
+        } catch (e) { lastCrash = "ready: " + e.message; console.error(lastCrash); }
       });
 
       this.onMessage("move", (client, input) => {
@@ -106,21 +115,21 @@ class FootballRoom extends Room {
               shoot: !!input.shoot, turbo: !!input.turbo
             };
           }
-        } catch (e) { console.error("move error:", e.message); }
+        } catch (e) { lastCrash = "move: " + e.message; console.error(lastCrash); }
       });
 
       this.onMessage("chat", (client, msg) => {
         try {
           const s = this.state.players.get(client.sessionId)?.name || "Unknown";
           this.broadcast("chat", { sender: s, text: (msg || "").substring(0, 200) });
-        } catch (e) { console.error("chat error:", e.message); }
+        } catch (e) { lastCrash = "chat: " + e.message; console.error(lastCrash); }
       });
 
       this.onMessage("emote", (client, em) => {
         try {
           const p = this.state.players.get(client.sessionId);
           if (p) this.broadcast("emote", { playerName: p.name, emoteId: em });
-        } catch (e) { console.error("emote error:", e.message); }
+        } catch (e) { lastCrash = "emote: " + e.message; console.error(lastCrash); }
       });
 
       this.onMessage("ping", (client, d) => { try { client.send("pong", d); } catch (e) {} });
@@ -141,16 +150,17 @@ class FootballRoom extends Room {
           this.state.goalFreeze = 0;
           this.broadcast("rematch");
           this.broadcastPlayerInfo();
-        } catch (e) { console.error("rematch error:", e.message); }
+        } catch (e) { lastCrash = "rematch: " + e.message; console.error(lastCrash); }
       });
 
       this.setSimulationInterval((dt) => {
-        try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
+        try { this.gameTick(); } catch (e) { lastCrash = "gameTick: " + e.message; console.error(lastCrash); }
       }, 1000 / 30);
 
       console.log("onCreate finished");
     } catch (err) {
-      console.error("CRASH in onCreate:", err.message);
+      lastCrash = "onCreate: " + err.message;
+      console.error(lastCrash);
     }
   }
 
@@ -183,7 +193,8 @@ class FootballRoom extends Room {
       this.state.players.set(client.sessionId, player);
       setTimeout(() => this.broadcastPlayerInfo(), 200);
     } catch (err) {
-      console.error("CRASH in onJoin:", err.message);
+      lastCrash = "onJoin: " + err.message;
+      console.error(lastCrash);
     }
   }
 
@@ -202,7 +213,8 @@ class FootballRoom extends Room {
         }
       }, 30000);
     } catch (err) {
-      console.error("CRASH in onLeave:", err.message);
+      lastCrash = "onLeave: " + err.message;
+      console.error(lastCrash);
     }
   }
 
@@ -216,7 +228,8 @@ class FootballRoom extends Room {
         password: this.state.password
       });
     } catch (err) {
-      console.error("CRASH in broadcastPlayerInfo:", err.message);
+      lastCrash = "broadcastPlayerInfo: " + err.message;
+      console.error(lastCrash);
     }
   }
 
@@ -238,7 +251,8 @@ class FootballRoom extends Room {
         }
       }, 1000);
     } catch (err) {
-      console.error("CRASH in startCountdown:", err.message);
+      lastCrash = "startCountdown: " + err.message;
+      console.error(lastCrash);
     }
   }
 
@@ -348,6 +362,11 @@ const server = defineServer({
         return;
       }
       next();
+    });
+
+    // Show the crash error
+    app.get("/crash", (req, res) => {
+      res.type("text/plain").send(lastCrash || "No crash recorded yet.");
     });
 
     app.set("trust proxy", 1);
