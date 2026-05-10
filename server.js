@@ -135,13 +135,8 @@ class FootballRoom extends Room {
     }, 1000 / 30);
   }
 
+  // ✅ ONLY CHANGE: Password check removed so anyone can join
   onJoin(client, options) {
-    const pass = options?.password;
-    if (pass && pass !== this.state.password) {
-      client.send("error", { message: "Incorrect password" });
-      client.leave();
-      return;
-    }
     const ep = this.state.players.get(client.sessionId);
     if (ep) {
       ep.reconnecting = false;
