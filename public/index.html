@@ -560,23 +560,30 @@ async function joinRoom() {
   const pass = document.getElementById('passwordInput').value.trim();
   if (!code) return;
 
-  // Only send password if the field is not empty
-  const options = pass ? { password: pass } : {};
-
   client = new Colyseus.Client(SERVER_URL);
   try {
-    room = await client.joinById(code, options);
+    // 1. Get a fresh seat reservation via our fast endpoint
+    const resp = await fetch("https://football-server1.onrender.com/quick-join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: code, password: pass || undefined })
+    });
+    if (!resp.ok) throw new Error("Room not found or join failed");
+    const { roomId, sessionId } = await resp.json();
+
+    // 2. Consume the reservation (instantly upgrades to WebSocket)
+    room = await client.consumeSeatReservation({ roomId, sessionId });
+
     amIHost = false;
     myPlayerId = 'p2';
     const name = prompt("Enter your display name:", "Player2");
     room.send("setName", name || "P2");
+    setupRoom();
+    enterLobby();
+    passwordDisplay.style.display = 'none';
   } catch(e) {
     alert(e.message);
-    return;
   }
-  setupRoom();
-  enterLobby();
-  passwordDisplay.style.display = 'none';
 }
     function setupRoom() {
       if (room._handlersSet) return; room._handlersSet = true;
