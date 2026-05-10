@@ -4,8 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
-  <!-- ✅ Official @colyseus/sdk 0.17 CDN -->
-  <script src="https://unpkg.com/@colyseus/sdk/dist/colyseus.js"></script>
+  <!-- ✅ Load the Schema library first (provides global Schema & MapSchema) -->
+  <script src="https://unpkg.com/@colyseus/schema@4.0.21/dist/colyseus-schema.js"></script>
+  <!-- ✅ Official @colyseus/sdk 0.17 -->
+  <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
+  <!-- ✅ Stop favicon requests -->
+  <link rel="icon" href="data:,">
   <style>
     *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
     html, body {
@@ -190,8 +194,7 @@
 
 <script>
   // ==================== CLIENT SCHEMA DEFINITIONS (Official 0.17) ====================
-const Schema = Colyseus.schema.Schema;
-const MapSchema = Colyseus.schema.MapSchema;
+  // Schema & MapSchema are now global thanks to the @colyseus/schema library
 
   class PlayerState extends Schema {
     constructor() {
