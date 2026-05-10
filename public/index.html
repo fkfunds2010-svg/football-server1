@@ -85,22 +85,22 @@
     #countdownOverlay{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(3rem,10vw,80px);color:#fff;text-shadow:0 0 40px #00ff00;display:none;z-index:310}
     .hidden{display:none!important}
 
-    /* ========== CHAT AREA IMPROVEMENTS ========== */
+    /* ========== CHAT AREA – FULL HEIGHT & BIG TEXT ========== */
     #chatMessages {
-      height: 180px;
-      max-height: 180px;
+      flex: 1;                        /* takes all remaining vertical space */
       overflow-y: auto;
       background: #0b1c0b;
-      padding: 10px;
+      padding: 12px;
       border-radius: 10px;
       border: 1px solid #00ff00;
-      font-size: 1.1rem;
-      line-height: 1.6;
+      font-size: 1.3rem;             /* bigger messages */
+      line-height: 1.7;
       color: #fff;
       word-break: break-word;
+      min-height: 0;                 /* allow flex shrink */
     }
     #chatMessages > div {
-      padding: 6px 0;
+      padding: 8px 0;
       border-bottom: 1px solid rgba(0,255,0,0.15);
     }
     #chatMessages > div:last-child {
@@ -109,13 +109,16 @@
     .msg-sender {
       color: #00f2ff;
       font-weight: bold;
+      font-size: 1.3rem;
     }
     .msg-text {
       margin-left: 8px;
+      font-size: 1.3rem;
     }
     .msg-emote {
       font-style: italic;
       color: #ffcc00;
+      font-size: 1.4rem;
     }
 
     #sendChatBtn {
@@ -124,8 +127,8 @@
       font-weight: bold;
     }
     #chatInput {
-      font-size: 1.1rem;
-      padding: 12px 20px;
+      font-size: 1.2rem;
+      padding: 14px 20px;
     }
 
     /* ========== SENT NOTIFICATION RIPPLE ========== */
@@ -228,22 +231,26 @@
         <div class="player-card"><div>🥅 PLAYER 1 (HOST)</div><div id="p1Name">—</div><div id="p1ReadyBadge" class="ready-badge">⚪ NOT READY</div></div>
         <div class="player-card"><div>🥅 PLAYER 2</div><div id="p2Name">—</div><div id="p2ReadyBadge" class="ready-badge">⚪ NOT READY</div></div>
       </div>
-      <div id="chatMessages" style="height:180px;overflow-y:auto;background:#0b1c0b;padding:10px;border-radius:10px;border:1px solid #00ff00;"><div>💬 Welcome! Chat here with your opponent.</div></div>
+
+      <!-- Full‑height chat box (limitless scroll) -->
+      <div id="chatMessages"><div>💬 Welcome! Chat here with your opponent.</div></div>
+
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <input type="text" id="chatInput" class="input-field" placeholder="type a message..." style="flex:1;min-width:120px">
         <button class="btn" id="sendChatBtn">Send</button>
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;">
-        <button class="btn" onclick="sendEmote('🔥')">🔥 Nice</button>
-        <button class="btn" onclick="sendEmote('😢')">😢 Oops</button>
-        <button class="btn" onclick="sendEmote('⚽')">⚽ Goal</button>
-        <button class="btn" onclick="sendEmote('😂')">😂 LOL</button>
+        <!-- ✅ inline onclick removed, we'll attach listeners via JS -->
+        <button class="btn emote-btn" data-emote="🔥">🔥 Nice</button>
+        <button class="btn emote-btn" data-emote="😢">😢 Oops</button>
+        <button class="btn emote-btn" data-emote="⚽">⚽ Goal</button>
+        <button class="btn emote-btn" data-emote="😂">😂 LOL</button>
       </div>
       <div style="display:flex;gap:20px;flex-wrap:wrap">
         <button class="btn" id="readyBtn">✅ I'M READY</button>
         <button class="btn secondary" id="leaveLobbyBtn">🚪 LEAVE</button>
       </div>
-      <button id="rematchBtn" class="btn hidden" onclick="sendRematch()">⚔️ REMATCH</button>
+      <button id="rematchBtn" class="btn hidden">⚔️ REMATCH</button>
     </div>
 
     <!-- GAME PANEL -->
@@ -395,8 +402,11 @@
       goalBanner.classList.add('show');
       setTimeout(() => goalBanner.classList.remove('show'), 1500);
     }
-    function sendEmote(emoji) { if (room) room.send("emote", emoji); }
-    function sendRematch() { if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); } }
+
+    // ✅ Global functions attached to window so inline clicks work if needed,
+    // but we will use proper event listeners instead.
+    window.sendEmote = (emoji) => { if (room) room.send("emote", emoji); };
+    window.sendRematch = () => { if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); } };
     regionSelect.addEventListener('change', () => { selectedRegion = regionSelect.value; });
 
     // ==================== COPY BUTTONS ====================
@@ -406,6 +416,20 @@
     document.getElementById('copyPassword').onclick = () => {
       navigator.clipboard.writeText(document.getElementById('passwordText').innerText);
     };
+
+    // ==================== EMOTE BUTTONS ====================
+    // Attach listeners to all emote buttons (no inline onclick)
+    document.querySelectorAll('.emote-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        const emoji = button.dataset.emote;
+        if (room) room.send("emote", emoji);
+      });
+    });
+
+    // Rematch button listener
+    rematchBtn.addEventListener('click', () => {
+      if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); }
+    });
 
     // ==================== MOBILE CONTROLS SETUP ====================
     function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
