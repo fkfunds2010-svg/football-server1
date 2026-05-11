@@ -222,7 +222,7 @@
     window.Schema = Schema;
     window.MapSchema = MapSchema;
 
-    // Stub for Colyseus.schema.defineTypes – needed for the registration call
+    // ✅ FIXED: define Colyseus.schema (without extra "e")
     if (!window.Colosseus) window.Colosseus = {};
     if (!window.Colosseus.schema) window.Colosseus.schema = {};
     window.Colosseus.schema.defineTypes = function(types) {
