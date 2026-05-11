@@ -66,7 +66,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room (Step 2 – fixed) ----------
+// ---------- Room (Step 3 – added ready handler + startCountdown) ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -88,10 +88,22 @@ class FootballRoom extends Room {
     this.state.roomCode = this.roomId;
     this.state.password = options.password || Math.random().toString(36).substr(2, 6);
 
+    // setName (Step 2)
     this.onMessage("setName", (client, name) => {
       const p = this.state.players.get(client.sessionId);
       if (p) p.name = name;
       this.broadcastPlayerInfo();
+    });
+
+    // ✅ NEW: ready handler (Step 3)
+    this.onMessage("ready", (client) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p) p.ready = !p.ready;
+      this.broadcastPlayerInfo();
+      if (this.state.players.size === 2 && [...this.state.players.values()].every(pl => pl.ready)) {
+        this.state.matchState = "ready_check";
+        this.startCountdown();
+      }
     });
 
     this.setSimulationInterval((dt) => {
@@ -107,7 +119,6 @@ class FootballRoom extends Room {
     player.color = isP1 ? "#ff00ff" : "#00f2ff";
     player.side = isP1 ? "left" : "right";
     this.state.players.set(client.sessionId, player);
-
     setTimeout(() => this.broadcastPlayerInfo(), 200);
   }
 
@@ -123,6 +134,25 @@ class FootballRoom extends Room {
       p1Ready: p1?.ready || false, p2Ready: p2?.ready || false,
       password: this.state.password
     });
+  }
+
+  // ✅ NEW: startCountdown (Step 3)
+  startCountdown() {
+    this.state.matchState = "countdown";
+    this.state.countdown = 3;
+    this.broadcast("countdown", { value: this.state.countdown });
+    const interval = setInterval(() => {
+      if (this.state.matchState !== "countdown") { clearInterval(interval); return; }
+      this.state.countdown--;
+      if (this.state.countdown <= 0) {
+        clearInterval(interval);
+        this.state.matchState = "live";
+        this.broadcast("gameStarted");
+        this.broadcast("event", { type: "MUSIC_NEXT" });
+      } else {
+        this.broadcast("countdown", { value: this.state.countdown });
+      }
+    }, 1000);
   }
 
   gameTick() {
