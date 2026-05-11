@@ -6,8 +6,43 @@
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
   <!-- ✅ Official @colyseus/sdk 0.17 -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
-  <!-- ✅ Favicon – stops the 404 request -->
-  <link rel="icon" href="data:,">
+  <!-- ✅ Embedded Schema & MapSchema (with entries() added) -->
+  <script>
+    (function() {
+      class Schema {
+        constructor() {
+          if (this.constructor._schema) {
+            const schema = this.constructor._schema;
+            for (const key in schema) {
+              const type = schema[key];
+              if (type === 'number') this[key] = 0;
+              else if (type === 'string') this[key] = '';
+              else if (type === 'boolean') this[key] = false;
+              else if (typeof type === 'object') {
+                if (type.map) this[key] = new MapSchema();
+                else if (typeof type === 'function') this[key] = new type();
+                else this[key] = undefined;
+              } else {
+                this[key] = undefined;
+              }
+            }
+          }
+        }
+      }
+      class MapSchema {
+        constructor() { this._map = new Map(); }
+        forEach(cb) { this._map.forEach((v,k) => cb(v,k)); }
+        get(k) { return this._map.get(k); }
+        set(k,v) { this._map.set(k,v); }
+        get size() { return this._map.size; }
+        values() { return this._map.values(); }
+        // ✅ NEW method – required for iteration
+        entries() { return this._map.entries(); }
+      }
+      window.Schema = Schema;
+      window.MapSchema = MapSchema;
+    })();
+  </script>
   <style>
     *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
     html, body {
@@ -207,29 +242,6 @@
 </div>
 
 <script>
-  // ⚡ INLINE SCHEMA POLYFILL – replaces the missing CDN file
-  (function() {
-    class Schema { constructor() {} }
-    class MapSchema {
-      constructor() { this._map = new Map(); }
-      forEach(cb) { this._map.forEach((v, k) => cb(v, k)); }
-      get(k) { return this._map.get(k); }
-      set(k, v) { this._map.set(k, v); }
-      get size() { return this._map.size; }
-      values() { return this._map.values(); }
-      entries() { return this._map.entries(); }
-    }
-    window.Schema = Schema;
-    window.MapSchema = MapSchema;
-
-    // ✅ FIXED: define Colyseus.schema (without extra "e")
-    if (!window.Colosseus) window.Colosseus = {};
-    if (!window.Colosseus.schema) window.Colosseus.schema = {};
-    window.Colosseus.schema.defineTypes = function(types) {
-      window._colyseus_schema_types = types;
-    };
-  })();
-
   // ✅ WAIT FOR THE DOM TO BE READY BEFORE ACCESSING ANY ELEMENT
   document.addEventListener('DOMContentLoaded', () => {
 
@@ -283,9 +295,6 @@
       countdown: "number", goalFreeze: "number",
       password: "string", lastWinner: "string"
     };
-
-    // ✅ Register the types – the polyfill makes this call harmless
-    Colyseus.schema.defineTypes([PlayerState, BallState, KeeperState, GameState]);
 
     // ==================== CONFIG ====================
     const SERVER_URL = "wss://football-server1.onrender.com";
@@ -464,7 +473,7 @@
       }
     }
 
-    // ==================== NETWORKING (unchanged) ====================
+    // ==================== NETWORKING ====================
     async function createRoom() {
       const hostName = await showPrompt("Enter your display name", "Your name");
       if (!hostName) return;
@@ -516,7 +525,7 @@
 
       chatMessages.innerHTML = '<div>💬 Welcome! Chat here with your opponent.</div>';
 
-      // Listeners (unchanged)
+      // Listeners
       room.onMessage("playerNames", data => {
         document.getElementById('p1Name').innerText = data.p1;
         document.getElementById('p2Name').innerText = data.p2;
@@ -597,13 +606,14 @@
         warningDiv.style.display = (state.timeLeft <= 120 && state.timeLeft > 0) ? 'block' : 'none';
         if (!gameActive) return;
 
-        // ✅ Now state.players IS a MapSchema – correct iteration
+        // ✅ FIX: Correctly iterate the players map using entries()
+        const entries = Array.from(state.players.entries());
         localPlayer = null;
         remotePlayer = null;
-        state.players.forEach((p, sid) => {
+        for (const [sid, p] of entries) {
           if (sid === room.sessionId) localPlayer = p;
           else remotePlayer = p;
-        });
+        }
 
         document.getElementById('p1Score').innerText = state.p1Score;
         document.getElementById('p2Score').innerText = state.p2Score;
