@@ -303,6 +303,12 @@ const server = defineServer({
       next();
     });
 
+    // ✅ Serve the schema library directly from node_modules
+    app.get("/schema.js", (req, res) => {
+      res.type("application/javascript");
+      res.sendFile(path.join(__dirname, "node_modules", "@colyseus", "schema", "build", "index.js"));
+    });
+
     // Serve your game HTML
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
