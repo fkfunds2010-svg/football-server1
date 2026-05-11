@@ -10,7 +10,6 @@
 <script>
   window.Schema = window.schema.Schema;
   window.MapSchema = window.schema.MapSchema;
-  window.defineTypes = window.schema.defineTypes;
 </script>
   <!-- ✅ Official @colyseus/sdk 0.17 -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
@@ -228,22 +227,14 @@
       this.reconnecting = false; this.disconnectTime = 0;
     }
   }
-  PlayerState._schema = {
-    x: "number", y: "number", vx: "number", vy: "number",
-    isJumping: "boolean", color: "string", side: "string",
-    name: "string", ready: "boolean", accelX: "number",
-    reconnecting: "boolean", disconnectTime: "number"
-  };
 
   class BallState extends Schema {
     constructor() { super(); this.x = 500; this.y = 250; this.vx = 5; this.vy = -3; }
   }
-  BallState._schema = { x: "number", y: "number", vx: "number", vy: "number" };
 
   class KeeperState extends Schema {
     constructor() { super(); this.y = 250; this.vy = 0; }
   }
-  KeeperState._schema = { y: "number", vy: "number" };
 
   class GameState extends Schema {
     constructor() {
@@ -259,32 +250,6 @@
       this.password = ""; this.lastWinner = "";
     }
   }
-
-  // ✅ Register each schema class with its field definitions (metadata for the decoder)
-  window.defineTypes(PlayerState, {
-    x: "number", y: "number", vx: "number", vy: "number",
-    isJumping: "boolean", color: "string", side: "string",
-    name: "string", ready: "boolean", accelX: "number",
-    reconnecting: "boolean", disconnectTime: "number"
-  });
-
-  window.defineTypes(BallState, {
-    x: "number", y: "number", vx: "number", vy: "number"
-  });
-
-  window.defineTypes(KeeperState, {
-    y: "number", vy: "number"
-  });
-
-  window.defineTypes(GameState, {
-    players: { map: PlayerState },
-    ball: BallState, keeper1: KeeperState, keeper2: KeeperState,
-    p1Score: "number", p2Score: "number", timeLeft: "number",
-    gameOver: "boolean", winnerMessage: "string",
-    matchState: "string", hostId: "string", roomCode: "string",
-    countdown: "number", goalFreeze: "number",
-    password: "string", lastWinner: "string"
-  });
 
   // ==================== CONFIG ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
