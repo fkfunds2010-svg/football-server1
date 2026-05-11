@@ -4,8 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
- <!-- ✅ Local schema library – served from your own server -->
-<script src="/colyseus-schema.umd.js"></script>
+<!-- ✅ Schema library – served directly from your own server -->
+<script src="/schema.js"></script>
+<!-- ✅ Bridge the global schema object to the names the Colyseus SDK expects -->
+<script>
+  window.Schema = window.schema.Schema;
+  window.MapSchema = window.schema.MapSchema;
+  window.defineTypes = window.schema.defineTypes;
+</script>
   <!-- ✅ Official @colyseus/sdk 0.17 -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
   <!-- ✅ Favicon – stops the 404 request -->
