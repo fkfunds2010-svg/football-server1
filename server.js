@@ -66,7 +66,7 @@ class FootballRoom extends Room {
     this.maxClients = 2;
     this.state = new GameState();
     this.inputs = {};
-    this.targetGoals = 10;
+    this.reconnectTimers = {};
   }
 
   static onAuth(client, options, request) { return true; }
@@ -74,6 +74,12 @@ class FootballRoom extends Room {
   onCreate(options) {
     this.state.roomCode = this.roomId;
     this.state.password = options.password || Math.random().toString(36).substr(2, 6);
+
+    // ✅ Use the host's chosen settings
+    const minutes = options.matchTime || 2;
+    const goals = options.targetGoals || 10;
+    this.state.timeLeft = minutes * 60;        // convert to seconds
+    this.targetGoals = goals;                  // goals to win
 
     this.onMessage("setName", (client, name) => {
       const p = this.state.players.get(client.sessionId);
@@ -121,7 +127,7 @@ class FootballRoom extends Room {
       this.state.ball.x = 500; this.state.ball.y = 250;
       this.state.ball.vx = 5; this.state.ball.vy = -3;
       this.state.p1Score = 0; this.state.p2Score = 0;
-      this.state.timeLeft = 120;
+      this.state.timeLeft = minutes * 60;   // reset the timer too
       this.state.gameOver = false; this.state.winnerMessage = "";
       this.state.matchState = "waiting"; this.state.countdown = -1;
       this.state.goalFreeze = 0;
@@ -134,7 +140,6 @@ class FootballRoom extends Room {
     }, 1000 / 30);
   }
 
-  // ✅ onJoin WITHOUT hostId (the line that caused the crash)
   onJoin(client, options) {
     const player = new PlayerState();
     const isP1 = this.clients.length === 1;
@@ -301,7 +306,7 @@ const server = defineServer({
     // Serve your game HTML
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
-    // Serve static files (audio) – optional, you can also use Google Drive links
+    // Serve audio and other static files from public/
     app.use(express.static("public", { index: false }));
   }
 });
