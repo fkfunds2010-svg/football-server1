@@ -4,43 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
+<!-- ✅ Schema library – served directly from your own server -->
+<script src="/schema.js"></script>
+<!-- ✅ Bridge the global schema object to the names the Colyseus SDK expects -->
+<script>
+  window.Schema = window.schema.Schema;
+  window.MapSchema = window.schema.MapSchema;
+  window.defineTypes = window.schema.defineTypes;
+</script>
   <!-- ✅ Official @colyseus/sdk 0.17 -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
-  <!-- ✅ Embedded Schema & MapSchema (no CDN MIME issues) -->
-  <script>
-    (function() {
-      class Schema {
-        constructor() {
-          if (this.constructor._schema) {
-            const schema = this.constructor._schema;
-            for (const key in schema) {
-              const type = schema[key];
-              if (type === 'number') this[key] = 0;
-              else if (type === 'string') this[key] = '';
-              else if (type === 'boolean') this[key] = false;
-              else if (typeof type === 'object') {
-                if (type.map) this[key] = new MapSchema();
-                else if (typeof type === 'function') this[key] = new type();
-                else this[key] = undefined;
-              } else {
-                this[key] = undefined;
-              }
-            }
-          }
-        }
-      }
-      class MapSchema {
-        constructor() { this._map = new Map(); }
-        forEach(cb) { this._map.forEach((v,k) => cb(v,k)); }
-        get(k) { return this._map.get(k); }
-        set(k,v) { this._map.set(k,v); }
-        get size() { return this._map.size; }
-        values() { return this._map.values(); }
-      }
-      window.Schema = Schema;
-      window.MapSchema = MapSchema;
-    })();
-  </script>
+  <!-- ✅ Favicon – stops the 404 request -->
+  <link rel="icon" href="data:,">
   <style>
     *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
     html, body {
