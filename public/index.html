@@ -270,8 +270,31 @@
     password: "string", lastWinner: "string"
   };
 
-  // ✅ Register the types with the official schema library
-  window.defineTypes([PlayerState, BallState, KeeperState, GameState]);
+// ✅ Register each schema class with its field definitions
+window.defineTypes(PlayerState, {
+  x: "number", y: "number", vx: "number", vy: "number",
+  isJumping: "boolean", color: "string", side: "string",
+  name: "string", ready: "boolean", accelX: "number",
+  reconnecting: "boolean", disconnectTime: "number"
+});
+
+window.defineTypes(BallState, {
+  x: "number", y: "number", vx: "number", vy: "number"
+});
+
+window.defineTypes(KeeperState, {
+  y: "number", vy: "number"
+});
+
+window.defineTypes(GameState, {
+  players: { map: PlayerState },
+  ball: BallState, keeper1: KeeperState, keeper2: KeeperState,
+  p1Score: "number", p2Score: "number", timeLeft: "number",
+  gameOver: "boolean", winnerMessage: "string",
+  matchState: "string", hostId: "string", roomCode: "string",
+  countdown: "number", goalFreeze: "number",
+  password: "string", lastWinner: "string"
+});
 
   // ==================== CONFIG ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
