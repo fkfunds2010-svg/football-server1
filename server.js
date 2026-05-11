@@ -1,22 +1,22 @@
-const { defineServer, Room, matchMaker } = require("colyseus");
+const { defineServer, Room } = require("colyseus");
 const { Schema, MapSchema } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
 const path = require("path");
 
-let lastCrash = '';
-
+// ⚡ Crash logger – catches EVERYTHING
+let lastCrash = 'No crash recorded yet.';
 process.on('uncaughtException', (err) => {
-  lastCrash = err.stack || err.message;
-  console.error('Uncaught:', lastCrash);
+  lastCrash = `UNCAUGHT EXCEPTION: ${err.stack || err.message}`;
+  console.error(lastCrash);
 });
-process.on('unhandledRejection', (reason) => {
-  lastCrash = reason.stack || reason.message || String(reason);
-  console.error('Unhandled:', lastCrash);
+process.on('unhandledRejection', (reason, promise) => {
+  lastCrash = `UNHANDLED REJECTION: ${reason?.stack || reason?.message || reason}`;
+  console.error(lastCrash);
 });
 
-// ---------- Schemas ----------
+// ---------- Schemas (bare minimum for the room to start) ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -67,120 +67,43 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room – full game logic ----------
+// ---------- Room (simplified, but will catch any crash) ----------
 class FootballRoom extends Room {
   constructor() {
     super();
     this.maxClients = 2;
     this.state = new GameState();
-    this.inputs = {};
-    this.targetGoals = 10;
-    this.reconnectTimers = {};
   }
 
   static onAuth(client, options, request) { return true; }
 
-  // ✅ OFFICIAL COLYSEUS ERROR HANDLER – captures any internal crash
+  // ⚡ Colyseus internal error handler – catches room crashes
   onError(err) {
-    lastCrash = `${err.message}\n${err.stack}`;
-    console.error("Room onError:", lastCrash);
+    lastCrash = `ROOM ERROR: ${err.stack || err.message}`;
+    console.error(lastCrash);
   }
 
   onCreate(options) {
     try {
-      console.log("onCreate started, roomId:", this.roomId);
       this.state.roomCode = this.roomId;
       this.state.password = options.password || Math.random().toString(36).substr(2, 6);
-
-      this.onMessage("setName", (client, name) => {
-        try {
-          const p = this.state.players.get(client.sessionId);
-          if (p) p.name = name;
-          this.broadcastPlayerInfo();
-        } catch (e) { lastCrash = "setName: " + e.message; console.error(lastCrash); }
-      });
-
-      this.onMessage("ready", (client) => {
-        try {
-          const p = this.state.players.get(client.sessionId);
-          if (p) p.ready = !p.ready;
-          this.broadcastPlayerInfo();
-          if (this.state.players.size === 2 && [...this.state.players.values()].every(pl => pl.ready)) {
-            this.state.matchState = "ready_check";
-            this.startCountdown();
-          }
-        } catch (e) { lastCrash = "ready: " + e.message; console.error(lastCrash); }
-      });
-
-      this.onMessage("move", (client, input) => {
-        try {
-          if (typeof input === "object") {
-            this.inputs[client.sessionId] = {
-              left: !!input.left, right: !!input.right, up: !!input.up, down: !!input.down,
-              shoot: !!input.shoot, turbo: !!input.turbo
-            };
-          }
-        } catch (e) { lastCrash = "move: " + e.message; console.error(lastCrash); }
-      });
-
-      this.onMessage("chat", (client, msg) => {
-        try {
-          const s = this.state.players.get(client.sessionId)?.name || "Unknown";
-          this.broadcast("chat", { sender: s, text: (msg || "").substring(0, 200) });
-        } catch (e) { lastCrash = "chat: " + e.message; console.error(lastCrash); }
-      });
-
-      this.onMessage("emote", (client, em) => {
-        try {
-          const p = this.state.players.get(client.sessionId);
-          if (p) this.broadcast("emote", { playerName: p.name, emoteId: em });
-        } catch (e) { lastCrash = "emote: " + e.message; console.error(lastCrash); }
-      });
-
-      this.onMessage("ping", (client, d) => { try { client.send("pong", d); } catch (e) {} });
-
-      this.onMessage("rematch", (client) => {
-        try {
-          if (this.state.matchState !== "end") return;
-          this.state.players.forEach(p => {
-            p.x = p.side === "left" ? 150 : 820; p.y = 415; p.vx = 0; p.vy = 0;
-            p.isJumping = false; p.ready = false;
-          });
-          this.state.ball.x = 500; this.state.ball.y = 250;
-          this.state.ball.vx = 5; this.state.ball.vy = -3;
-          this.state.p1Score = 0; this.state.p2Score = 0;
-          this.state.timeLeft = 120;
-          this.state.gameOver = false; this.state.winnerMessage = "";
-          this.state.matchState = "waiting"; this.state.countdown = -1;
-          this.state.goalFreeze = 0;
-          this.broadcast("rematch");
-          this.broadcastPlayerInfo();
-        } catch (e) { lastCrash = "rematch: " + e.message; console.error(lastCrash); }
-      });
-
-      this.setSimulationInterval((dt) => {
-        try { this.gameTick(); } catch (e) { lastCrash = "gameTick: " + e.message; console.error(lastCrash); }
-      }, 1000 / 30);
-
-      console.log("onCreate finished");
-    } catch (err) {
-      lastCrash = "onCreate: " + err.message;
+      // Set up a simple message handler
+      this.onMessage("ping", (client, d) => client.send("pong", d));
+      // Do NOT start any simulation interval – we want the room to live just long enough to reveal the crash
+      console.log(`Room ${this.roomId} created – waiting for join to trigger crash`);
+    } catch (e) {
+      lastCrash = `onCreate crashed: ${e.stack || e.message}`;
       console.error(lastCrash);
     }
   }
 
   onJoin(client, options) {
     try {
-      console.log("onJoin called, sid:", client.sessionId);
+      console.log(`onJoin called, sessionId=${client.sessionId}`);
+      // Quick re-join check
       const ep = this.state.players.get(client.sessionId);
       if (ep) {
         ep.reconnecting = false;
-        if (this.reconnectTimers[client.sessionId]) {
-          clearTimeout(this.reconnectTimers[client.sessionId]);
-          delete this.reconnectTimers[client.sessionId];
-        }
-        this.broadcast("playerReconnected", {});
-        this.broadcastPlayerInfo();
         return;
       }
       if (this.clients.length >= 2) {
@@ -188,171 +111,24 @@ class FootballRoom extends Room {
         client.leave();
         return;
       }
+      // Add a player – keep it simple
       const player = new PlayerState();
       const isP1 = this.clients.length === 1;
-      if (isP1) this.state.hostId = client.sessionId;
       player.x = isP1 ? 150 : 820;
       player.y = 415;
       player.color = isP1 ? "#ff00ff" : "#00f2ff";
       player.side = isP1 ? "left" : "right";
       this.state.players.set(client.sessionId, player);
-      setTimeout(() => this.broadcastPlayerInfo(), 200);
-    } catch (err) {
-      lastCrash = "onJoin: " + err.message;
+      console.log(`Player added. Total: ${this.state.players.size}`);
+    } catch (e) {
+      lastCrash = `onJoin crashed: ${e.stack || e.message}`;
       console.error(lastCrash);
     }
   }
 
   onLeave(client) {
-    try {
-      const player = this.state.players.get(client.sessionId);
-      if (!player) return;
-      player.reconnecting = true;
-      player.disconnectTime = Date.now();
-      this.broadcast("opponentReconnecting", { sessionId: client.sessionId });
-      this.reconnectTimers[client.sessionId] = setTimeout(() => {
-        if (player.reconnecting) {
-          this.state.players.delete(client.sessionId);
-          this.broadcastPlayerInfo();
-          this.broadcast("playerLeft", {});
-        }
-      }, 30000);
-    } catch (err) {
-      lastCrash = "onLeave: " + err.message;
-      console.error(lastCrash);
-    }
-  }
-
-  broadcastPlayerInfo() {
-    try {
-      const p1 = [...this.state.players.values()].find(p => p.side === "left");
-      const p2 = [...this.state.players.values()].find(p => p.side === "right");
-      this.broadcast("playerNames", {
-        p1: p1?.name || "—", p2: p2?.name || "—",
-        p1Ready: p1?.ready || false, p2Ready: p2?.ready || false,
-        password: this.state.password
-      });
-    } catch (err) {
-      lastCrash = "broadcastPlayerInfo: " + err.message;
-      console.error(lastCrash);
-    }
-  }
-
-  startCountdown() {
-    try {
-      this.state.matchState = "countdown";
-      this.state.countdown = 3;
-      this.broadcast("countdown", { value: this.state.countdown });
-      const interval = setInterval(() => {
-        if (this.state.matchState !== "countdown") { clearInterval(interval); return; }
-        this.state.countdown--;
-        if (this.state.countdown <= 0) {
-          clearInterval(interval);
-          this.state.matchState = "live";
-          this.broadcast("gameStarted");
-          this.broadcast("event", { type: "MUSIC_NEXT" });
-        } else {
-          this.broadcast("countdown", { value: this.state.countdown });
-        }
-      }, 1000);
-    } catch (err) {
-      lastCrash = "startCountdown: " + err.message;
-      console.error(lastCrash);
-    }
-  }
-
-  gameTick() {
-    if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return;
-    if (this.state.goalFreeze > 0) {
-      this.state.goalFreeze--;
-      if (this.state.goalFreeze === 0) this.broadcast("event", { type: "FREEZE_END" });
-      return;
-    }
-
-    const FIXED_DT = 1 / 30;
-    const ball = this.state.ball;
-
-    this.state.players.forEach((player, sid) => {
-      const input = this.inputs[sid] || {};
-      const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y, hasBall = dx * dx + dy * dy < 2500;
-
-      if (hasBall && (input.shoot || input.turbo)) {
-        player.vx = 0;
-        const speed = input.turbo ? 45 : 20;
-        ball.vx = player.side === "left" ? speed : -speed;
-        if (input.up && !input.down) ball.vy = -14;
-        else if (input.down) ball.vy = 10;
-        else ball.vy = -2;
-        this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } });
-      } else {
-        const accel = 0.6;
-        if (input.left) player.accelX -= accel;
-        if (input.right) player.accelX += accel;
-        if (!input.left && !input.right) player.accelX *= 0.85;
-        player.accelX = Math.min(Math.max(player.accelX, -3), 3);
-        player.vx += player.accelX;
-        player.vx *= 0.9;
-        if (input.up && !player.isJumping) { player.vy = -14; player.isJumping = true; }
-        if (input.down) player.vy += 1;
-      }
-    });
-
-    ball.x += ball.vx * FIXED_DT * 60;
-    ball.y += ball.vy * FIXED_DT * 60;
-    ball.vy += 0.25 * FIXED_DT * 60;
-    ball.vx *= 0.995;
-    if (ball.y > 480) { ball.y = 480; ball.vy *= -0.7; }
-    if (ball.y < 10) { ball.y = 10; ball.vy *= -0.7; }
-
-    [{ x: 5, k: this.state.keeper1 }, { x: 983, k: this.state.keeper2 }].forEach(({ x: kx, k }) => {
-      if (ball.x + 10 > kx && ball.x - 10 < kx + 12 && ball.y + 10 > k.y && ball.y - 10 < k.y + 60) {
-        if (Math.abs(ball.vx) > 25) this.broadcast("event", { type: "SHOT", data: { turbo: false, color: "#fff" } });
-        ball.vx *= -1.1; ball.x = kx < 500 ? 25 : 970;
-      }
-    });
-    this.state.players.forEach(p => {
-      if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
-        const rvx = ball.vx - p.vx, rvy = ball.vy - p.vy;
-        ball.vx = p.vx - rvx * 0.6; ball.vy = p.vy - rvy * 0.6;
-        ball.x = ball.x < p.x + 15 ? p.x - 11 : p.x + 31;
-      }
-    });
-
-    if (ball.x < 0 || ball.x > 1000) {
-      if (ball.y > 150 && ball.y < 350) {
-        if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
-        this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ? "#00f2ff" : "#ff00ff" } });
-        this.state.goalFreeze = 60;
-        ball.x = 500; ball.y = 250; ball.vx = (Math.random() > 0.5 ? 5 : -5); ball.vy = -3;
-        if (this.state.p1Score >= this.targetGoals || this.state.p2Score >= this.targetGoals) {
-          this.state.gameOver = true; this.state.matchState = "end";
-          this.state.winnerMessage = this.state.p1Score >= this.targetGoals ? "Player 1 Wins!" : "Player 2 Wins!";
-          this.state.lastWinner = this.state.p1Score >= this.targetGoals ? "p1" : "p2";
-        }
-      } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
-    }
-
-    const targetY = ball.y - 30;
-    [this.state.keeper1, this.state.keeper2].forEach((k, i) => {
-      k.vy += (targetY - k.y) * (i === 0 ? 0.12 : 0.1);
-      k.vy *= 0.7; k.y += k.vy * FIXED_DT * 60;
-      k.y = Math.min(295, Math.max(155, k.y));
-    });
-
-    this.state.players.forEach(p => {
-      p.vy += 0.7; p.x += p.vx * FIXED_DT * 60; p.y += p.vy * FIXED_DT * 60; p.vx *= 0.85;
-      if (p.y > 415) { p.y = 415; p.vy = 0; p.isJumping = false; }
-      p.x = Math.min(930, Math.max(40, p.x));
-    });
-
-    if (this.state.timeLeft > 0) {
-      this.state.timeLeft -= FIXED_DT;
-      if (this.state.timeLeft <= 0) {
-        this.state.gameOver = true; this.state.matchState = "end";
-        this.state.winnerMessage = this.state.p1Score > this.state.p2Score ? "Player 1 Wins!" : (this.state.p2Score > this.state.p1Score ? "Player 2 Wins!" : "Draw!");
-        this.state.lastWinner = this.state.p1Score > this.state.p2Score ? "p1" : (this.state.p2Score > this.state.p1Score ? "p2" : "draw");
-      }
-    }
+    const player = this.state.players.get(client.sessionId);
+    if (player) this.state.players.delete(client.sessionId);
   }
 }
 
@@ -369,11 +145,6 @@ const server = defineServer({
       next();
     });
 
-    // Show the crash error
-    app.get("/crash", (req, res) => {
-      res.type("text/plain").send(lastCrash || "No crash recorded yet.");
-    });
-
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
@@ -386,6 +157,11 @@ const server = defineServer({
       res.removeHeader("Content-Security-Policy");
       res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
       next();
+    });
+
+    // ✅ Crash log page – shows the exact error
+    app.get("/crash", (req, res) => {
+      res.type("text/plain").send(lastCrash);
     });
 
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
