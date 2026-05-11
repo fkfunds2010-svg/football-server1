@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
-  <!-- ✅ Official @colyseus/schema (required for client-side state decoding) -->
-  <script src="https://unpkg.com/@colyseus/schema@4.0.21/dist/colyseus-schema.umd.js"></script>
-  <!-- ✅ Official @colyseus/sdk 0.17 -->
+  <!-- ✅ Official @colyseus/sdk 0.17 (includes schema library) -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
   <style>
     *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
@@ -52,7 +50,7 @@
     #countdownOverlay{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(3rem,10vw,80px);color:#fff;text-shadow:0 0 40px #00ff00;display:none;z-index:310}
     .hidden{display:none!important}
 
-    /* ========== CHAT AREA ========== */
+    /* ========== CHAT AREA – FULL HEIGHT & BIG TEXT ========== */
     #chatMessages {
       flex: 1; overflow-y: auto; background: #0b1c0b; padding: 12px;
       border-radius: 10px; border: 1px solid #00ff00; font-size: 1.3rem;
@@ -65,8 +63,14 @@
     .msg-emote { font-style: italic; color: #ffcc00; font-size: 1.4rem; }
     #sendChatBtn { background: #00ff00; color: #000; font-weight: bold; }
     #chatInput { font-size: 1.2rem; padding: 14px 20px; }
+
+    /* ========== SENT NOTIFICATION RIPPLE ========== */
     .sent-flash { animation: flashGreen 0.4s ease; }
-    @keyframes flashGreen { 0% { box-shadow: 0 0 5px #00ff00; } 50% { box-shadow: 0 0 25px #00ff00, 0 0 50px #00ff00; } 100% { box-shadow: 0 0 5px #00ff00; } }
+    @keyframes flashGreen {
+      0% { box-shadow: 0 0 5px #00ff00; }
+      50% { box-shadow: 0 0 25px #00ff00, 0 0 50px #00ff00; }
+      100% { box-shadow: 0 0 5px #00ff00; }
+    }
 
     /* ========== Mobile controls ========== */
     #mobileControls { display:none; position:absolute; bottom:20px; left:0; right:0; justify-content:space-between; padding:0 20px; }
@@ -201,9 +205,9 @@
 </div>
 
 <script>
-  // ==================== SCHEMA DEFINITIONS (official library) ====================
-  // The @colyseus/schema UMD exposes Schema, MapSchema globally.
-  // We define the classes exactly as on the server, including _type for SDK auto-registration.
+  // ==================== SCHEMA DEFINITIONS (registered with SDK) ====================
+  // The @colyseus/sdk script makes Schema and MapSchema globally available.
+  // We extend them and then register the types so the SDK can decode server state.
 
   class PlayerState extends Schema {
     constructor() {
@@ -214,7 +218,6 @@
       this.reconnecting = false; this.disconnectTime = 0;
     }
   }
-  PlayerState._type = "PlayerState";
   PlayerState._schema = {
     x: "number", y: "number", vx: "number", vy: "number",
     isJumping: "boolean", color: "string", side: "string",
@@ -225,13 +228,11 @@
   class BallState extends Schema {
     constructor() { super(); this.x = 500; this.y = 250; this.vx = 5; this.vy = -3; }
   }
-  BallState._type = "BallState";
   BallState._schema = { x: "number", y: "number", vx: "number", vy: "number" };
 
   class KeeperState extends Schema {
     constructor() { super(); this.y = 250; this.vy = 0; }
   }
-  KeeperState._type = "KeeperState";
   KeeperState._schema = { y: "number", vy: "number" };
 
   class GameState extends Schema {
@@ -248,7 +249,6 @@
       this.password = ""; this.lastWinner = "";
     }
   }
-  GameState._type = "GameState";
   GameState._schema = {
     players: { map: PlayerState },
     ball: BallState, keeper1: KeeperState, keeper2: KeeperState,
@@ -259,9 +259,9 @@
     password: "string", lastWinner: "string"
   };
 
-  // Register the types with the schema library
-  if (window.colyseusSchema && window.colyseusSchema.DefineTypes) {
-    window.colyseusSchema.DefineTypes({ PlayerState, BallState, KeeperState, GameState });
+  // ✅ CRITICAL: register the types so the SDK can decode the server state
+  if (Colyseus.schema && Colyseus.schema.defineTypes) {
+    Colyseus.schema.defineTypes([PlayerState, BallState, KeeperState, GameState]);
   }
 
   // ==================== CONFIG ====================
@@ -441,7 +441,7 @@
     }
   }
 
-  // ==================== NETWORKING ====================
+  // ==================== NETWORKING (unchanged) ====================
   async function createRoom() {
     const hostName = await showPrompt("Enter your display name", "Your name");
     if (!hostName) return;
@@ -493,7 +493,7 @@
 
     chatMessages.innerHTML = '<div>💬 Welcome! Chat here with your opponent.</div>';
 
-    // Listeners
+    // Listeners (unchanged)
     room.onMessage("playerNames", data => {
       document.getElementById('p1Name').innerText = data.p1;
       document.getElementById('p2Name').innerText = data.p2;
