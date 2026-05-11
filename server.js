@@ -66,12 +66,15 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room (bare minimum) ----------
+// ---------- Room (minimal + gameTick) ----------
 class FootballRoom extends Room {
   constructor() {
     super();
     this.maxClients = 2;
     this.state = new GameState();
+    this.inputs = {};
+    this.targetGoals = 10;
+    this.reconnectTimers = {};
   }
 
   static onAuth(client, options, request) { return true; }
@@ -84,6 +87,11 @@ class FootballRoom extends Room {
   onCreate(options) {
     this.state.roomCode = this.roomId;
     this.state.password = options.password || Math.random().toString(36).substr(2, 6);
+
+    // ✅ New: simulation interval
+    this.setSimulationInterval((dt) => {
+      try { this.gameTick(); } catch (e) { lastCrash = e.message; console.error(e); }
+    }, 1000 / 30);
   }
 
   onJoin(client, options) {
@@ -98,6 +106,101 @@ class FootballRoom extends Room {
 
   onLeave(client) {
     this.state.players.delete(client.sessionId);
+  }
+
+  // ✅ This is your full gameTick, exactly as you had it
+  gameTick() {
+    if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return;
+    if (this.state.goalFreeze > 0) {
+      this.state.goalFreeze--;
+      if (this.state.goalFreeze === 0) this.broadcast("event", { type: "FREEZE_END" });
+      return;
+    }
+
+    const FIXED_DT = 1 / 30;
+    const ball = this.state.ball;
+
+    this.state.players.forEach((player, sid) => {
+      const input = this.inputs[sid] || {};
+      const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y, hasBall = dx * dx + dy * dy < 2500;
+
+      if (hasBall && (input.shoot || input.turbo)) {
+        player.vx = 0;
+        const speed = input.turbo ? 45 : 20;
+        ball.vx = player.side === "left" ? speed : -speed;
+        if (input.up && !input.down) ball.vy = -14;
+        else if (input.down) ball.vy = 10;
+        else ball.vy = -2;
+        this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } });
+      } else {
+        const accel = 0.6;
+        if (input.left) player.accelX -= accel;
+        if (input.right) player.accelX += accel;
+        if (!input.left && !input.right) player.accelX *= 0.85;
+        player.accelX = Math.min(Math.max(player.accelX, -3), 3);
+        player.vx += player.accelX;
+        player.vx *= 0.9;
+        if (input.up && !player.isJumping) { player.vy = -14; player.isJumping = true; }
+        if (input.down) player.vy += 1;
+      }
+    });
+
+    ball.x += ball.vx * FIXED_DT * 60;
+    ball.y += ball.vy * FIXED_DT * 60;
+    ball.vy += 0.25 * FIXED_DT * 60;
+    ball.vx *= 0.995;
+    if (ball.y > 480) { ball.y = 480; ball.vy *= -0.7; }
+    if (ball.y < 10) { ball.y = 10; ball.vy *= -0.7; }
+
+    [{ x: 5, k: this.state.keeper1 }, { x: 983, k: this.state.keeper2 }].forEach(({ x: kx, k }) => {
+      if (ball.x + 10 > kx && ball.x - 10 < kx + 12 && ball.y + 10 > k.y && ball.y - 10 < k.y + 60) {
+        if (Math.abs(ball.vx) > 25) this.broadcast("event", { type: "SHOT", data: { turbo: false, color: "#fff" } });
+        ball.vx *= -1.1; ball.x = kx < 500 ? 25 : 970;
+      }
+    });
+    this.state.players.forEach(p => {
+      if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
+        const rvx = ball.vx - p.vx, rvy = ball.vy - p.vy;
+        ball.vx = p.vx - rvx * 0.6; ball.vy = p.vy - rvy * 0.6;
+        ball.x = ball.x < p.x + 15 ? p.x - 11 : p.x + 31;
+      }
+    });
+
+    if (ball.x < 0 || ball.x > 1000) {
+      if (ball.y > 150 && ball.y < 350) {
+        if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
+        this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ? "#00f2ff" : "#ff00ff" } });
+        this.state.goalFreeze = 60;
+        ball.x = 500; ball.y = 250; ball.vx = (Math.random() > 0.5 ? 5 : -5); ball.vy = -3;
+        if (this.state.p1Score >= this.targetGoals || this.state.p2Score >= this.targetGoals) {
+          this.state.gameOver = true; this.state.matchState = "end";
+          this.state.winnerMessage = this.state.p1Score >= this.targetGoals ? "Player 1 Wins!" : "Player 2 Wins!";
+          this.state.lastWinner = this.state.p1Score >= this.targetGoals ? "p1" : "p2";
+        }
+      } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
+    }
+
+    const targetY = ball.y - 30;
+    [this.state.keeper1, this.state.keeper2].forEach((k, i) => {
+      k.vy += (targetY - k.y) * (i === 0 ? 0.12 : 0.1);
+      k.vy *= 0.7; k.y += k.vy * FIXED_DT * 60;
+      k.y = Math.min(295, Math.max(155, k.y));
+    });
+
+    this.state.players.forEach(p => {
+      p.vy += 0.7; p.x += p.vx * FIXED_DT * 60; p.y += p.vy * FIXED_DT * 60; p.vx *= 0.85;
+      if (p.y > 415) { p.y = 415; p.vy = 0; p.isJumping = false; }
+      p.x = Math.min(930, Math.max(40, p.x));
+    });
+
+    if (this.state.timeLeft > 0) {
+      this.state.timeLeft -= FIXED_DT;
+      if (this.state.timeLeft <= 0) {
+        this.state.gameOver = true; this.state.matchState = "end";
+        this.state.winnerMessage = this.state.p1Score > this.state.p2Score ? "Player 1 Wins!" : (this.state.p2Score > this.state.p1Score ? "Player 2 Wins!" : "Draw!");
+        this.state.lastWinner = this.state.p1Score > this.state.p2Score ? "p1" : (this.state.p2Score > this.state.p1Score ? "p2" : "draw");
+      }
+    }
   }
 }
 
