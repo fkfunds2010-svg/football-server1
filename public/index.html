@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
+  <!-- ✅ Schema library – provides Schema, MapSchema and defineTypes globally -->
+  <script src="https://cdn.jsdelivr.net/npm/@colyseus/schema@4.0.21/dist/colyseus-schema.umd.js"></script>
   <!-- ✅ Official @colyseus/sdk 0.17 -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
   <!-- ✅ Favicon – stops the 404 request -->
@@ -210,9 +212,9 @@
   // ✅ WAIT FOR THE DOM TO BE READY BEFORE ACCESSING ANY ELEMENT
   document.addEventListener('DOMContentLoaded', () => {
 
-    // ==================== OFFICIAL SCHEMA CLASSES (from the SDK) ====================
-    const Schema = Colyseus.schema.Schema;
-    const MapSchema = Colyseus.schema.MapSchema;
+    // ==================== OFFICIAL SCHEMA CLASSES (from the schema UMD) ====================
+    const Schema = window.Schema;                // from schema UMD
+    const MapSchema = window.MapSchema;          // from schema UMD
 
     // ==================== CLIENT SCHEMA DEFINITIONS (Embedded) ====================
     class PlayerState extends Schema {
@@ -266,7 +268,9 @@
     };
 
     // ✅ CRITICAL: register the types so the SDK can decode the server state
-    Colyseus.schema.defineTypes([PlayerState, BallState, KeeperState, GameState]);
+    if (window.defineTypes) {
+      window.defineTypes([PlayerState, BallState, KeeperState, GameState]);
+    }
 
     // ==================== CONFIG ====================
     const SERVER_URL = "wss://football-server1.onrender.com";
@@ -445,7 +449,7 @@
       }
     }
 
-    // ==================== NETWORKING ====================
+    // ==================== NETWORKING (unchanged) ====================
     async function createRoom() {
       const hostName = await showPrompt("Enter your display name", "Your name");
       if (!hostName) return;
@@ -497,7 +501,7 @@
 
       chatMessages.innerHTML = '<div>💬 Welcome! Chat here with your opponent.</div>';
 
-      // Listeners
+      // Listeners (unchanged)
       room.onMessage("playerNames", data => {
         document.getElementById('p1Name').innerText = data.p1;
         document.getElementById('p2Name').innerText = data.p2;
