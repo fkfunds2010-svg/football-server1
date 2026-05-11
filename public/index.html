@@ -259,15 +259,6 @@
       this.password = ""; this.lastWinner = "";
     }
   }
-  GameState._schema = {
-    players: { map: PlayerState },
-    ball: BallState, keeper1: KeeperState, keeper2: KeeperState,
-    p1Score: "number", p2Score: "number", timeLeft: "number",
-    gameOver: "boolean", winnerMessage: "string",
-    matchState: "string", hostId: "string", roomCode: "string",
-    countdown: "number", goalFreeze: "number",
-    password: "string", lastWinner: "string"
-  };
 
   // ✅ Register each schema class with its field definitions (metadata for the decoder)
   window.defineTypes(PlayerState, {
@@ -294,9 +285,6 @@
     countdown: "number", goalFreeze: "number",
     password: "string", lastWinner: "string"
   });
-
-  // ✅ Register all schemas with the Colyseus SDK (client-side decoder)
-  Colyseus.defineTypes({ PlayerState, BallState, KeeperState, GameState });
 
   // ==================== CONFIG ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
