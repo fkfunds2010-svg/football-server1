@@ -5,17 +5,10 @@ const cors = require("cors");
 const express = require("express");
 const path = require("path");
 
-let lastCrash = '';
-process.on('uncaughtException', (err) => {
-  lastCrash = err.stack || err.message;
-  console.error(lastCrash);
-});
-process.on('unhandledRejection', (reason) => {
-  lastCrash = reason?.stack || reason?.message || String(reason);
-  console.error(lastCrash);
-});
+process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
+process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
-// ---------- Schemas ----------
+// ---------- Schemas (unchanged) ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -66,8 +59,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room (Step 5 – chat, emote, ping, rematch added) ----------
-// ---------- Room (Step 6 – hostId + room-full check) ----------
+// ---------- Room – full game logic ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -78,11 +70,6 @@ class FootballRoom extends Room {
   }
 
   static onAuth(client, options, request) { return true; }
-
-  onError(err) {
-    lastCrash = `ROOM ERROR: ${err.stack || err.message}`;
-    console.error(lastCrash);
-  }
 
   onCreate(options) {
     this.state.roomCode = this.roomId;
@@ -143,20 +130,14 @@ class FootballRoom extends Room {
     });
 
     this.setSimulationInterval((dt) => {
-      try { this.gameTick(); } catch (e) { lastCrash = e.message; console.error(e); }
+      try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
     }, 1000 / 30);
   }
 
-  // ✅ onJoin with hostId and room-full check (NO reconnection logic yet)
+  // ✅ onJoin WITHOUT hostId (the line that caused the crash)
   onJoin(client, options) {
-    if (this.clients.length >= 2) {
-      client.send("error", { message: "Room is full" });
-      client.leave();
-      return;
-    }
     const player = new PlayerState();
     const isP1 = this.clients.length === 1;
-    if (isP1) this.state.hostId = client.sessionId;
     player.x = isP1 ? 150 : 820;
     player.y = 415;
     player.color = isP1 ? "#ff00ff" : "#00f2ff";
@@ -196,6 +177,7 @@ class FootballRoom extends Room {
       }
     }, 1000);
   }
+
   gameTick() {
     if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return;
     if (this.state.goalFreeze > 0) {
@@ -296,22 +278,31 @@ const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
   express: (app) => {
+    // WebSocket passthrough
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') return;
       next();
     });
+
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
+
     app.get("/health", (req, res) => res.send("OK"));
     app.use("/playground", playground());
+
+    // Permissive CSP
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
       next();
     });
-    app.get("/crash", (req, res) => res.type("text/plain").send(lastCrash));
+
+    // Serve your game HTML
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+    // Serve static files (audio) – optional, you can also use Google Drive links
+    app.use(express.static("public", { index: false }));
   }
 });
 
