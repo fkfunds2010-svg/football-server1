@@ -216,7 +216,6 @@
 
 <script>
   // ==================== SCHEMA DEFINITIONS (using official library) ====================
-  // The official schema library (colyseus-schema.umd.min.js) exposes Schema, MapSchema, and defineTypes globally.
   const Schema = window.Schema;
   const MapSchema = window.MapSchema;
 
@@ -270,31 +269,34 @@
     password: "string", lastWinner: "string"
   };
 
-// ✅ Register each schema class with its field definitions
-window.defineTypes(PlayerState, {
-  x: "number", y: "number", vx: "number", vy: "number",
-  isJumping: "boolean", color: "string", side: "string",
-  name: "string", ready: "boolean", accelX: "number",
-  reconnecting: "boolean", disconnectTime: "number"
-});
+  // ✅ Register each schema class with its field definitions (metadata for the decoder)
+  window.defineTypes(PlayerState, {
+    x: "number", y: "number", vx: "number", vy: "number",
+    isJumping: "boolean", color: "string", side: "string",
+    name: "string", ready: "boolean", accelX: "number",
+    reconnecting: "boolean", disconnectTime: "number"
+  });
 
-window.defineTypes(BallState, {
-  x: "number", y: "number", vx: "number", vy: "number"
-});
+  window.defineTypes(BallState, {
+    x: "number", y: "number", vx: "number", vy: "number"
+  });
 
-window.defineTypes(KeeperState, {
-  y: "number", vy: "number"
-});
+  window.defineTypes(KeeperState, {
+    y: "number", vy: "number"
+  });
 
-window.defineTypes(GameState, {
-  players: { map: PlayerState },
-  ball: BallState, keeper1: KeeperState, keeper2: KeeperState,
-  p1Score: "number", p2Score: "number", timeLeft: "number",
-  gameOver: "boolean", winnerMessage: "string",
-  matchState: "string", hostId: "string", roomCode: "string",
-  countdown: "number", goalFreeze: "number",
-  password: "string", lastWinner: "string"
-});
+  window.defineTypes(GameState, {
+    players: { map: PlayerState },
+    ball: BallState, keeper1: KeeperState, keeper2: KeeperState,
+    p1Score: "number", p2Score: "number", timeLeft: "number",
+    gameOver: "boolean", winnerMessage: "string",
+    matchState: "string", hostId: "string", roomCode: "string",
+    countdown: "number", goalFreeze: "number",
+    password: "string", lastWinner: "string"
+  });
+
+  // ✅ Register all schemas with the Colyseus SDK (client-side decoder)
+  Colyseus.defineTypes({ PlayerState, BallState, KeeperState, GameState });
 
   // ==================== CONFIG ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
@@ -473,7 +475,7 @@ window.defineTypes(GameState, {
     }
   }
 
-  // ==================== NETWORKING (unchanged) ====================
+  // ==================== NETWORKING ====================
   async function createRoom() {
     const hostName = await showPrompt("Enter your display name", "Your name");
     if (!hostName) return;
@@ -525,7 +527,7 @@ window.defineTypes(GameState, {
 
     chatMessages.innerHTML = '<div>💬 Welcome! Chat here with your opponent.</div>';
 
-    // Listeners (unchanged)
+    // Listeners
     room.onMessage("playerNames", data => {
       document.getElementById('p1Name').innerText = data.p1;
       document.getElementById('p2Name').innerText = data.p2;
@@ -606,7 +608,7 @@ window.defineTypes(GameState, {
       warningDiv.style.display = (state.timeLeft <= 120 && state.timeLeft > 0) ? 'block' : 'none';
       if (!gameActive) return;
 
-      // ✅ Now state.players IS a MapSchema – correct iteration
+      // state.players is now a real MapSchema
       localPlayer = null;
       remotePlayer = null;
       state.players.forEach((p, sid) => {
