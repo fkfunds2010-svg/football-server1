@@ -67,6 +67,7 @@ GameState._schema = {
 };
 
 // ---------- Room (Step 5 – chat, emote, ping, rematch added) ----------
+// ---------- Room (Step 6 – hostId + room-full check) ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -87,14 +88,12 @@ class FootballRoom extends Room {
     this.state.roomCode = this.roomId;
     this.state.password = options.password || Math.random().toString(36).substr(2, 6);
 
-    // setName
     this.onMessage("setName", (client, name) => {
       const p = this.state.players.get(client.sessionId);
       if (p) p.name = name;
       this.broadcastPlayerInfo();
     });
 
-    // ready
     this.onMessage("ready", (client) => {
       const p = this.state.players.get(client.sessionId);
       if (p) p.ready = !p.ready;
@@ -105,7 +104,6 @@ class FootballRoom extends Room {
       }
     });
 
-    // move
     this.onMessage("move", (client, input) => {
       if (typeof input === "object") {
         this.inputs[client.sessionId] = {
@@ -115,22 +113,18 @@ class FootballRoom extends Room {
       }
     });
 
-    // ✅ NEW: chat
     this.onMessage("chat", (client, msg) => {
       const s = this.state.players.get(client.sessionId)?.name || "Unknown";
       this.broadcast("chat", { sender: s, text: (msg || "").substring(0, 200) });
     });
 
-    // ✅ NEW: emote
     this.onMessage("emote", (client, em) => {
       const p = this.state.players.get(client.sessionId);
       if (p) this.broadcast("emote", { playerName: p.name, emoteId: em });
     });
 
-    // ✅ NEW: ping
     this.onMessage("ping", (client, d) => client.send("pong", d));
 
-    // ✅ NEW: rematch
     this.onMessage("rematch", (client) => {
       if (this.state.matchState !== "end") return;
       this.state.players.forEach(p => {
@@ -153,10 +147,16 @@ class FootballRoom extends Room {
     }, 1000 / 30);
   }
 
-  // Simple, working onJoin
+  // ✅ onJoin with hostId and room-full check (NO reconnection logic yet)
   onJoin(client, options) {
+    if (this.clients.length >= 2) {
+      client.send("error", { message: "Room is full" });
+      client.leave();
+      return;
+    }
     const player = new PlayerState();
     const isP1 = this.clients.length === 1;
+    if (isP1) this.state.hostId = client.sessionId;
     player.x = isP1 ? 150 : 820;
     player.y = 415;
     player.color = isP1 ? "#ff00ff" : "#00f2ff";
@@ -196,7 +196,6 @@ class FootballRoom extends Room {
       }
     }, 1000);
   }
-
   gameTick() {
     if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return;
     if (this.state.goalFreeze > 0) {
