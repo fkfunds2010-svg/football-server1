@@ -66,7 +66,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room (Step 4a: move handler added, ON JOIN FROM STEP 3) ----------
+// ---------- Room (Step 5 – chat, emote, ping, rematch added) ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -74,7 +74,6 @@ class FootballRoom extends Room {
     this.state = new GameState();
     this.inputs = {};
     this.targetGoals = 10;
-    this.reconnectTimers = {};
   }
 
   static onAuth(client, options, request) { return true; }
@@ -88,12 +87,14 @@ class FootballRoom extends Room {
     this.state.roomCode = this.roomId;
     this.state.password = options.password || Math.random().toString(36).substr(2, 6);
 
+    // setName
     this.onMessage("setName", (client, name) => {
       const p = this.state.players.get(client.sessionId);
       if (p) p.name = name;
       this.broadcastPlayerInfo();
     });
 
+    // ready
     this.onMessage("ready", (client) => {
       const p = this.state.players.get(client.sessionId);
       if (p) p.ready = !p.ready;
@@ -104,7 +105,7 @@ class FootballRoom extends Room {
       }
     });
 
-    // ✅ ONLY new thing: move handler
+    // move
     this.onMessage("move", (client, input) => {
       if (typeof input === "object") {
         this.inputs[client.sessionId] = {
@@ -114,12 +115,45 @@ class FootballRoom extends Room {
       }
     });
 
+    // ✅ NEW: chat
+    this.onMessage("chat", (client, msg) => {
+      const s = this.state.players.get(client.sessionId)?.name || "Unknown";
+      this.broadcast("chat", { sender: s, text: (msg || "").substring(0, 200) });
+    });
+
+    // ✅ NEW: emote
+    this.onMessage("emote", (client, em) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p) this.broadcast("emote", { playerName: p.name, emoteId: em });
+    });
+
+    // ✅ NEW: ping
+    this.onMessage("ping", (client, d) => client.send("pong", d));
+
+    // ✅ NEW: rematch
+    this.onMessage("rematch", (client) => {
+      if (this.state.matchState !== "end") return;
+      this.state.players.forEach(p => {
+        p.x = p.side === "left" ? 150 : 820; p.y = 415; p.vx = 0; p.vy = 0;
+        p.isJumping = false; p.ready = false;
+      });
+      this.state.ball.x = 500; this.state.ball.y = 250;
+      this.state.ball.vx = 5; this.state.ball.vy = -3;
+      this.state.p1Score = 0; this.state.p2Score = 0;
+      this.state.timeLeft = 120;
+      this.state.gameOver = false; this.state.winnerMessage = "";
+      this.state.matchState = "waiting"; this.state.countdown = -1;
+      this.state.goalFreeze = 0;
+      this.broadcast("rematch");
+      this.broadcastPlayerInfo();
+    });
+
     this.setSimulationInterval((dt) => {
       try { this.gameTick(); } catch (e) { lastCrash = e.message; console.error(e); }
     }, 1000 / 30);
   }
 
-  // ✅ SIMPLE onJoin from Step 3
+  // Simple, working onJoin
   onJoin(client, options) {
     const player = new PlayerState();
     const isP1 = this.clients.length === 1;
