@@ -233,7 +233,8 @@
       <div class="modal-box"><h2>🌀 Opponent reconnecting…</h2><p>Please wait</p></div>
     </div>
 
-    <audio id="goalHorn" src="https://drive.google.com/uc?export=download&id=1WQbvcH0DGMpvxhfrpCAvk7JOnRvaeh4d" preload="auto"></audio>
+    <!-- Audio elements (local files) -->
+    <audio id="goalHorn" src="/9.mp3" preload="auto"></audio>
     <audio id="bgMusic" loop=""></audio>
   </div>
 </div>
@@ -335,14 +336,8 @@
     const timeSelect = document.getElementById('timeSelect');
     const goalSelect = document.getElementById('goalSelect');
 
-    // 🎵 Music Playlist
-    const playlist = [
-      'https://drive.google.com/uc?export=download&id=1eM_b8LdjIoxxx_yBaOk4wU7x02altW7d',
-      'https://drive.google.com/uc?export=download&id=1mlY6W6FnZ-Nvd7X2S89_ft9Y8vCYcgjk',
-      'https://drive.google.com/uc?export=download&id=1UHVwqo-eQIOezp9f-t3tlne5vRvHu50r',
-      'https://drive.google.com/uc?export=download&id=1ans6MxGJfcCJkjOTCI_W6lX6vPaCAd7V',
-      'https://drive.google.com/uc?export=download&id=1IvIHZEgIyVqMic7lnhXSyMQk4cnTrcrk'
-    ];
+    // 🎵 Music Playlist (local files)
+    const playlist = ['/1.mp3', '/3.mp3', '/4.mp3', '/5.mp3'];
     let currentTrack = 0;
     const bgMusic = document.getElementById('bgMusic');
     bgMusic.volume = 0.6;
@@ -527,8 +522,7 @@
       if (room._handlersSet) return; room._handlersSet = true;
 
       chatMessages.innerHTML = '<div>💬 Welcome! Chat here with your opponent.</div>';
-      serverState = room.state;
-      document.getElementById('roomCodeDisplay').innerText = serverState.roomCode || room.roomId;
+      // Don't set serverState yet – wait for onStateChange
 
       // Listeners
       room.onMessage("playerNames", data => {
@@ -610,7 +604,16 @@
         }
         warningDiv.style.display = (state.timeLeft <= 120 && state.timeLeft > 0) ? 'block' : 'none';
         if (!gameActive) return;
-        state.players.forEach((p,sid)=>{ if(sid===room.sessionId) localPlayer=p; else remotePlayer=p; });
+
+        // ✅ FIX: Correctly iterate over the players map
+        const entries = Array.from(state.players.entries());
+        localPlayer = null;
+        remotePlayer = null;
+        for (const [sid, p] of entries) {
+          if (sid === room.sessionId) localPlayer = p;
+          else remotePlayer = p;
+        }
+
         document.getElementById('p1Score').innerText = state.p1Score;
         document.getElementById('p2Score').innerText = state.p2Score;
 
