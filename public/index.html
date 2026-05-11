@@ -6,6 +6,8 @@
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
   <!-- ✅ Official @colyseus/sdk 0.17 (includes schema library) -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
+  <!-- ✅ Favicon (no request) -->
+  <link rel="icon" href="data:,">
   <style>
     *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
     html, body {
@@ -205,9 +207,10 @@
 </div>
 
 <script>
-  // ==================== SCHEMA DEFINITIONS (registered with SDK) ====================
-  // The @colyseus/sdk script makes Schema and MapSchema globally available.
-  // We extend them and then register the types so the SDK can decode server state.
+  // ==================== SCHEMA DEFINITIONS (using SDK's schema namespace) ====================
+  // The SDK exposes Schema and MapSchema via Colyseus.schema
+  const Schema = Colyseus.schema.Schema;
+  const MapSchema = Colyseus.schema.MapSchema;
 
   class PlayerState extends Schema {
     constructor() {
@@ -260,9 +263,7 @@
   };
 
   // ✅ CRITICAL: register the types so the SDK can decode the server state
-  if (Colyseus.schema && Colyseus.schema.defineTypes) {
-    Colyseus.schema.defineTypes([PlayerState, BallState, KeeperState, GameState]);
-  }
+  Colyseus.schema.defineTypes([PlayerState, BallState, KeeperState, GameState]);
 
   // ==================== CONFIG ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
