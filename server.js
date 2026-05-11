@@ -66,7 +66,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ---------- Room (minimal + gameTick) ----------
+// ---------- Room (Step 2 – fixed) ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -88,7 +88,12 @@ class FootballRoom extends Room {
     this.state.roomCode = this.roomId;
     this.state.password = options.password || Math.random().toString(36).substr(2, 6);
 
-    // ✅ New: simulation interval
+    this.onMessage("setName", (client, name) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p) p.name = name;
+      this.broadcastPlayerInfo();
+    });
+
     this.setSimulationInterval((dt) => {
       try { this.gameTick(); } catch (e) { lastCrash = e.message; console.error(e); }
     }, 1000 / 30);
@@ -102,13 +107,24 @@ class FootballRoom extends Room {
     player.color = isP1 ? "#ff00ff" : "#00f2ff";
     player.side = isP1 ? "left" : "right";
     this.state.players.set(client.sessionId, player);
+
+    setTimeout(() => this.broadcastPlayerInfo(), 200);
   }
 
   onLeave(client) {
     this.state.players.delete(client.sessionId);
   }
 
-  // ✅ This is your full gameTick, exactly as you had it
+  broadcastPlayerInfo() {
+    const p1 = [...this.state.players.values()].find(p => p.side === "left");
+    const p2 = [...this.state.players.values()].find(p => p.side === "right");
+    this.broadcast("playerNames", {
+      p1: p1?.name || "—", p2: p2?.name || "—",
+      p1Ready: p1?.ready || false, p2Ready: p2?.ready || false,
+      password: this.state.password
+    });
+  }
+
   gameTick() {
     if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return;
     if (this.state.goalFreeze > 0) {
