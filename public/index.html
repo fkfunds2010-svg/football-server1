@@ -6,43 +6,8 @@
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
   <!-- ✅ Official @colyseus/sdk 0.17 -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
-  <!-- ✅ Embedded Schema & MapSchema (with entries() added) -->
-  <script>
-    (function() {
-      class Schema {
-        constructor() {
-          if (this.constructor._schema) {
-            const schema = this.constructor._schema;
-            for (const key in schema) {
-              const type = schema[key];
-              if (type === 'number') this[key] = 0;
-              else if (type === 'string') this[key] = '';
-              else if (type === 'boolean') this[key] = false;
-              else if (typeof type === 'object') {
-                if (type.map) this[key] = new MapSchema();
-                else if (typeof type === 'function') this[key] = new type();
-                else this[key] = undefined;
-              } else {
-                this[key] = undefined;
-              }
-            }
-          }
-        }
-      }
-      class MapSchema {
-        constructor() { this._map = new Map(); }
-        forEach(cb) { this._map.forEach((v,k) => cb(v,k)); }
-        get(k) { return this._map.get(k); }
-        set(k,v) { this._map.set(k,v); }
-        get size() { return this._map.size; }
-        values() { return this._map.values(); }
-        // ✅ NEW method – required for iteration
-        entries() { return this._map.entries(); }
-      }
-      window.Schema = Schema;
-      window.MapSchema = MapSchema;
-    })();
-  </script>
+  <!-- ✅ Favicon – stops the 404 request -->
+  <link rel="icon" href="data:,">
   <style>
     *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
     html, body {
@@ -245,6 +210,10 @@
   // ✅ WAIT FOR THE DOM TO BE READY BEFORE ACCESSING ANY ELEMENT
   document.addEventListener('DOMContentLoaded', () => {
 
+    // ==================== OFFICIAL SCHEMA CLASSES (from the SDK) ====================
+    const Schema = Colyseus.schema.Schema;
+    const MapSchema = Colyseus.schema.MapSchema;
+
     // ==================== CLIENT SCHEMA DEFINITIONS (Embedded) ====================
     class PlayerState extends Schema {
       constructor() {
@@ -295,6 +264,9 @@
       countdown: "number", goalFreeze: "number",
       password: "string", lastWinner: "string"
     };
+
+    // ✅ CRITICAL: register the types so the SDK can decode the server state
+    Colyseus.schema.defineTypes([PlayerState, BallState, KeeperState, GameState]);
 
     // ==================== CONFIG ====================
     const SERVER_URL = "wss://football-server1.onrender.com";
@@ -606,14 +578,13 @@
         warningDiv.style.display = (state.timeLeft <= 120 && state.timeLeft > 0) ? 'block' : 'none';
         if (!gameActive) return;
 
-        // ✅ FIX: Correctly iterate the players map using entries()
-        const entries = Array.from(state.players.entries());
+        // ✅ Now state.players IS a MapSchema – correct iteration
         localPlayer = null;
         remotePlayer = null;
-        for (const [sid, p] of entries) {
+        state.players.forEach((p, sid) => {
           if (sid === room.sessionId) localPlayer = p;
           else remotePlayer = p;
-        }
+        });
 
         document.getElementById('p1Score').innerText = state.p1Score;
         document.getElementById('p2Score').innerText = state.p2Score;
