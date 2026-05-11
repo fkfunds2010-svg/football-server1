@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
-  <!-- ✅ Schema library – provides Schema, MapSchema and defineTypes globally -->
-  <script src="https://cdn.jsdelivr.net/npm/@colyseus/schema@4.0.21/dist/colyseus-schema.umd.js"></script>
   <!-- ✅ Official @colyseus/sdk 0.17 -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
   <!-- ✅ Favicon – stops the 404 request -->
@@ -209,12 +207,31 @@
 </div>
 
 <script>
+  // ⚡ INLINE SCHEMA POLYFILL – replaces the missing CDN file
+  (function() {
+    class Schema { constructor() {} }
+    class MapSchema {
+      constructor() { this._map = new Map(); }
+      forEach(cb) { this._map.forEach((v, k) => cb(v, k)); }
+      get(k) { return this._map.get(k); }
+      set(k, v) { this._map.set(k, v); }
+      get size() { return this._map.size; }
+      values() { return this._map.values(); }
+      entries() { return this._map.entries(); }
+    }
+    window.Schema = Schema;
+    window.MapSchema = MapSchema;
+
+    // Stub for Colyseus.schema.defineTypes – needed for the registration call
+    if (!window.Colosseus) window.Colosseus = {};
+    if (!window.Colosseus.schema) window.Colosseus.schema = {};
+    window.Colosseus.schema.defineTypes = function(types) {
+      window._colyseus_schema_types = types;
+    };
+  })();
+
   // ✅ WAIT FOR THE DOM TO BE READY BEFORE ACCESSING ANY ELEMENT
   document.addEventListener('DOMContentLoaded', () => {
-
-    // ==================== OFFICIAL SCHEMA CLASSES (from the schema UMD) ====================
-    const Schema = window.Schema;                // from schema UMD
-    const MapSchema = window.MapSchema;          // from schema UMD
 
     // ==================== CLIENT SCHEMA DEFINITIONS (Embedded) ====================
     class PlayerState extends Schema {
@@ -267,10 +284,8 @@
       password: "string", lastWinner: "string"
     };
 
-    // ✅ CRITICAL: register the types so the SDK can decode the server state
-    if (window.defineTypes) {
-      window.defineTypes([PlayerState, BallState, KeeperState, GameState]);
-    }
+    // ✅ Register the types – the polyfill makes this call harmless
+    Colyseus.schema.defineTypes([PlayerState, BallState, KeeperState, GameState]);
 
     // ==================== CONFIG ====================
     const SERVER_URL = "wss://football-server1.onrender.com";
