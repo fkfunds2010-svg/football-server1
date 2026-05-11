@@ -6,7 +6,7 @@
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
   <!-- ✅ Official @colyseus/sdk 0.17 -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
-  <!-- ✅ Embedded Schema & MapSchema -->
+  <!-- ✅ Embedded Schema & MapSchema (with entries() added) -->
   <script>
     (function() {
       class Schema {
@@ -36,6 +36,8 @@
         set(k,v) { this._map.set(k,v); }
         get size() { return this._map.size; }
         values() { return this._map.values(); }
+        // ✅ NEW method – required for iteration
+        entries() { return this._map.entries(); }
       }
       window.Schema = Schema;
       window.MapSchema = MapSchema;
@@ -522,7 +524,6 @@
       if (room._handlersSet) return; room._handlersSet = true;
 
       chatMessages.innerHTML = '<div>💬 Welcome! Chat here with your opponent.</div>';
-      // Don't set serverState yet – wait for onStateChange
 
       // Listeners
       room.onMessage("playerNames", data => {
@@ -605,7 +606,7 @@
         warningDiv.style.display = (state.timeLeft <= 120 && state.timeLeft > 0) ? 'block' : 'none';
         if (!gameActive) return;
 
-        // ✅ FIX: Correctly iterate over the players map
+        // ✅ FIX: Correctly iterate the players map using entries()
         const entries = Array.from(state.players.entries());
         localPlayer = null;
         remotePlayer = null;
