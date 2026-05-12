@@ -582,18 +582,35 @@
   }
 
   // ==================== PREDICTION & RENDERING ====================
+    // Track jump state for prediction
+  let predictedIsJumping = false;
+
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
+    // Horizontal movement
     if (inp.left) predictedVx -= 1.1;
     if (inp.right) predictedVx += 1.1;
-    if (inp.up && !(predictedY >= 415)) predictedVy = -14;
+    // Jump
+    if (inp.up && !predictedIsJumping && predictedY >= 415) {
+      predictedVy = -14;
+      predictedIsJumping = true;
+    }
+    // Down (fast fall)
     if (inp.down) predictedVy += 1;
+    // Gravity
     predictedVy += 0.7;
     predictedX += predictedVx;
     predictedY += predictedVy;
+    // Friction
     predictedVx *= 0.85;
-    if (predictedY > 415) { predictedY = 415; predictedVy = 0; }
+    // Ground
+    if (predictedY > 415) {
+      predictedY = 415;
+      predictedVy = 0;
+      predictedIsJumping = false;    // can jump again
+    }
+    // Boundaries
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
