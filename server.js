@@ -1,5 +1,5 @@
 const { defineServer, Room } = require("colyseus");
-const { Schema, MapSchema } = require("@colyseus/schema");
+const { Schema, MapSchema, defineTypes } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
 const cors = require("cors");
 const express = require("express");
@@ -8,7 +8,7 @@ const path = require("path");
 process.on('uncaughtException', (err) => console.error('Uncaught:', err.message));
 process.on('unhandledRejection', (reason) => console.error('Unhandled:', reason));
 
-// ---------- Schemas (unchanged) ----------
+// ---------- Schemas ----------
 class PlayerState extends Schema {
   constructor() {
     super();
@@ -59,6 +59,12 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
+// ✅ Register schemas so the server sends metadata to the client
+defineTypes(PlayerState, PlayerState._schema);
+defineTypes(BallState, BallState._schema);
+defineTypes(KeeperState, KeeperState._schema);
+defineTypes(GameState, GameState._schema);
+
 // ---------- Room – full game logic ----------
 class FootballRoom extends Room {
   constructor() {
@@ -75,11 +81,10 @@ class FootballRoom extends Room {
     this.state.roomCode = this.roomId;
     this.state.password = options.password || Math.random().toString(36).substr(2, 6);
 
-    // ✅ Use the host's chosen settings
     const minutes = options.matchTime || 2;
     const goals = options.targetGoals || 10;
-    this.state.timeLeft = minutes * 60;        // convert to seconds
-    this.targetGoals = goals;                  // goals to win
+    this.state.timeLeft = minutes * 60;
+    this.targetGoals = goals;
 
     this.onMessage("setName", (client, name) => {
       const p = this.state.players.get(client.sessionId);
@@ -127,7 +132,7 @@ class FootballRoom extends Room {
       this.state.ball.x = 500; this.state.ball.y = 250;
       this.state.ball.vx = 5; this.state.ball.vy = -3;
       this.state.p1Score = 0; this.state.p2Score = 0;
-      this.state.timeLeft = minutes * 60;   // reset the timer too
+      this.state.timeLeft = minutes * 60;
       this.state.gameOver = false; this.state.winnerMessage = "";
       this.state.matchState = "waiting"; this.state.countdown = -1;
       this.state.goalFreeze = 0;
@@ -283,7 +288,6 @@ const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
   express: (app) => {
-    // WebSocket passthrough
     app.use((req, res, next) => {
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') return;
       next();
@@ -296,7 +300,6 @@ const server = defineServer({
     app.get("/health", (req, res) => res.send("OK"));
     app.use("/playground", playground());
 
-    // Permissive CSP
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
