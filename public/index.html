@@ -524,7 +524,6 @@
       warningDiv.style.display = (state.timeLeft <= 120 && state.timeLeft > 0) ? 'block' : 'none';
       if (!gameActive) return;
 
-      // state.players is now a real MapSchema
       localPlayer = null;
       remotePlayer = null;
       state.players.forEach((p, sid) => {
@@ -538,20 +537,28 @@
       if (localPlayer) {
         if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
-        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) { predictedX += dx*0.3; predictedY += dy*0.3; }
-        else { predictedX = localPlayer.x; predictedY = localPlayer.y; }
+        // Smoother correction – only pull if error > 8, otherwise snap
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+          predictedX += dx * 0.15;
+          predictedY += dy * 0.15;
+        } else {
+          predictedX = localPlayer.x;
+          predictedY = localPlayer.y;
+        }
         predictedVx = localPlayer.vx; predictedVy = localPlayer.vy;
       }
     });
     room.onError(() => handleDisconnect());
     room.onLeave(() => { if (gameActive) handleDisconnect(); });
 
+    // ✅ Send inputs at 60 Hz (was 33ms)
     inputInterval = setInterval(() => {
       if (!room || !gameActive) return;
       const inp = getInput();
       const str = JSON.stringify(inp);
       if (str !== lastInputStr) { room.send("move", inp); lastInputStr = str; }
-    }, 33);
+    }, 16);
+
     pingInterval = setInterval(() => { if (room) room.send("ping", Date.now()); }, 2000);
     room.onMessage("pong", clientTime => { ping = Date.now() - clientTime; pingEl.innerText = `Ping: ${ping}ms`; reconnectAttempts = 0; });
   }
@@ -582,35 +589,27 @@
   }
 
   // ==================== PREDICTION & RENDERING ====================
-    // Track jump state for prediction
   let predictedIsJumping = false;
 
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
-    // Horizontal movement
     if (inp.left) predictedVx -= 1.1;
     if (inp.right) predictedVx += 1.1;
-    // Jump
     if (inp.up && !predictedIsJumping && predictedY >= 415) {
       predictedVy = -14;
       predictedIsJumping = true;
     }
-    // Down (fast fall)
     if (inp.down) predictedVy += 1;
-    // Gravity
     predictedVy += 0.7;
     predictedX += predictedVx;
     predictedY += predictedVy;
-    // Friction
     predictedVx *= 0.85;
-    // Ground
     if (predictedY > 415) {
       predictedY = 415;
       predictedVy = 0;
-      predictedIsJumping = false;    // can jump again
+      predictedIsJumping = false;
     }
-    // Boundaries
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
