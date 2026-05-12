@@ -10,7 +10,6 @@
 <script>
   window.Schema = window.schema.Schema;
   window.MapSchema = window.schema.MapSchema;
-  window.defineTypes = window.schema.defineTypes;
 </script>
   <!-- ✅ Official @colyseus/sdk 0.17 -->
   <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
@@ -215,66 +214,6 @@
 </div>
 
 <script>
-  // ==================== SCHEMA DEFINITIONS (must match server) ====================
-  const Schema = window.Schema;
-  const MapSchema = window.MapSchema;
-
-  class PlayerState extends Schema {
-    constructor() {
-      super();
-      this.x = 150; this.y = 415; this.vx = 0; this.vy = 0;
-      this.isJumping = false; this.color = "#ff00ff"; this.side = "left";
-      this.name = ""; this.ready = false; this.accelX = 0;
-      this.reconnecting = false; this.disconnectTime = 0;
-    }
-  }
-  PlayerState._schema = {
-    x: "number", y: "number", vx: "number", vy: "number",
-    isJumping: "boolean", color: "string", side: "string",
-    name: "string", ready: "boolean", accelX: "number",
-    reconnecting: "boolean", disconnectTime: "number"
-  };
-
-  class BallState extends Schema {
-    constructor() { super(); this.x = 500; this.y = 250; this.vx = 5; this.vy = -3; }
-  }
-  BallState._schema = { x: "number", y: "number", vx: "number", vy: "number" };
-
-  class KeeperState extends Schema {
-    constructor() { super(); this.y = 250; this.vy = 0; }
-  }
-  KeeperState._schema = { y: "number", vy: "number" };
-
-  class GameState extends Schema {
-    constructor() {
-      super();
-      this.players = new MapSchema();
-      this.ball = new BallState();
-      this.keeper1 = new KeeperState();
-      this.keeper2 = new KeeperState();
-      this.p1Score = 0; this.p2Score = 0; this.timeLeft = 120;
-      this.gameOver = false; this.winnerMessage = "";
-      this.matchState = "waiting"; this.hostId = ""; this.roomCode = "";
-      this.countdown = -1; this.goalFreeze = 0;
-      this.password = ""; this.lastWinner = "";
-    }
-  }
-  GameState._schema = {
-    players: { map: PlayerState },
-    ball: BallState, keeper1: KeeperState, keeper2: KeeperState,
-    p1Score: "number", p2Score: "number", timeLeft: "number",
-    gameOver: "boolean", winnerMessage: "string",
-    matchState: "string", hostId: "string", roomCode: "string",
-    countdown: "number", goalFreeze: "number",
-    password: "string", lastWinner: "string"
-  };
-
-  // ✅ Register each schema class with the official library
-  window.defineTypes(PlayerState, PlayerState._schema);
-  window.defineTypes(BallState, BallState._schema);
-  window.defineTypes(KeeperState, KeeperState._schema);
-  window.defineTypes(GameState, GameState._schema);
-
   // ==================== CONFIG ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
   
