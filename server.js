@@ -45,7 +45,8 @@ class GameState extends Schema {
     this.p1Score = 0; this.p2Score = 0; this.timeLeft = 120;
     this.gameOver = false; this.winnerMessage = "";
     this.matchState = "waiting"; this.hostId = ""; this.roomCode = "";
-    this.countdown = -1; this.goalFreeze = 0;
+    this.countdown = -1;
+    // goalFreeze removed – no more pause after a goal
     this.password = ""; this.lastWinner = "";
   }
 }
@@ -55,7 +56,8 @@ GameState._schema = {
   p1Score: "number", p2Score: "number", timeLeft: "number",
   gameOver: "boolean", winnerMessage: "string",
   matchState: "string", hostId: "string", roomCode: "string",
-  countdown: "number", goalFreeze: "number",
+  countdown: "number",
+  // goalFreeze removed from schema
   password: "string", lastWinner: "string"
 };
 
@@ -135,7 +137,6 @@ class FootballRoom extends Room {
       this.state.timeLeft = minutes * 60;
       this.state.gameOver = false; this.state.winnerMessage = "";
       this.state.matchState = "waiting"; this.state.countdown = -1;
-      this.state.goalFreeze = 0;
       this.broadcast("rematch");
       this.broadcastPlayerInfo();
     });
@@ -189,14 +190,9 @@ class FootballRoom extends Room {
     }, 1000);
   }
 
-  // ---------- FIXED GAME TICK (order matches local PvP) ----------
   gameTick() {
     if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return;
-    if (this.state.goalFreeze > 0) {
-      this.state.goalFreeze--;
-      if (this.state.goalFreeze === 0) this.broadcast("event", { type: "FREEZE_END" });
-      return;
-    }
+    // ❌ Freeze block removed – game continues immediately after a goal
 
     const FIXED_DT = 1 / 30;
     const ball = this.state.ball;
@@ -218,7 +214,7 @@ class FootballRoom extends Room {
       }
     });
 
-    // ---------- 3. Player collisions with ball (ball vs static players, no ghosting) ----------
+    // ---------- 3. Player collisions with ball ----------
     this.state.players.forEach(p => {
       if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
         ball.vx *= -0.5;
@@ -231,7 +227,7 @@ class FootballRoom extends Room {
       if (ball.y > 150 && ball.y < 350) {
         if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
         this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ? "#00f2ff" : "#ff00ff" } });
-        this.state.goalFreeze = 30;
+        // ❌ goalFreeze line removed – no pause
         ball.x = 500; ball.y = 250; ball.vx = (Math.random() > 0.5 ? 5 : -5); ball.vy = -3;
         if (this.state.p1Score >= this.targetGoals || this.state.p2Score >= this.targetGoals) {
           this.state.gameOver = true; this.state.matchState = "end";
@@ -268,7 +264,6 @@ class FootballRoom extends Room {
         if (input.down) player.vy += 1;
       }
 
-      // Player physics
       player.vy += 0.7;
       player.x += player.vx;
       player.y += player.vy;
@@ -277,7 +272,7 @@ class FootballRoom extends Room {
       player.x = Math.min(930, Math.max(40, player.x));
     });
 
-    // ---------- 6. Keeper AI (after all other movement) ----------
+    // ---------- 6. Keeper AI ----------
     const targetY = ball.y - 30;
     [this.state.keeper1, this.state.keeper2].forEach((k, i) => {
       const skill = (i === 0) ? 1.2 : 1.0;
