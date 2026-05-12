@@ -140,9 +140,10 @@ class FootballRoom extends Room {
       this.broadcastPlayerInfo();
     });
 
+    // ✅ 60 Hz tick rate (was 30)
     this.setSimulationInterval((dt) => {
       try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
-    }, 1000 / 30);
+    }, 1000 / 60);
   }
 
   onJoin(client, options) {
@@ -196,14 +197,15 @@ class FootballRoom extends Room {
       return;
     }
 
-    const FIXED_DT = 1 / 30;
+    const FIXED_DT = 1 / 30;  // we still use same dt per tick, just more ticks per second
     const ball = this.state.ball;
 
-    // ---------- PLAYER MOVEMENT (exactly like local PvP) ----------
+    // ---------- PLAYER MOVEMENT (local PvP physics) ----------
     this.state.players.forEach((player, sid) => {
       const input = this.inputs[sid] || {};
-      const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y, hasBall = dx * dx + dy * dy < 2500;
-      
+      const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y;
+      const hasBall = dx * dx + dy * dy < 2700; // slightly larger radius
+
       let isTurbo = (player.side === 'left') ? (input.up && input.shoot) : (input.up && (input.left || input.right));
       let attemptingShot = (player.side === 'left') ? input.shoot : input.up;
 
@@ -266,7 +268,7 @@ class FootballRoom extends Room {
       if (ball.y > 150 && ball.y < 350) {
         if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
         this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ? "#00f2ff" : "#ff00ff" } });
-        this.state.goalFreeze = 60;
+        this.state.goalFreeze = 30;   // shorter freeze (was 60)
         ball.x = 500; ball.y = 250; ball.vx = (Math.random() > 0.5 ? 5 : -5); ball.vy = -3;
         if (this.state.p1Score >= this.targetGoals || this.state.p2Score >= this.targetGoals) {
           this.state.gameOver = true; this.state.matchState = "end";
