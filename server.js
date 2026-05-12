@@ -59,7 +59,7 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ✅ Register schemas so the server sends metadata to the client
+// ✅ Register schemas
 defineTypes(PlayerState, PlayerState._schema);
 defineTypes(BallState, BallState._schema);
 defineTypes(KeeperState, KeeperState._schema);
@@ -199,52 +199,69 @@ class FootballRoom extends Room {
     const FIXED_DT = 1 / 30;
     const ball = this.state.ball;
 
+    // ---------- PLAYER MOVEMENT (exactly like local PvP) ----------
     this.state.players.forEach((player, sid) => {
       const input = this.inputs[sid] || {};
       const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y, hasBall = dx * dx + dy * dy < 2500;
+      
+      let isTurbo = (player.side === 'left') ? (input.up && input.shoot) : (input.up && (input.left || input.right));
+      let attemptingShot = (player.side === 'left') ? input.shoot : input.up;
 
-      if (hasBall && (input.shoot || input.turbo)) {
+      if (hasBall && (attemptingShot || isTurbo)) {
         player.vx = 0;
-        const speed = input.turbo ? 45 : 20;
-        ball.vx = player.side === "left" ? speed : -speed;
+        let speed = isTurbo ? 45 : 20;
+        ball.vx = (player.side === 'left') ? speed : -speed;
         if (input.up && !input.down) ball.vy = -14;
         else if (input.down) ball.vy = 10;
         else ball.vy = -2;
-        this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } });
+        this.broadcast("event", { type: "SHOT", data: { turbo: isTurbo, color: player.color } });
       } else {
-        const accel = 0.6;
-        if (input.left) player.accelX -= accel;
-        if (input.right) player.accelX += accel;
-        if (!input.left && !input.right) player.accelX *= 0.85;
-        player.accelX = Math.min(Math.max(player.accelX, -3), 3);
-        player.vx += player.accelX;
-        player.vx *= 0.9;
-        if (input.up && !player.isJumping) { player.vy = -14; player.isJumping = true; }
+        if (input.left) player.vx -= 1.1;
+        if (input.right) player.vx += 1.1;
+        if (input.up && !player.isJumping) {
+          player.vy = -14;
+          player.isJumping = true;
+        }
         if (input.down) player.vy += 1;
       }
     });
 
-    ball.x += ball.vx * FIXED_DT * 60;
-    ball.y += ball.vy * FIXED_DT * 60;
-    ball.vy += 0.25 * FIXED_DT * 60;
+    // ---------- PLAYER PHYSICS ----------
+    this.state.players.forEach(p => {
+      p.vy += 0.7;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.85;
+      if (p.y > 415) { p.y = 415; p.vy = 0; p.isJumping = false; }
+      p.x = Math.min(930, Math.max(40, p.x));
+    });
+
+    // ---------- BALL PHYSICS ----------
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+    ball.vy += 0.25;
     ball.vx *= 0.995;
     if (ball.y > 480) { ball.y = 480; ball.vy *= -0.7; }
     if (ball.y < 10) { ball.y = 10; ball.vy *= -0.7; }
 
+    // ---------- KEEPER COLLISIONS ----------
     [{ x: 5, k: this.state.keeper1 }, { x: 983, k: this.state.keeper2 }].forEach(({ x: kx, k }) => {
       if (ball.x + 10 > kx && ball.x - 10 < kx + 12 && ball.y + 10 > k.y && ball.y - 10 < k.y + 60) {
         if (Math.abs(ball.vx) > 25) this.broadcast("event", { type: "SHOT", data: { turbo: false, color: "#fff" } });
-        ball.vx *= -1.1; ball.x = kx < 500 ? 25 : 970;
-      }
-    });
-    this.state.players.forEach(p => {
-      if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
-        const rvx = ball.vx - p.vx, rvy = ball.vy - p.vy;
-        ball.vx = p.vx - rvx * 0.6; ball.vy = p.vy - rvy * 0.6;
-        ball.x = ball.x < p.x + 15 ? p.x - 11 : p.x + 31;
+        ball.vx *= -1.1;
+        ball.x = (kx < 500) ? 25 : 970;
       }
     });
 
+    // ---------- PLAYER COLLISIONS WITH BALL ----------
+    this.state.players.forEach(p => {
+      if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
+        ball.vx *= -0.5;
+        ball.x = (ball.x < p.x + 15) ? p.x - 11 : p.x + 31;
+      }
+    });
+
+    // ---------- GOAL CHECK ----------
     if (ball.x < 0 || ball.x > 1000) {
       if (ball.y > 150 && ball.y < 350) {
         if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
@@ -259,19 +276,17 @@ class FootballRoom extends Room {
       } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
     }
 
+    // ---------- KEEPER AI ----------
     const targetY = ball.y - 30;
     [this.state.keeper1, this.state.keeper2].forEach((k, i) => {
-      k.vy += (targetY - k.y) * (i === 0 ? 0.12 : 0.1);
-      k.vy *= 0.7; k.y += k.vy * FIXED_DT * 60;
+      const skill = (i === 0) ? 1.2 : 1.0;
+      k.vy += (targetY - k.y) * 0.1 * skill;
+      k.vy *= 0.7;
+      k.y += k.vy;
       k.y = Math.min(295, Math.max(155, k.y));
     });
 
-    this.state.players.forEach(p => {
-      p.vy += 0.7; p.x += p.vx * FIXED_DT * 60; p.y += p.vy * FIXED_DT * 60; p.vx *= 0.85;
-      if (p.y > 415) { p.y = 415; p.vy = 0; p.isJumping = false; }
-      p.x = Math.min(930, Math.max(40, p.x));
-    });
-
+    // ---------- TIMER ----------
     if (this.state.timeLeft > 0) {
       this.state.timeLeft -= FIXED_DT;
       if (this.state.timeLeft <= 0) {
