@@ -585,14 +585,14 @@
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
-    const accel = 0.6;
-    if (inp.left) predictedVx -= accel; if (inp.right) predictedVx += accel;
-    if (!inp.left && !inp.right) predictedVx *= 0.85;
-    predictedVx = Math.min(Math.max(predictedVx, -3), 3);
+    if (inp.left) predictedVx -= 1.1;
+    if (inp.right) predictedVx += 1.1;
     if (inp.up && !(predictedY >= 415)) predictedVy = -14;
     if (inp.down) predictedVy += 1;
-    predictedVy += 0.7; predictedX += predictedVx; predictedY += predictedVy;
-    predictedVx *= 0.9;
+    predictedVy += 0.7;
+    predictedX += predictedVx;
+    predictedY += predictedVy;
+    predictedVx *= 0.85;
     if (predictedY > 415) { predictedY = 415; predictedVy = 0; }
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
@@ -600,7 +600,7 @@
   let prevBallX, prevBallY;
   function draw() {
     ctx.clearRect(0,0,1000,500);
-    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.strokeRect(0,150,40,200); ctx.strokeRect(960,150,40,200);
     ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
 
