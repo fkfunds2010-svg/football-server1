@@ -223,6 +223,7 @@
   let lastInputStr, serverState, localPlayer, remotePlayer;
   let predictedX, predictedY, predictedVx, predictedVy;
   let ping = 0, reconnectAttempts = 0;
+  // goalFreeze variable no longer needed, but kept for compatibility – harmless
   let goalFreeze = false, countdownValue = -1, matchStatus = "waiting";
   let inputInterval, pingInterval;
   let roomPassword = "";
@@ -472,11 +473,10 @@
         comment(ev.data.scorer==='p1'?"GOAL! PLAYER 1 SCORES!":"GOAL! PLAYER 2 SCORES!",ev.data.color);
         document.getElementById('app').classList.add('shake');
         setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
-        goalFreeze = true;
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
       } else if (ev.type === "MUSIC_NEXT") playNextTrack();
-      else if (ev.type === "FREEZE_END") goalFreeze = false;
+      // FREEZE_END event removed – no longer needed
     });
     room.onMessage("chat", msg => {
       const div = document.createElement('div');
@@ -551,7 +551,7 @@
     room.onError(() => handleDisconnect());
     room.onLeave(() => { if (gameActive) handleDisconnect(); });
 
-    // ✅ Send inputs at 60 Hz (was 33ms)
+    // ✅ Send inputs at 60 Hz
     inputInterval = setInterval(() => {
       if (!room || !gameActive) return;
       const inp = getInput();
@@ -594,28 +594,22 @@
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
-    // Horizontal – exactly like local PvP
     if (inp.left) predictedVx -= 1.1;
     if (inp.right) predictedVx += 1.1;
-    // Jump – only if on ground
     if (inp.up && !predictedIsJumping && predictedY >= 415) {
       predictedVy = -14;
       predictedIsJumping = true;
     }
     if (inp.down) predictedVy += 1;
-    // Gravity
     predictedVy += 0.7;
     predictedX += predictedVx;
     predictedY += predictedVy;
-    // Friction
     predictedVx *= 0.85;
-    // Ground
     if (predictedY > 415) {
       predictedY = 415;
       predictedVy = 0;
       predictedIsJumping = false;
     }
-    // Boundaries
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
