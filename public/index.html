@@ -473,6 +473,16 @@
         document.getElementById('app').classList.add('shake');
         setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
         goalFreeze = true;
+
+        // ✅ Snap ball instantly to centre – no sliding
+        if (serverState && serverState.ball) {
+          serverState.ball.x = 500;
+          serverState.ball.y = 250;
+          serverState.ball.vx = 0;
+          serverState.ball.vy = 0;
+          prevBallX = 500;
+          prevBallY = 250;
+        }
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
       } else if (ev.type === "MUSIC_NEXT") playNextTrack();
