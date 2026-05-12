@@ -140,7 +140,7 @@ class FootballRoom extends Room {
       this.broadcastPlayerInfo();
     });
 
-    // ✅ 60 Hz tick rate (was 30)
+    // ✅ 60 Hz tick rate
     this.setSimulationInterval((dt) => {
       try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
     }, 1000 / 60);
@@ -189,6 +189,7 @@ class FootballRoom extends Room {
     }, 1000);
   }
 
+  // ---------- FIXED GAME TICK (order matches local PvP) ----------
   gameTick() {
     if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return;
     if (this.state.goalFreeze > 0) {
@@ -197,14 +198,54 @@ class FootballRoom extends Room {
       return;
     }
 
-    const FIXED_DT = 1 / 30;  // we still use same dt per tick, just more ticks per second
+    const FIXED_DT = 1 / 30;
     const ball = this.state.ball;
 
-    // ---------- PLAYER MOVEMENT (local PvP physics) ----------
+    // ---------- 1. Ball physics (move first) ----------
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+    ball.vy += 0.25;
+    ball.vx *= 0.995;
+    if (ball.y > 480) { ball.y = 480; ball.vy *= -0.7; }
+    if (ball.y < 10)  { ball.y = 10;  ball.vy *= -0.7; }
+
+    // ---------- 2. Keeper collisions ----------
+    [{ x: 5, k: this.state.keeper1 }, { x: 983, k: this.state.keeper2 }].forEach(({ x: kx, k }) => {
+      if (ball.x + 10 > kx && ball.x - 10 < kx + 12 && ball.y + 10 > k.y && ball.y - 10 < k.y + 60) {
+        if (Math.abs(ball.vx) > 25) this.broadcast("event", { type: "SHOT", data: { turbo: false, color: "#fff" } });
+        ball.vx *= -1.1;
+        ball.x = (kx < 500) ? 25 : 970;
+      }
+    });
+
+    // ---------- 3. Player collisions with ball (ball vs static players, no ghosting) ----------
+    this.state.players.forEach(p => {
+      if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
+        ball.vx *= -0.5;
+        ball.x = (ball.x < p.x + 15) ? p.x - 11 : p.x + 31;
+      }
+    });
+
+    // ---------- 4. Goal check ----------
+    if (ball.x < 0 || ball.x > 1000) {
+      if (ball.y > 150 && ball.y < 350) {
+        if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
+        this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ? "#00f2ff" : "#ff00ff" } });
+        this.state.goalFreeze = 30;
+        ball.x = 500; ball.y = 250; ball.vx = (Math.random() > 0.5 ? 5 : -5); ball.vy = -3;
+        if (this.state.p1Score >= this.targetGoals || this.state.p2Score >= this.targetGoals) {
+          this.state.gameOver = true; this.state.matchState = "end";
+          this.state.winnerMessage = this.state.p1Score >= this.targetGoals ? "Player 1 Wins!" : "Player 2 Wins!";
+          this.state.lastWinner = this.state.p1Score >= this.targetGoals ? "p1" : "p2";
+        }
+      } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
+    }
+
+    // ---------- 5. Player movement + shooting ----------
     this.state.players.forEach((player, sid) => {
       const input = this.inputs[sid] || {};
       const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y;
-      const hasBall = dx * dx + dy * dy < 2700; // slightly larger radius
+      const hasBall = dx * dx + dy * dy < 2500;
 
       let isTurbo = (player.side === 'left') ? (input.up && input.shoot) : (input.up && (input.left || input.right));
       let attemptingShot = (player.side === 'left') ? input.shoot : input.up;
@@ -226,59 +267,17 @@ class FootballRoom extends Room {
         }
         if (input.down) player.vy += 1;
       }
+
+      // Player physics
+      player.vy += 0.7;
+      player.x += player.vx;
+      player.y += player.vy;
+      player.vx *= 0.85;
+      if (player.y > 415) { player.y = 415; player.vy = 0; player.isJumping = false; }
+      player.x = Math.min(930, Math.max(40, player.x));
     });
 
-    // ---------- PLAYER PHYSICS ----------
-    this.state.players.forEach(p => {
-      p.vy += 0.7;
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vx *= 0.85;
-      if (p.y > 415) { p.y = 415; p.vy = 0; p.isJumping = false; }
-      p.x = Math.min(930, Math.max(40, p.x));
-    });
-
-    // ---------- BALL PHYSICS ----------
-    ball.x += ball.vx;
-    ball.y += ball.vy;
-    ball.vy += 0.25;
-    ball.vx *= 0.995;
-    if (ball.y > 480) { ball.y = 480; ball.vy *= -0.7; }
-    if (ball.y < 10) { ball.y = 10; ball.vy *= -0.7; }
-
-    // ---------- KEEPER COLLISIONS ----------
-    [{ x: 5, k: this.state.keeper1 }, { x: 983, k: this.state.keeper2 }].forEach(({ x: kx, k }) => {
-      if (ball.x + 10 > kx && ball.x - 10 < kx + 12 && ball.y + 10 > k.y && ball.y - 10 < k.y + 60) {
-        if (Math.abs(ball.vx) > 25) this.broadcast("event", { type: "SHOT", data: { turbo: false, color: "#fff" } });
-        ball.vx *= -1.1;
-        ball.x = (kx < 500) ? 25 : 970;
-      }
-    });
-
-    // ---------- PLAYER COLLISIONS WITH BALL ----------
-    this.state.players.forEach(p => {
-      if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
-        ball.vx *= -0.5;
-        ball.x = (ball.x < p.x + 15) ? p.x - 11 : p.x + 31;
-      }
-    });
-
-    // ---------- GOAL CHECK ----------
-    if (ball.x < 0 || ball.x > 1000) {
-      if (ball.y > 150 && ball.y < 350) {
-        if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
-        this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ? "#00f2ff" : "#ff00ff" } });
-        this.state.goalFreeze = 30;   // shorter freeze (was 60)
-        ball.x = 500; ball.y = 250; ball.vx = (Math.random() > 0.5 ? 5 : -5); ball.vy = -3;
-        if (this.state.p1Score >= this.targetGoals || this.state.p2Score >= this.targetGoals) {
-          this.state.gameOver = true; this.state.matchState = "end";
-          this.state.winnerMessage = this.state.p1Score >= this.targetGoals ? "Player 1 Wins!" : "Player 2 Wins!";
-          this.state.lastWinner = this.state.p1Score >= this.targetGoals ? "p1" : "p2";
-        }
-      } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
-    }
-
-    // ---------- KEEPER AI ----------
+    // ---------- 6. Keeper AI (after all other movement) ----------
     const targetY = ball.y - 30;
     [this.state.keeper1, this.state.keeper2].forEach((k, i) => {
       const skill = (i === 0) ? 1.2 : 1.0;
@@ -288,7 +287,7 @@ class FootballRoom extends Room {
       k.y = Math.min(295, Math.max(155, k.y));
     });
 
-    // ---------- TIMER ----------
+    // ---------- 7. Timer ----------
     if (this.state.timeLeft > 0) {
       this.state.timeLeft -= FIXED_DT;
       if (this.state.timeLeft <= 0) {
