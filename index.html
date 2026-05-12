@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<title>Franklin Football 2026 · FK GAME</title>
+<style>
+  body {
+    margin: 0;
+    background: #050110;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+
+  #menuPage {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background: #050110;
+    z-index: 500;
+  }
+
+  #menuPage h1 {
+    color: #fff;
+    font-size: 60px;
+    text-shadow: 0 0 20px #00ff00;
+    margin-bottom: 30px;
+  }
+
+  #menuPage button {
+    font-size: 25px;
+    padding: 15px 35px;
+    margin: 10px;
+    border: 2px solid #00ff00;
+    background: #111;
+    color: #00ff00;
+    border-radius: 10px;
+    cursor: pointer;
+    width: 250px;
+    text-transform: uppercase;
+    font-weight: bold;
+  }
+
+  #menuPage button:hover {
+    background: #00ff00;
+    color: #111;
+  }
+
+  #startPage {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background: #050110;
+    z-index: 500;
+  }
+
+  #startPage h1 { color: #fff; font-size: 60px; text-shadow: 0 0 20px #00ff00; margin-bottom: 30px; }
+
+  #startPage button {
+    font-size: 30px;
+    padding: 20px 40px;
+    border: 2px solid #00ff00;
+    background: #111;
+    color: #00ff00;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  #startPage button:hover { background: #00ff00; color: #111; }
+</style>
+</head>
+<body>
+
+<!-- START PAGE -->
+<div id="startPage">
+  <h1>Franklin Football 2026</h1>
+  <button id="startBtn">START GAME</button>
+</div>
+
+<!-- MENU PAGE -->
+<div id="menuPage" style="display:none;">
+  <h1>Game Modes</h1>
+  <button onclick="goToPage('story.html')">Story Mode</button>
+  <button onclick="goToPage('ai.html')">Player vs AI</button>
+  <button onclick="goToPage('pvp.html')">PVP Local</button>
+  <button onclick="goToPage('online.html')">Online PVP</button>
+</div>
+
+<script>
+  // Show menu when START is clicked
+  document.getElementById('startBtn').addEventListener('click', () => {
+    document.getElementById('startPage').style.display = 'none';
+    document.getElementById('menuPage').style.display = 'flex';
+  });
+
+  // Navigate to chosen mode
+  function goToPage(page) {
+    window.location.href = page;
+  }
+
+  // Press ESC to return to menu (optional)
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape') {
+      document.getElementById('menuPage').style.display = 'flex';
+    }
+  });
+</script>
+</body></html>
