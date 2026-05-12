@@ -214,43 +214,6 @@
 </div>
 
 <script>
-  // ==================== SCHEMA DEFINITIONS (using official library) ====================
-  const Schema = window.Schema;
-  const MapSchema = window.MapSchema;
-
-  class PlayerState extends Schema {
-    constructor() {
-      super();
-      this.x = 150; this.y = 415; this.vx = 0; this.vy = 0;
-      this.isJumping = false; this.color = "#ff00ff"; this.side = "left";
-      this.name = ""; this.ready = false; this.accelX = 0;
-      this.reconnecting = false; this.disconnectTime = 0;
-    }
-  }
-
-  class BallState extends Schema {
-    constructor() { super(); this.x = 500; this.y = 250; this.vx = 5; this.vy = -3; }
-  }
-
-  class KeeperState extends Schema {
-    constructor() { super(); this.y = 250; this.vy = 0; }
-  }
-
-  class GameState extends Schema {
-    constructor() {
-      super();
-      this.players = new MapSchema();
-      this.ball = new BallState();
-      this.keeper1 = new KeeperState();
-      this.keeper2 = new KeeperState();
-      this.p1Score = 0; this.p2Score = 0; this.timeLeft = 120;
-      this.gameOver = false; this.winnerMessage = "";
-      this.matchState = "waiting"; this.hostId = ""; this.roomCode = "";
-      this.countdown = -1; this.goalFreeze = 0;
-      this.password = ""; this.lastWinner = "";
-    }
-  }
-
   // ==================== CONFIG ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
   
