@@ -465,6 +465,7 @@
       if (countdownValue > 0) { countdownEl.style.display='block'; countdownEl.innerText = countdownValue; }
       else { countdownEl.innerText = 'GO!'; setTimeout(()=>countdownEl.style.display='none',500); }
     });
+    // ✅ SHOT event – immediately apply local ball velocity for instant feedback
     room.onMessage("event", ev => {
       if (ev.type === "GOAL") {
         goalAnimation(ev.data.color); goalHorn.currentTime=0; goalHorn.play().catch(()=>{});
@@ -473,6 +474,13 @@
         setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
+        // 🔥 Instant local shot – the ball reacts NOW, not after server delay
+        if (localBall && localPlayer) {
+          const speed = ev.data.turbo ? 45 : 20;
+          localBall.vx = (localPlayer.side === 'left') ? speed : -speed;
+          // rough vy guess – will be corrected by server quickly
+          localBall.vy = -2;
+        }
       } else if (ev.type === "MUSIC_NEXT") playNextTrack();
     });
     room.onMessage("chat", msg => {
@@ -534,21 +542,23 @@
       if (localPlayer) {
         if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
-        // Smoother correction – only pull if error > 4 (tighter for responsiveness)
+        // Smoother correction – only pull if error > 4
         if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-          predictedX += dx * 0.3;   // faster pull
+          predictedX += dx * 0.3;
           predictedY += dy * 0.3;
         } else {
           predictedX = localPlayer.x;
           predictedY = localPlayer.y;
         }
         predictedVx = localPlayer.vx; predictedVy = localPlayer.vy;
+        // Sync jump flag
+        predictedIsJumping = localPlayer.isJumping;
       }
     });
     room.onError(() => handleDisconnect());
     room.onLeave(() => { if (gameActive) handleDisconnect(); });
 
-    // ✅ Send inputs at 60 Hz – SET INTERVAL IS BACK (never fails)
+    // ✅ Send inputs at 60 Hz
     inputInterval = setInterval(() => {
       if (!room || !gameActive) return;
       const inp = getInput();
@@ -585,16 +595,17 @@
     setTimeout(() => toast.remove(), 2500);
   }
 
-  // ==================== PREDICTION & RENDERING (ULTRA RESPONSIVE) ====================
+  // ==================== PREDICTION & RENDERING (INSTANT RESPONSE) ====================
   let predictedIsJumping = false;
   let prevKeeper1Y = null, prevKeeper2Y = null;
 
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
-    // Exact same physics as server (no delta scaling, just per-frame)
+    // Exact same physics as server
     if (inp.left) predictedVx -= 1.1;
     if (inp.right) predictedVx += 1.1;
+    // Jump only if on ground and not already jumping
     if (inp.up && !predictedIsJumping && predictedY >= 415) {
       predictedVy = -14;
       predictedIsJumping = true;
@@ -612,7 +623,7 @@
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
-  // Ball prediction state – simulate ball locally and blend with server
+  // Local ball – predicted independently, blended with server
   let localBall = { x: 500, y: 250, vx: 5, vy: -3 };
   let ballInitialized = false;
 
@@ -630,7 +641,7 @@
         ballInitialized = true;
       }
 
-      // Predict ball locally (same physics as server)
+      // Predict ball locally
       localBall.x += localBall.vx;
       localBall.y += localBall.vy;
       localBall.vy += 0.25;
@@ -638,18 +649,17 @@
       if (localBall.y > 480) { localBall.y = 480; localBall.vy *= -0.7; }
       if (localBall.y < 10)  { localBall.y = 10;  localBall.vy *= -0.7; }
 
-      // Blend with server position
+      // Blend with server position (stronger local authority)
       const dx = ball.x - localBall.x, dy = ball.y - localBall.y;
       const err = Math.sqrt(dx*dx + dy*dy);
       if (err > 20) {
-        // Teleport if too far (goal reset)
         localBall.x = ball.x; localBall.y = ball.y;
         localBall.vx = ball.vx; localBall.vy = ball.vy;
       } else {
-        localBall.x += dx * 0.3;
-        localBall.y += dy * 0.3;
-        localBall.vx += (ball.vx - localBall.vx) * 0.2;
-        localBall.vy += (ball.vy - localBall.vy) * 0.2;
+        localBall.x += dx * 0.5;
+        localBall.y += dy * 0.5;
+        localBall.vx += (ball.vx - localBall.vx) * 0.4;
+        localBall.vy += (ball.vy - localBall.vy) * 0.4;
       }
 
       ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(localBall.x, localBall.y, 10, 0, Math.PI*2); ctx.fill();
