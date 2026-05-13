@@ -40,7 +40,6 @@
     .btn{background:#111;border:2px solid #00ff00;border-radius:60px;padding:clamp(8px,2vw,14px) clamp(16px,4vw,28px);font-size:clamp(0.9rem,2.5vw,1.2rem);font-weight:bold;color:#00ff00;cursor:pointer;text-transform:uppercase;transition:0.2s;white-space:nowrap}
     .btn:disabled{opacity:0.5;pointer-events:none}
     .btn.secondary{border-color:#00f2ff;color:#00f2ff}
-    .btn.menu-btn{border-color:#ffcc00;color:#ffcc00;}
     .input-field{background:#0a0f0a;border:2px solid #00ff00;border-radius:40px;padding:14px 24px;color:#fff;width:100%;outline:none;font-size:1rem}
     .room-info{background:#0a1a0a;padding:16px 24px;border-radius:40px;color:#cfc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
     .players-box{display:flex;gap:20px;flex-wrap:wrap}
@@ -100,19 +99,55 @@
     .modal-box input{margin:10px 0;padding:12px;width:100%;background:#0a0f0a;border:1px solid #0f0;color:#fff;border-radius:10px;outline:none}
     .modal-box button{margin:10px 5px;padding:12px 25px}
 
-    /* ========== GAME SETTINGS SELECTORS (TIME & GOALS) ========== */
-    .game-settings {
-      display:flex; align-items:center; gap:15px; flex-wrap:wrap;
-      background:#0a1a0a; padding:10px 20px; border-radius:40px;
-      border:2px solid #00ff00; margin:5px 0;
+    /* ========== STYLED TIME & GOAL SELECTS ========== */
+    #timeSelect, #goalSelect {
+      background: #0a0f0a;
+      border: 2px solid #00ff00;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 30px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s ease;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300ff00' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+      min-width: 70px;
     }
-    .game-settings span { color:#fff; font-weight:bold; font-size:1.1rem; }
-    .game-settings select {
-      background:#111; color:#00ff00; border:2px solid #00ff00;
-      border-radius:30px; padding:10px 20px; font-size:1rem;
-      font-weight:bold; cursor:pointer; outline:none;
+    #timeSelect:hover, #goalSelect:hover {
+      border-color: #00f2ff;
+      box-shadow: 0 0 15px rgba(0,255,0,0.3);
+      background-color: #0d1a0d;
     }
-    .game-settings select:hover { background:#222; }
+    #timeSelect:focus, #goalSelect:focus {
+      border-color: #00f2ff;
+      box-shadow: 0 0 20px rgba(0,242,255,0.4);
+      background-color: #0d1a0d;
+    }
+    #timeSelect option, #goalSelect option {
+      background: #0a0f0a;
+      color: #fff;
+      padding: 8px;
+    }
+
+    /* ========== MAIN MENU BUTTON ========== */
+    .btn.main-menu {
+      border-color: #ffaa00;
+      color: #ffaa00;
+      background: #0d0800;
+    }
+    .btn.main-menu:hover {
+      background: #1a1000;
+      box-shadow: 0 0 18px rgba(255,170,0,0.55);
+      border-color: #ffcc00;
+      color: #ffcc00;
+    }
   </style>
 </head>
 <body>
@@ -166,9 +201,7 @@
         <div class="player-card"><div>🥅 PLAYER 1 (HOST)</div><div id="p1Name">—</div><div id="p1ReadyBadge" class="ready-badge">⚪ NOT READY</div></div>
         <div class="player-card"><div>🥅 PLAYER 2</div><div id="p2Name">—</div><div id="p2ReadyBadge" class="ready-badge">⚪ NOT READY</div></div>
       </div>
-
-      <!-- GAME SETTINGS (visible & functional) -->
-      <div class="game-settings">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <span>⏱️ Time (min):</span>
         <select id="timeSelect">
           <option value="2">2</option><option value="4">4</option><option value="6">6</option>
@@ -181,7 +214,6 @@
           <option value="10">10</option><option value="20">20</option><option value="30">30</option>
         </select>
       </div>
-
       <div id="chatMessages"><div>💬 Welcome! Chat here with your opponent.</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <input type="text" id="chatInput" class="input-field" placeholder="type a message..." style="flex:1;min-width:120px">
@@ -196,7 +228,7 @@
       <div style="display:flex;gap:20px;flex-wrap:wrap">
         <button class="btn" id="readyBtn">✅ I'M READY</button>
         <button class="btn secondary" id="leaveLobbyBtn">🚪 LEAVE</button>
-        <button class="btn menu-btn" id="menuBtn">🏠 MAIN MENU</button>
+        <button class="btn main-menu" id="lobbyMainMenuBtn">🏠 MAIN MENU</button>
       </div>
       <button id="rematchBtn" class="btn hidden">⚔️ REMATCH</button>
     </div>
@@ -206,7 +238,7 @@
       <div class="scoreboard"><span id="p1Score" style="color:#ff00ff">0</span><span>⚡</span><span id="p2Score" style="color:#00f2ff">0</span></div>
       <canvas id="gameCanvas" width="1000" height="500"></canvas>
       <button class="btn secondary" id="leaveGameBtn" style="align-self:center; margin:10px 0">🚪 LEAVE</button>
-      <button class="btn menu-btn" id="menuGameBtn" style="align-self:center; margin:5px 0;">🏠 MAIN MENU</button>
+      <button class="btn main-menu" id="gameMainMenuBtn" style="align-self:center; margin:5px 0 10px 0">🏠 MAIN MENU</button>
       <p style="color:#9f9;text-align:center;font-size:clamp(0.7rem,2vw,1rem)">P1: WASD+1 · P2: Arrows+Up · Hold Up+Shoot = Turbo</p>
 
       <div id="mobileControls">
@@ -243,6 +275,7 @@
   let lastInputStr, serverState, localPlayer, remotePlayer;
   let predictedX, predictedY, predictedVx, predictedVy;
   let ping = 0, reconnectAttempts = 0;
+  // goalFreeze variable no longer needed, but kept for compatibility – harmless
   let goalFreeze = false, countdownValue = -1, matchStatus = "waiting";
   let inputInterval, pingInterval;
   let roomPassword = "";
@@ -326,16 +359,6 @@
   rematchBtn.addEventListener('click', () => {
     if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); }
   });
-
-  // ==================== MAIN MENU BUTTONS ====================
-  document.getElementById('menuBtn').onclick = () => {
-    leaveRoom();
-    window.location.href = '/';
-  };
-  document.getElementById('menuGameBtn').onclick = () => {
-    leaveRoom();
-    window.location.href = '/';
-  };
 
   // ==================== MOBILE CONTROLS SETUP ====================
   function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
@@ -505,6 +528,7 @@
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
       } else if (ev.type === "MUSIC_NEXT") playNextTrack();
+      // FREEZE_END event removed – no longer needed
     });
     room.onMessage("chat", msg => {
       const div = document.createElement('div');
@@ -565,6 +589,7 @@
       if (localPlayer) {
         if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
+        // Smoother correction – only pull if error > 8, otherwise snap
         if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
           predictedX += dx * 0.15;
           predictedY += dy * 0.15;
@@ -578,6 +603,7 @@
     room.onError(() => handleDisconnect());
     room.onLeave(() => { if (gameActive) handleDisconnect(); });
 
+    // ✅ Send inputs at 60 Hz
     inputInterval = setInterval(() => {
       if (!room || !gameActive) return;
       const inp = getInput();
@@ -687,7 +713,13 @@
   document.getElementById('leaveLobbyBtn').onclick = leaveRoom;
   document.getElementById('leaveGameBtn').onclick = leaveRoom;
 
+  // ==================== MAIN MENU BUTTONS ====================
+  document.getElementById('lobbyMainMenuBtn').onclick = leaveRoom;
+  document.getElementById('gameMainMenuBtn').onclick = leaveRoom;
+
   function leaveRoom() {
+    bgMusic.pause();
+    bgMusic.currentTime = 0;
     if (room) room.leave();
     room = null; gameActive = false;
     if (inputInterval) clearInterval(inputInterval);
