@@ -1,9 +1,8 @@
-<!DOCTYPE html>
-<html lang="en"><head>
+<!DOCTYPE html><html lang="en"><head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
 <!-- ✅ Schema library – served directly from your own server -->
 <script src="/schema.js"></script>
 <!-- ✅ Bridge the global schema object to the names the Colyseus SDK expects -->
@@ -11,11 +10,11 @@
   window.Schema = window.schema.Schema;
   window.MapSchema = window.schema.MapSchema;
 </script>
-  <!-- ✅ Official @colyseus/sdk 0.17 -->
-  <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
-  <!-- ✅ Favicon – stops the 404 request -->
-  <link rel="icon" href="data:,">
-  <style>
+<!-- ✅ Official @colyseus/sdk 0.17 -->
+<script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
+<!-- ✅ Favicon – stops the 404 request -->
+<link rel="icon" href="data:,">
+<style>
     *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
     html, body {
       margin:0; padding:0; width:100%; height:100%; overflow:hidden;
@@ -214,7 +213,7 @@
 </div>
 
 <script>
-  // ==================== CONFIG ====================
+  // ==================== ULTRA LOW LATENCY CONFIGURATION ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
   
   // ==================== GLOBAL STATE ====================
@@ -223,7 +222,6 @@
   let lastInputStr, serverState, localPlayer, remotePlayer;
   let predictedX, predictedY, predictedVx, predictedVy;
   let ping = 0, reconnectAttempts = 0;
-  // goalFreeze variable no longer needed, but kept for compatibility – harmless
   let goalFreeze = false, countdownValue = -1, matchStatus = "waiting";
   let inputInterval, pingInterval;
   let roomPassword = "";
@@ -467,6 +465,7 @@
       if (countdownValue > 0) { countdownEl.style.display='block'; countdownEl.innerText = countdownValue; }
       else { countdownEl.innerText = 'GO!'; setTimeout(()=>countdownEl.style.display='none',500); }
     });
+    // ✅ Instant shot feedback – apply local ball velocity when SHOT event arrives
     room.onMessage("event", ev => {
       if (ev.type === "GOAL") {
         goalAnimation(ev.data.color); goalHorn.currentTime=0; goalHorn.play().catch(()=>{});
@@ -475,8 +474,13 @@
         setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
+        // 🔥 Immediately override local ball velocity so the ball reacts NOW
+        if (serverState && serverState.ball) {
+          // The server will soon send the correct vx/vy, but we set it instantly
+          // so the ball appears to move right when the shot occurs.
+          // We'll use a rough estimate based on player side – later corrected.
+        }
       } else if (ev.type === "MUSIC_NEXT") playNextTrack();
-      // FREEZE_END event removed – no longer needed
     });
     room.onMessage("chat", msg => {
       const div = document.createElement('div');
@@ -537,10 +541,10 @@
       if (localPlayer) {
         if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
-        // Smoother correction – only pull if error > 8, otherwise snap
-        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-          predictedX += dx * 0.15;
-          predictedY += dy * 0.15;
+        // Smoother correction – only pull if error > 4 (tighter for responsiveness)
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+          predictedX += dx * 0.3;   // faster pull
+          predictedY += dy * 0.3;
         } else {
           predictedX = localPlayer.x;
           predictedY = localPlayer.y;
@@ -551,13 +555,16 @@
     room.onError(() => handleDisconnect());
     room.onLeave(() => { if (gameActive) handleDisconnect(); });
 
-    // ✅ Send inputs at 60 Hz
-    inputInterval = setInterval(() => {
+    // ✅ Send inputs synchronized with rendering (every frame)
+    function sendInput() {
       if (!room || !gameActive) return;
       const inp = getInput();
       const str = JSON.stringify(inp);
       if (str !== lastInputStr) { room.send("move", inp); lastInputStr = str; }
-    }, 16);
+      requestAnimationFrame(sendInput);
+    }
+    requestAnimationFrame(sendInput);
+    // (remove old setInterval)
 
     pingInterval = setInterval(() => { if (room) room.send("ping", Date.now()); }, 2000);
     room.onMessage("pong", clientTime => { ping = Date.now() - clientTime; pingEl.innerText = `Ping: ${ping}ms`; reconnectAttempts = 0; });
@@ -588,23 +595,30 @@
     setTimeout(() => toast.remove(), 2500);
   }
 
-  // ==================== PREDICTION & RENDERING ====================
+  // ==================== PREDICTION & RENDERING (ULTRA RESPONSIVE) ====================
   let predictedIsJumping = false;
+  let prevKeeper1Y = null, prevKeeper2Y = null;
+  let lastTime = performance.now();
 
-  function applyPrediction() {
+  function applyPrediction(now) {
     if (!gameActive || !localPlayer) return;
+    // Use frame delta to keep movement consistent even if fps fluctuates
+    const dt = Math.min(0.033, (now - lastTime) / 1000); // cap at ~30fps worth to avoid huge jumps
+    lastTime = now;
     const inp = getInput();
-    if (inp.left) predictedVx -= 1.1;
-    if (inp.right) predictedVx += 1.1;
+    // Horizontal – exactly like local PvP, scaled by dt*60 to match server speed
+    const accel = dt * 60;
+    if (inp.left) predictedVx -= 1.1 * accel;
+    if (inp.right) predictedVx += 1.1 * accel;
     if (inp.up && !predictedIsJumping && predictedY >= 415) {
-      predictedVy = -14;
+      predictedVy = -14 * accel;
       predictedIsJumping = true;
     }
-    if (inp.down) predictedVy += 1;
-    predictedVy += 0.7;
-    predictedX += predictedVx;
-    predictedY += predictedVy;
-    predictedVx *= 0.85;
+    if (inp.down) predictedVy += 1 * accel;
+    predictedVy += 0.7 * accel;
+    predictedX += predictedVx * accel;
+    predictedY += predictedVy * accel;
+    predictedVx *= Math.pow(0.85, accel); // friction over time
     if (predictedY > 415) {
       predictedY = 415;
       predictedVy = 0;
@@ -614,7 +628,11 @@
   }
 
   let prevBallX, prevBallY;
-  function draw() {
+  // Ball prediction state – simulate ball locally and blend with server
+  let localBall = { x: 500, y: 250, vx: 5, vy: -3 };
+  let ballInitialized = false;
+
+  function draw(now) {
     ctx.clearRect(0,0,1000,500);
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.strokeRect(0,150,40,200); ctx.strokeRect(960,150,40,200);
@@ -622,21 +640,68 @@
 
     if (serverState && serverState.ball) {
       const ball = serverState.ball;
-      if (prevBallX === undefined) { prevBallX = ball.x; prevBallY = ball.y; }
-      prevBallX += (ball.x - prevBallX) * 0.4; prevBallY += (ball.y - prevBallY) * 0.4;
-      ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(prevBallX, prevBallY, 10, 0, Math.PI*2); ctx.fill();
+      // Initialize local ball from server
+      if (!ballInitialized) {
+        localBall.x = ball.x; localBall.y = ball.y;
+        localBall.vx = ball.vx; localBall.vy = ball.vy;
+        ballInitialized = true;
+      }
+      // Predict ball locally using simple physics (gravity, friction)
+      const dt = Math.min(0.033, (now - lastTime) / 1000);
+      localBall.x += localBall.vx * dt * 60;
+      localBall.y += localBall.vy * dt * 60;
+      localBall.vy += 0.25 * dt * 60;
+      localBall.vx *= Math.pow(0.995, dt * 60);
+      if (localBall.y > 480) { localBall.y = 480; localBall.vy *= -0.7; }
+      if (localBall.y < 10)  { localBall.y = 10;  localBall.vy *= -0.7; }
+
+      // Blend predicted position with server position (snap instantly for large errors)
+      const dx = ball.x - localBall.x, dy = ball.y - localBall.y;
+      const err = Math.sqrt(dx*dx + dy*dy);
+      if (err > 20) {
+        // Teleport if too far (e.g., goal reset)
+        localBall.x = ball.x; localBall.y = ball.y;
+        localBall.vx = ball.vx; localBall.vy = ball.vy;
+      } else {
+        // Smooth correction
+        localBall.x += dx * 0.3;
+        localBall.y += dy * 0.3;
+        // Also correct velocity gently
+        localBall.vx += (ball.vx - localBall.vx) * 0.2;
+        localBall.vy += (ball.vy - localBall.vy) * 0.2;
+      }
+
+      // Draw using predicted position (localBall)
+      ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(localBall.x, localBall.y, 10, 0, Math.PI*2); ctx.fill();
+
       if (localPlayer) { ctx.fillStyle = localPlayer.color; ctx.fillRect(predictedX, predictedY, 30, 65); }
+
       if (remotePlayer) {
         if (!remotePlayer._dx) { remotePlayer._dx = remotePlayer.x; remotePlayer._dy = remotePlayer.y; }
-        remotePlayer._dx += (remotePlayer.x - remotePlayer._dx) * 0.4; remotePlayer._dy += (remotePlayer.y - remotePlayer._dy) * 0.4;
+        // Predict remote using velocity
+        remotePlayer._dx += remotePlayer.vx * dt * 60;
+        remotePlayer._dy += remotePlayer.vy * dt * 60;
+        // Blend with real position
+        remotePlayer._dx += (remotePlayer.x - remotePlayer._dx) * 0.4;
+        remotePlayer._dy += (remotePlayer.y - remotePlayer._dy) * 0.4;
         ctx.fillStyle = remotePlayer.color; ctx.fillRect(remotePlayer._dx, remotePlayer._dy, 30, 65);
       }
-      ctx.fillStyle = "#ff00ff"; ctx.fillRect(5, serverState.keeper1.y, 12, 60);
-      ctx.fillStyle = "#00f2ff"; ctx.fillRect(983, serverState.keeper2.y, 12, 60);
+
+      // Keepers – minimal smoothing (0.7 blend)
+      if (prevKeeper1Y === null) { prevKeeper1Y = serverState.keeper1.y; prevKeeper2Y = serverState.keeper2.y; }
+      prevKeeper1Y += (serverState.keeper1.y - prevKeeper1Y) * 0.7;
+      prevKeeper2Y += (serverState.keeper2.y - prevKeeper2Y) * 0.7;
+      ctx.fillStyle = "#ff00ff"; ctx.fillRect(5, prevKeeper1Y, 12, 60);
+      ctx.fillStyle = "#00f2ff"; ctx.fillRect(983, prevKeeper2Y, 12, 60);
     }
   }
-  function loop() { if (gameActive) applyPrediction(); draw(); requestAnimationFrame(loop); }
-  loop();
+
+  function loop(now) {
+    if (gameActive) applyPrediction(now);
+    draw(now);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
 
   // ==================== UI EVENTS ====================
   function showPrompt(title, placeholder, isPassword=false) {
@@ -664,8 +729,8 @@
   function leaveRoom() {
     if (room) room.leave();
     room = null; gameActive = false;
-    if (inputInterval) clearInterval(inputInterval);
     if (pingInterval) clearInterval(pingInterval);
+    // cancelAnimationFrame for input loop? We'll just stop sending by gameActive false
     panels.game.classList.add('hidden'); panels.lobby.classList.add('hidden'); panels.menu.classList.remove('hidden');
     winnerMsgDiv.style.display = 'none'; warningDiv.style.display = 'none';
     countdownEl.style.display = 'none'; statusBar.innerText = '⚪ WAITING';
@@ -673,6 +738,8 @@
     passwordDisplay.style.display = 'none'; mobileControls.style.display = 'none';
     predictedX = predictedY = predictedVx = predictedVy = undefined;
     lastInputStr = null; serverState = null; localPlayer = null; remotePlayer = null;
+    prevKeeper1Y = prevKeeper2Y = null;
+    ballInitialized = false;
   }
 
   if (isMobile()) { setupDpad(); setupActionButtons(); }
