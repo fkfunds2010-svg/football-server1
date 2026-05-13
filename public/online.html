@@ -40,7 +40,6 @@
     .btn{background:#111;border:2px solid #00ff00;border-radius:60px;padding:clamp(8px,2vw,14px) clamp(16px,4vw,28px);font-size:clamp(0.9rem,2.5vw,1.2rem);font-weight:bold;color:#00ff00;cursor:pointer;text-transform:uppercase;transition:0.2s;white-space:nowrap}
     .btn:disabled{opacity:0.5;pointer-events:none}
     .btn.secondary{border-color:#00f2ff;color:#00f2ff}
-    .btn.menu-btn{border-color:#ffcc00;color:#ffcc00;}
     .input-field{background:#0a0f0a;border:2px solid #00ff00;border-radius:40px;padding:14px 24px;color:#fff;width:100%;outline:none;font-size:1rem}
     .room-info{background:#0a1a0a;padding:16px 24px;border-radius:40px;color:#cfc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
     .players-box{display:flex;gap:20px;flex-wrap:wrap}
@@ -82,13 +81,15 @@
       100% { box-shadow: 0 0 5px #00ff00; }
     }
 
-    /* ========== Mobile controls ========== */
-    #mobileControls { display:none; position:absolute; bottom:20px; left:0; right:0; justify-content:space-between; padding:0 20px; }
+    /* ========== MOBILE CONTROLS – LIGHT, NO HEAVY FILTERS ========== */
+    #mobileControls { display:none; position:absolute; bottom:20px; left:0; right:0; justify-content:space-between; padding:0 20px; z-index:60; }
     .dpad { display:grid; grid-template-columns:60px 60px 60px; grid-template-rows:60px 60px 60px; gap:2px; justify-content:center; align-items:center; }
-    .dpad button { width:60px; height:60px; background:rgba(255,255,255,0.15); border:2px solid #0f0; border-radius:10px; font-size:24px; color:#0f0; display:flex; align-items:center; justify-content:center; }
+    .dpad button { width:60px; height:60px; background:rgba(255,255,255,0.12); border:1px solid #0f0; border-radius:10px; font-size:24px; color:#0f0; display:flex; align-items:center; justify-content:center; }
     .action-buttons { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
-    #shootBtn, #turboBtn { width:80px; height:80px; background:rgba(255,255,255,0.15); border:2px solid #0f0; border-radius:50%; font-size:20px; font-weight:bold; color:#0f0; display:flex; align-items:center; justify-content:center; }
-    #turboBtn { width:60px; height:60px; font-size:16px; }
+    #shootBtn, #dashBtn, #turboShotBtn { width:80px; height:80px; border-radius:50%; font-size:16px; font-weight:bold; display:flex; align-items:center; justify-content:center; text-transform:uppercase; color:#fff; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.3); }
+    #shootBtn { border-color:rgba(255,100,100,0.6); color:#ffa0a0; }
+    #dashBtn { border-color:rgba(255,200,0,0.6); color:#ffd700; }
+    #turboShotBtn { border-color:rgba(255,0,255,0.6); color:#ff80ff; }
     .aim-indicator { position:absolute; background:rgba(255,255,0,0.3); border-radius:50%; pointer-events:none; transition:0.1s; }
     .shake{animation: shake 0.5s ease-in-out}
     @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-5px,10px)}50%{transform:translate(5px,-10px)}75%{transform:translate(-5px,-5px)}}
@@ -100,19 +101,52 @@
     .modal-box input{margin:10px 0;padding:12px;width:100%;background:#0a0f0a;border:1px solid #0f0;color:#fff;border-radius:10px;outline:none}
     .modal-box button{margin:10px 5px;padding:12px 25px}
 
-    /* ========== GAME SETTINGS SELECTORS (TIME & GOALS) ========== */
-    .game-settings {
-      display:flex; align-items:center; gap:15px; flex-wrap:wrap;
-      background:#0a1a0a; padding:10px 20px; border-radius:40px;
-      border:2px solid #00ff00; margin:5px 0;
+    /* ========== STYLED TIME & GOAL SELECTS ========== */
+    #timeSelect, #goalSelect {
+      background: #0a0f0a;
+      border: 2px solid #00ff00;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 30px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s ease;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300ff00' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+      min-width: 70px;
     }
-    .game-settings span { color:#fff; font-weight:bold; font-size:1.1rem; }
-    .game-settings select {
-      background:#111; color:#00ff00; border:2px solid #00ff00;
-      border-radius:30px; padding:10px 20px; font-size:1rem;
-      font-weight:bold; cursor:pointer; outline:none;
+    #timeSelect:hover, #goalSelect:hover {
+      border-color: #00f2ff;
+      background-color: #0d1a0d;
     }
-    .game-settings select:hover { background:#222; }
+    #timeSelect:focus, #goalSelect:focus {
+      border-color: #00f2ff;
+      background-color: #0d1a0d;
+    }
+    #timeSelect option, #goalSelect option {
+      background: #0a0f0a;
+      color: #fff;
+      padding: 8px;
+    }
+
+    /* ========== MAIN MENU BUTTON ========== */
+    .btn.main-menu {
+      border-color: #ffaa00;
+      color: #ffaa00;
+      background: #0d0800;
+    }
+    .btn.main-menu:hover {
+      background: #1a1000;
+      border-color: #ffcc00;
+      color: #ffcc00;
+    }
   </style>
 </head>
 <body>
@@ -166,9 +200,7 @@
         <div class="player-card"><div>🥅 PLAYER 1 (HOST)</div><div id="p1Name">—</div><div id="p1ReadyBadge" class="ready-badge">⚪ NOT READY</div></div>
         <div class="player-card"><div>🥅 PLAYER 2</div><div id="p2Name">—</div><div id="p2ReadyBadge" class="ready-badge">⚪ NOT READY</div></div>
       </div>
-
-      <!-- GAME SETTINGS (visible & functional) -->
-      <div class="game-settings">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <span>⏱️ Time (min):</span>
         <select id="timeSelect">
           <option value="2">2</option><option value="4">4</option><option value="6">6</option>
@@ -181,7 +213,6 @@
           <option value="10">10</option><option value="20">20</option><option value="30">30</option>
         </select>
       </div>
-
       <div id="chatMessages"><div>💬 Welcome! Chat here with your opponent.</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <input type="text" id="chatInput" class="input-field" placeholder="type a message..." style="flex:1;min-width:120px">
@@ -196,19 +227,22 @@
       <div style="display:flex;gap:20px;flex-wrap:wrap">
         <button class="btn" id="readyBtn">✅ I'M READY</button>
         <button class="btn secondary" id="leaveLobbyBtn">🚪 LEAVE</button>
-        <button class="btn menu-btn" id="menuBtn">🏠 MAIN MENU</button>
+        <button class="btn main-menu" id="lobbyMainMenuBtn">🏠 MAIN MENU</button>
       </div>
       <button id="rematchBtn" class="btn hidden">⚔️ REMATCH</button>
     </div>
 
-    <!-- GAME PANEL -->
+    <!-- GAME PANEL – original structure with mobile controls inside -->
     <div id="gamePanel" class="panel hidden" style="position:relative; flex:1; display:flex; flex-direction:column;">
       <div class="scoreboard"><span id="p1Score" style="color:#ff00ff">0</span><span>⚡</span><span id="p2Score" style="color:#00f2ff">0</span></div>
       <canvas id="gameCanvas" width="1000" height="500"></canvas>
-      <button class="btn secondary" id="leaveGameBtn" style="align-self:center; margin:10px 0">🚪 LEAVE</button>
-      <button class="btn menu-btn" id="menuGameBtn" style="align-self:center; margin:5px 0;">🏠 MAIN MENU</button>
-      <p style="color:#9f9;text-align:center;font-size:clamp(0.7rem,2vw,1rem)">P1: WASD+1 · P2: Arrows+Up · Hold Up+Shoot = Turbo</p>
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:8px 0;">
+        <button class="btn secondary" id="leaveGameBtn">🚪 LEAVE</button>
+        <button class="btn main-menu" id="gameMainMenuBtn">🏠 MAIN MENU</button>
+      </div>
+      <p style="color:#9f9;text-align:center;font-size:clamp(0.7rem,2vw,1rem); margin:0 0 5px;">P1: WASD+1 · P2: Arrows+Up · Hold Up+Shoot = Turbo</p>
 
+      <!-- Mobile controls: D‑pad + three circular action buttons -->
       <div id="mobileControls">
         <div class="dpad">
           <div></div> <button id="btnUp">▲</button> <div></div>
@@ -216,8 +250,9 @@
           <div></div> <button id="btnDown">▼</button> <div></div>
         </div>
         <div class="action-buttons">
-          <button id="turboBtn">⚡ TURBO</button>
-          <button id="shootBtn">⚽ SHOOT</button>
+          <button id="shootBtn">⚽<br>SHOT</button>
+          <button id="dashBtn">💨<br>DASH</button>
+          <button id="turboShotBtn">🚀<br>TURBO<br>SHOT</button>
         </div>
         <div id="aimIndicator" class="aim-indicator" style="display:none;"></div>
       </div>
@@ -272,11 +307,10 @@
   const aimIndicator = document.getElementById('aimIndicator');
   const chatMessages = document.getElementById('chatMessages');
 
-  // Game settings selectors
   const timeSelect = document.getElementById('timeSelect');
   const goalSelect = document.getElementById('goalSelect');
 
-  // 🎵 Music Playlist (local files)
+  // 🎵 Music Playlist
   const playlist = ['/1.mp3', '/3.mp3', '/4.mp3', '/5.mp3'];
   let currentTrack = 0;
   const bgMusic = document.getElementById('bgMusic');
@@ -322,24 +356,10 @@
     });
   });
 
-  // Rematch button listener
-  rematchBtn.addEventListener('click', () => {
-    if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); }
-  });
-
-  // ==================== MAIN MENU BUTTONS ====================
-  document.getElementById('menuBtn').onclick = () => {
-    leaveRoom();
-    window.location.href = '/';
-  };
-  document.getElementById('menuGameBtn').onclick = () => {
-    leaveRoom();
-    window.location.href = '/';
-  };
-
   // ==================== MOBILE CONTROLS SETUP ====================
   function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
   function showMobileControls() { if (isMobile()) mobileControls.style.display = 'flex'; }
+
   function setupDpad() {
     const btnUp = document.getElementById('btnUp');
     const btnDown = document.getElementById('btnDown');
@@ -355,9 +375,13 @@
     btnRight.addEventListener('touchstart', e => { e.preventDefault(); setTouchDir('right', true); });
     btnRight.addEventListener('touchend', e => { e.preventDefault(); setTouchDir('right', false); });
   }
+
   function setupActionButtons() {
     const shootBtn = document.getElementById('shootBtn');
-    const turboBtn = document.getElementById('turboBtn');
+    const dashBtn = document.getElementById('dashBtn');
+    const turboShotBtn = document.getElementById('turboShotBtn');
+
+    // Original aiming logic for shoot button
     shootBtn.addEventListener('touchstart', e => {
       e.preventDefault(); aimMode = true; shootPressed = true;
       const touch = e.touches[0]; aimStartX = touch.clientX; aimStartY = touch.clientY;
@@ -374,9 +398,24 @@
       e.preventDefault(); aimMode = false; shootPressed = false;
       aimIndicator.style.display = 'none';
     });
-    turboBtn.addEventListener('touchstart', e => { e.preventDefault(); turboPressed = true; });
-    turboBtn.addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
+
+    // Dash button – turbo only
+    dashBtn.addEventListener('touchstart', e => { e.preventDefault(); turboPressed = true; });
+    dashBtn.addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
+
+    // Turbo shot button – shoot + turbo together
+    turboShotBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      shootPressed = true;
+      turboPressed = true;
+    });
+    turboShotBtn.addEventListener('touchend', e => {
+      e.preventDefault();
+      shootPressed = false;
+      turboPressed = false;
+    });
   }
+
   function getTouchInput() {
     return {
       left: touchDir.left, right: touchDir.right, up: touchDir.up, down: touchDir.down,
@@ -470,10 +509,8 @@
 
   function setupRoom() {
     if (room._handlersSet) return; room._handlersSet = true;
-
     chatMessages.innerHTML = '<div>💬 Welcome! Chat here with your opponent.</div>';
 
-    // Listeners
     room.onMessage("playerNames", data => {
       document.getElementById('p1Name').innerText = data.p1;
       document.getElementById('p2Name').innerText = data.p2;
@@ -558,7 +595,6 @@
         if (sid === room.sessionId) localPlayer = p;
         else remotePlayer = p;
       });
-
       document.getElementById('p1Score').innerText = state.p1Score;
       document.getElementById('p2Score').innerText = state.p2Score;
 
@@ -616,7 +652,6 @@
 
   // ==================== PREDICTION & RENDERING ====================
   let predictedIsJumping = false;
-
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
@@ -645,7 +680,6 @@
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.strokeRect(0,150,40,200); ctx.strokeRect(960,150,40,200);
     ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
-
     if (serverState && serverState.ball) {
       const ball = serverState.ball;
       if (prevBallX === undefined) { prevBallX = ball.x; prevBallY = ball.y; }
@@ -687,7 +721,21 @@
   document.getElementById('leaveLobbyBtn').onclick = leaveRoom;
   document.getElementById('leaveGameBtn').onclick = leaveRoom;
 
+  // ==================== MAIN MENU BUTTONS → REDIRECT TO INDEX.HTML ====================
+  function goToMainMenu() {
+    if (room) { room.leave(); room = null; }
+    if (inputInterval) clearInterval(inputInterval);
+    if (pingInterval) clearInterval(pingInterval);
+    inputInterval = pingInterval = null;
+    gameActive = false;
+    window.location.href = 'index.html';
+  }
+  document.getElementById('lobbyMainMenuBtn').onclick = goToMainMenu;
+  document.getElementById('gameMainMenuBtn').onclick = goToMainMenu;
+
   function leaveRoom() {
+    bgMusic.pause();
+    bgMusic.currentTime = 0;
     if (room) room.leave();
     room = null; gameActive = false;
     if (inputInterval) clearInterval(inputInterval);
