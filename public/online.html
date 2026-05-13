@@ -713,9 +713,24 @@
   document.getElementById('leaveLobbyBtn').onclick = leaveRoom;
   document.getElementById('leaveGameBtn').onclick = leaveRoom;
 
-  // ==================== MAIN MENU BUTTONS ====================
-  document.getElementById('lobbyMainMenuBtn').onclick = leaveRoom;
-  document.getElementById('gameMainMenuBtn').onclick = leaveRoom;
+  // ==================== MAIN MENU BUTTONS → REDIRECT TO INDEX.HTML ====================
+  function goToMainMenu() {
+    // leave the room first if we are connected
+    if (room) {
+      room.leave();
+      room = null;
+    }
+    // clear intervals
+    if (inputInterval) clearInterval(inputInterval);
+    if (pingInterval) clearInterval(pingInterval);
+    inputInterval = pingInterval = null;
+    gameActive = false;
+    // redirect to the main site menu
+    window.location.href = 'index.html';
+  }
+
+  document.getElementById('lobbyMainMenuBtn').onclick = goToMainMenu;
+  document.getElementById('gameMainMenuBtn').onclick = goToMainMenu;
 
   function leaveRoom() {
     bgMusic.pause();
