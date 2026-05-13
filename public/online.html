@@ -46,8 +46,7 @@
     .player-card{background:#132013;border-radius:30px;padding:16px;flex:1;min-width:150px;text-align:center;border:2px solid #00ff00;color:white}
     .ready-badge{background:#444;padding:6px 18px;border-radius:30px}
     .ready-badge.ready{background:#2e9a6e}
-    canvas{background:radial-gradient(circle,#1a2b1a 0%,#051005 100%);border:4px solid #00ff00;border-radius:20px;width:100%;aspect-ratio:2/1;touch-action:none;display:block;
-           transform:translateZ(0); will-change:transform;}
+    canvas{background:radial-gradient(circle,#1a2b1a 0%,#051005 100%);border:4px solid #00ff00;border-radius:20px;width:100%;aspect-ratio:2/1;touch-action:none;display:block}
     .scoreboard{display:flex;justify-content:space-between;font-size:clamp(1.5rem,5vw,3rem);color:#fff;text-shadow:0 0 20px #00f2ff;padding:0 20px}
     #goalBanner{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:clamp(3rem,10vw,100px);color:#fff;text-shadow:0 0 30px #00ff00;transition:0.3s;z-index:100;pointer-events:none}
     #goalBanner.show{transform:translate(-50%,-50%) scale(1)}
@@ -279,8 +278,7 @@
   let lastInputStr, serverState, localPlayer, remotePlayer;
   let predictedX, predictedY, predictedVx, predictedVy;
   let ping = 0, reconnectAttempts = 0;
-  let goalFreeze removed; // Removed – not needed
-  let countdownValue = -1, matchStatus = "waiting";
+  let goalFreeze = false, countdownValue = -1, matchStatus = "waiting";
   let inputInterval, pingInterval;
   let roomPassword = "";
   let selectedRegion = "europe";
@@ -296,16 +294,6 @@
     lobby: document.getElementById('lobbyPanel'), game: document.getElementById('gamePanel')
   };
   const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
-  // ===== FPS STABILIZER =====
-  let lastFrame = performance.now();
-
-  function fpsDelta() {
-    const now = performance.now();
-    const delta = (now - lastFrame) / 16.666;
-    lastFrame = now;
-    return Math.min(delta, 2);
-  }
-
   const goalHorn = document.getElementById('goalHorn');
   const commentaryDiv = document.getElementById('commentary'), goalBanner = document.getElementById('goalBanner');
   const warningDiv = document.getElementById('warning'), winnerMsgDiv = document.getElementById('winnerMsg');
@@ -483,7 +471,6 @@
     const targetGoals = parseInt(goalSelect.value) || 10;
     selectedRegion = regionSelect.value;
     client = new Colyseus.Client(SERVER_URL);
-    client.connectionTimeout = 10000;   // ===== NETWORK OPTIMIZATION =====
     try {
       room = await client.create("football", {
         password: pass,
@@ -507,7 +494,6 @@
     if (!code) return;
     const options = pass ? { password: pass } : {};
     client = new Colyseus.Client(SERVER_URL);
-    client.connectionTimeout = 10000;   // ===== NETWORK OPTIMIZATION =====
     try {
       room = await client.joinById(code, options);
       amIHost = false; myPlayerId = 'p2';
@@ -549,10 +535,6 @@
     });
     room.onMessage("event", ev => {
       if (ev.type === "GOAL") {
-        // ===== FIX BALL TELEPORT ON GOAL =====
-        prevBallX = 500;
-        prevBallY = 250;
-
         goalAnimation(ev.data.color); goalHorn.currentTime=0; goalHorn.play().catch(()=>{});
         comment(ev.data.scorer==='p1'?"GOAL! PLAYER 1 SCORES!":"GOAL! PLAYER 2 SCORES!",ev.data.color);
         document.getElementById('app').classList.add('shake');
@@ -618,7 +600,6 @@
 
       if (localPlayer) {
         if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
-        // Keep original server reconciliation here as a safety net (the prediction loop also reconciles)
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
         if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
           predictedX += dx * 0.15;
@@ -633,23 +614,12 @@
     room.onError(() => handleDisconnect());
     room.onLeave(() => { if (gameActive) handleDisconnect(); });
 
-    // ===== ULTRA LOW LATENCY INPUT (60Hz) =====
     inputInterval = setInterval(() => {
-
-      if (!room) return;
-
+      if (!room || !gameActive) return;
       const inp = getInput();
-
-      room.send("move", {
-        left: inp.left,
-        right: inp.right,
-        up: inp.up,
-        down: inp.down,
-        shoot: inp.shoot,
-        turbo: inp.turbo
-      });
-
-    }, 1000 / 60);
+      const str = JSON.stringify(inp);
+      if (str !== lastInputStr) { room.send("move", inp); lastInputStr = str; }
+    }, 16);
 
     pingInterval = setInterval(() => { if (room) room.send("ping", Date.now()); }, 2000);
     room.onMessage("pong", clientTime => { ping = Date.now() - clientTime; pingEl.innerText = `Ping: ${ping}ms`; reconnectAttempts = 0; });
@@ -683,51 +653,25 @@
   // ==================== PREDICTION & RENDERING ====================
   let predictedIsJumping = false;
   function applyPrediction() {
-
     if (!gameActive || !localPlayer) return;
-
     const inp = getInput();
-
-    // ===== MOVEMENT =====
     if (inp.left) predictedVx -= 1.1;
     if (inp.right) predictedVx += 1.1;
-
-    // ===== JUMP =====
     if (inp.up && !predictedIsJumping && predictedY >= 415) {
       predictedVy = -14;
       predictedIsJumping = true;
     }
-
-    if (inp.down) {
-      predictedVy += 1;
-    }
-
-    // ===== GRAVITY =====
+    if (inp.down) predictedVy += 1;
     predictedVy += 0.7;
-
-    // ===== APPLY =====
     predictedX += predictedVx;
     predictedY += predictedVy;
-
-    // ===== FRICTION =====
     predictedVx *= 0.85;
-
-    // ===== FLOOR =====
     if (predictedY > 415) {
       predictedY = 415;
       predictedVy = 0;
       predictedIsJumping = false;
     }
-
-    // ===== LIMITS =====
-    predictedX = Math.max(40, Math.min(930, predictedX));
-
-    // ===== SERVER RECONCILIATION =====
-    const snapX = localPlayer.x - predictedX;
-    const snapY = localPlayer.y - predictedY;
-
-    predictedX += snapX * 0.18;
-    predictedY += snapY * 0.18;
+    predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
   let prevBallX, prevBallY;
@@ -739,9 +683,7 @@
     if (serverState && serverState.ball) {
       const ball = serverState.ball;
       if (prevBallX === undefined) { prevBallX = ball.x; prevBallY = ball.y; }
-      // ===== SMOOTH BALL (faster interpolation) =====
-      prevBallX += (ball.x - prevBallX) * 0.65;
-      prevBallY += (ball.y - prevBallY) * 0.65;
+      prevBallX += (ball.x - prevBallX) * 0.4; prevBallY += (ball.y - prevBallY) * 0.4;
       ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(prevBallX, prevBallY, 10, 0, Math.PI*2); ctx.fill();
       if (localPlayer) { ctx.fillStyle = localPlayer.color; ctx.fillRect(predictedX, predictedY, 30, 65); }
       if (remotePlayer) {
@@ -753,24 +695,7 @@
       ctx.fillStyle = "#00f2ff"; ctx.fillRect(983, serverState.keeper2.y, 12, 60);
     }
   }
-
-  // ===== FPS-INDEPENDENT GAME LOOP =====
-  function loop() {
-
-    const delta = fpsDelta();
-
-    if (gameActive) {
-
-      for (let i = 0; i < delta; i++) {
-        applyPrediction();
-      }
-
-    }
-
-    draw();
-
-    requestAnimationFrame(loop);
-  }
+  function loop() { if (gameActive) applyPrediction(); draw(); requestAnimationFrame(loop); }
   loop();
 
   // ==================== UI EVENTS ====================
