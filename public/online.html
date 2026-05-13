@@ -1,8 +1,9 @@
-<!DOCTYPE html><html lang="en"><head>
+<!DOCTYPE html>
+<html lang="en"><head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
 <!-- ✅ Schema library – served directly from your own server -->
 <script src="/schema.js"></script>
 <!-- ✅ Bridge the global schema object to the names the Colyseus SDK expects -->
@@ -10,11 +11,11 @@
   window.Schema = window.schema.Schema;
   window.MapSchema = window.schema.MapSchema;
 </script>
-<!-- ✅ Official @colyseus/sdk 0.17 -->
-<script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
-<!-- ✅ Favicon – stops the 404 request -->
-<link rel="icon" href="data:,">
-<style>
+  <!-- ✅ Official @colyseus/sdk 0.17 -->
+  <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
+  <!-- ✅ Favicon – stops the 404 request -->
+  <link rel="icon" href="data:,">
+  <style>
     *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
     html, body {
       margin:0; padding:0; width:100%; height:100%; overflow:hidden;
@@ -72,7 +73,7 @@
     #sendChatBtn { background: #00ff00; color: #000; font-weight: bold; }
     #chatInput { font-size: 1.2rem; padding: 14px 20px; }
 
-    /* ========== SENT NOTIFICATION RIPPLE ========== */
+    /* ========== SENT NOTIFICATION RIPPLE (only when a message arrives) ========== */
     .sent-flash { animation: flashGreen 0.4s ease; }
     @keyframes flashGreen {
       0% { box-shadow: 0 0 5px #00ff00; }
@@ -80,13 +81,15 @@
       100% { box-shadow: 0 0 5px #00ff00; }
     }
 
-    /* ========== Mobile controls ========== */
+    /* ========== Mobile controls – minimal, no heavy CSS ========== */
     #mobileControls { display:none; position:absolute; bottom:20px; left:0; right:0; justify-content:space-between; padding:0 20px; }
     .dpad { display:grid; grid-template-columns:60px 60px 60px; grid-template-rows:60px 60px 60px; gap:2px; justify-content:center; align-items:center; }
-    .dpad button { width:60px; height:60px; background:rgba(255,255,255,0.15); border:2px solid #0f0; border-radius:10px; font-size:24px; color:#0f0; display:flex; align-items:center; justify-content:center; }
+    .dpad button { width:60px; height:60px; background:rgba(255,255,255,0.12); border:2px solid #0f0; border-radius:10px; font-size:24px; color:#0f0; display:flex; align-items:center; justify-content:center; }
     .action-buttons { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
-    #shootBtn, #turboBtn { width:80px; height:80px; background:rgba(255,255,255,0.15); border:2px solid #0f0; border-radius:50%; font-size:20px; font-weight:bold; color:#0f0; display:flex; align-items:center; justify-content:center; }
-    #turboBtn { width:60px; height:60px; font-size:16px; }
+    #shootBtn, #dashBtn, #turboShotBtn { width:80px; height:80px; border:2px solid #0f0; border-radius:50%; font-size:16px; font-weight:bold; display:flex; align-items:center; justify-content:center; text-transform:uppercase; color:#fff; background:rgba(255,255,255,0.08); }
+    #shootBtn { border-color: #ff6464; color:#ffa0a0; }
+    #dashBtn { border-color: #ffd700; color:#ffd700; }
+    #turboShotBtn { border-color: #ff80ff; color:#ff80ff; }
     .aim-indicator { position:absolute; background:rgba(255,255,0,0.3); border-radius:50%; pointer-events:none; transition:0.1s; }
     .shake{animation: shake 0.5s ease-in-out}
     @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-5px,10px)}50%{transform:translate(5px,-10px)}75%{transform:translate(-5px,-5px)}}
@@ -97,6 +100,53 @@
     .modal-box h2{margin:0 0 15px}
     .modal-box input{margin:10px 0;padding:12px;width:100%;background:#0a0f0a;border:1px solid #0f0;color:#fff;border-radius:10px;outline:none}
     .modal-box button{margin:10px 5px;padding:12px 25px}
+
+    /* ========== STYLED TIME & GOAL SELECTS (light, no filter) ========== */
+    #timeSelect, #goalSelect {
+      background: #0a0f0a;
+      border: 2px solid #00ff00;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 30px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.2s, border-color 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300ff00' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+      min-width: 70px;
+    }
+    #timeSelect:hover, #goalSelect:hover {
+      border-color: #00f2ff;
+      background-color: #0d1a0d;
+    }
+    #timeSelect:focus, #goalSelect:focus {
+      border-color: #00f2ff;
+      background-color: #0d1a0d;
+    }
+    #timeSelect option, #goalSelect option {
+      background: #0a0f0a;
+      color: #fff;
+      padding: 8px;
+    }
+
+    /* ========== MAIN MENU BUTTON (simple, no shadow) ========== */
+    .btn.main-menu {
+      border-color: #ffaa00;
+      color: #ffaa00;
+      background: #0d0800;
+    }
+    .btn.main-menu:hover {
+      background: #1a1000;
+      border-color: #ffcc00;
+      color: #ffcc00;
+    }
   </style>
 </head>
 <body>
@@ -152,14 +202,14 @@
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <span>⏱️ Time (min):</span>
-        <select id="timeSelect" style="color:#fff; background:#0a0f0a; border:1px solid #0f0; padding:5px 10px; border-radius:10px;">
+        <select id="timeSelect">
           <option value="2">2</option><option value="4">4</option><option value="6">6</option>
           <option value="8">8</option><option value="10">10</option><option value="12">12</option>
           <option value="14">14</option><option value="16">16</option><option value="18">18</option>
           <option value="20">20</option>
         </select>
         <span>⚽ First to:</span>
-        <select id="goalSelect" style="color:#fff; background:#0a0f0a; border:1px solid #0f0; padding:5px 10px; border-radius:10px;">
+        <select id="goalSelect">
           <option value="10">10</option><option value="20">20</option><option value="30">30</option>
         </select>
       </div>
@@ -177,6 +227,7 @@
       <div style="display:flex;gap:20px;flex-wrap:wrap">
         <button class="btn" id="readyBtn">✅ I'M READY</button>
         <button class="btn secondary" id="leaveLobbyBtn">🚪 LEAVE</button>
+        <button class="btn main-menu" id="lobbyMainMenuBtn">🏠 MAIN MENU</button>
       </div>
       <button id="rematchBtn" class="btn hidden">⚔️ REMATCH</button>
     </div>
@@ -186,8 +237,10 @@
       <div class="scoreboard"><span id="p1Score" style="color:#ff00ff">0</span><span>⚡</span><span id="p2Score" style="color:#00f2ff">0</span></div>
       <canvas id="gameCanvas" width="1000" height="500"></canvas>
       <button class="btn secondary" id="leaveGameBtn" style="align-self:center; margin:10px 0">🚪 LEAVE</button>
+      <button class="btn main-menu" id="gameMainMenuBtn" style="align-self:center; margin:5px 0 10px 0">🏠 MAIN MENU</button>
       <p style="color:#9f9;text-align:center;font-size:clamp(0.7rem,2vw,1rem)">P1: WASD+1 · P2: Arrows+Up · Hold Up+Shoot = Turbo</p>
 
+      <!-- Mobile controls: D‑pad + three circular action buttons -->
       <div id="mobileControls">
         <div class="dpad">
           <div></div> <button id="btnUp">▲</button> <div></div>
@@ -195,8 +248,9 @@
           <div></div> <button id="btnDown">▼</button> <div></div>
         </div>
         <div class="action-buttons">
-          <button id="turboBtn">⚡ TURBO</button>
-          <button id="shootBtn">⚽ SHOOT</button>
+          <button id="shootBtn">⚽<br>SHOT</button>
+          <button id="dashBtn">💨<br>DASH</button>
+          <button id="turboShotBtn">🚀<br>TURBO<br>SHOT</button>
         </div>
         <div id="aimIndicator" class="aim-indicator" style="display:none;"></div>
       </div>
@@ -222,6 +276,7 @@
   let lastInputStr, serverState, localPlayer, remotePlayer;
   let predictedX, predictedY, predictedVx, predictedVy;
   let ping = 0, reconnectAttempts = 0;
+  // goalFreeze variable no longer needed, but kept for compatibility – harmless
   let goalFreeze = false, countdownValue = -1, matchStatus = "waiting";
   let inputInterval, pingInterval;
   let roomPassword = "";
@@ -326,7 +381,10 @@
   }
   function setupActionButtons() {
     const shootBtn = document.getElementById('shootBtn');
-    const turboBtn = document.getElementById('turboBtn');
+    const dashBtn = document.getElementById('dashBtn');
+    const turboShotBtn = document.getElementById('turboShotBtn');
+
+    // Shoot button with aiming
     shootBtn.addEventListener('touchstart', e => {
       e.preventDefault(); aimMode = true; shootPressed = true;
       const touch = e.touches[0]; aimStartX = touch.clientX; aimStartY = touch.clientY;
@@ -343,9 +401,24 @@
       e.preventDefault(); aimMode = false; shootPressed = false;
       aimIndicator.style.display = 'none';
     });
-    turboBtn.addEventListener('touchstart', e => { e.preventDefault(); turboPressed = true; });
-    turboBtn.addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
+
+    // Dash button – turbo only
+    dashBtn.addEventListener('touchstart', e => { e.preventDefault(); turboPressed = true; });
+    dashBtn.addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
+
+    // Turbo shot button – shoot + turbo together
+    turboShotBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      shootPressed = true;
+      turboPressed = true;
+    });
+    turboShotBtn.addEventListener('touchend', e => {
+      e.preventDefault();
+      shootPressed = false;
+      turboPressed = false;
+    });
   }
+
   function getTouchInput() {
     return {
       left: touchDir.left, right: touchDir.right, up: touchDir.up, down: touchDir.down,
@@ -471,15 +544,10 @@
         comment(ev.data.scorer==='p1'?"GOAL! PLAYER 1 SCORES!":"GOAL! PLAYER 2 SCORES!",ev.data.color);
         document.getElementById('app').classList.add('shake');
         setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
-        // Snap ball instantly to centre
-        if (serverState && serverState.ball) {
-          serverState.ball.x = 500; serverState.ball.y = 250;
-          serverState.ball.vx = 0; serverState.ball.vy = 0;
-          prevBallX = 500; prevBallY = 250;
-        }
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
       } else if (ev.type === "MUSIC_NEXT") playNextTrack();
+      // FREEZE_END event removed – no longer needed
     });
     room.onMessage("chat", msg => {
       const div = document.createElement('div');
@@ -540,21 +608,21 @@
       if (localPlayer) {
         if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
-        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
-          predictedX += dx * 0.5;
-          predictedY += dy * 0.5;
+        // Smoother correction – only pull if error > 8, otherwise snap
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+          predictedX += dx * 0.15;
+          predictedY += dy * 0.15;
         } else {
           predictedX = localPlayer.x;
           predictedY = localPlayer.y;
         }
         predictedVx = localPlayer.vx; predictedVy = localPlayer.vy;
-        predictedIsJumping = localPlayer.isJumping;
       }
     });
     room.onError(() => handleDisconnect());
     room.onLeave(() => { if (gameActive) handleDisconnect(); });
 
-    // ✅ Send inputs at 60 Hz (rock‑solid setInterval)
+    // ✅ Send inputs at 60 Hz
     inputInterval = setInterval(() => {
       if (!room || !gameActive) return;
       const inp = getInput();
@@ -591,14 +659,12 @@
     setTimeout(() => toast.remove(), 2500);
   }
 
-  // ==================== PREDICTION & RENDERING (ULTRA STABLE) ====================
+  // ==================== PREDICTION & RENDERING ====================
   let predictedIsJumping = false;
-  let prevKeeper1Y = null, prevKeeper2Y = null;
 
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
-    // Server-identical physics
     if (inp.left) predictedVx -= 1.1;
     if (inp.right) predictedVx += 1.1;
     if (inp.up && !predictedIsJumping && predictedY >= 415) {
@@ -618,9 +684,7 @@
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
-  // Ball rendering – simple velocity prediction, no local physics
   let prevBallX, prevBallY;
-
   function draw() {
     ctx.clearRect(0,0,1000,500);
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
@@ -630,38 +694,19 @@
     if (serverState && serverState.ball) {
       const ball = serverState.ball;
       if (prevBallX === undefined) { prevBallX = ball.x; prevBallY = ball.y; }
-      // Predict one frame ahead using velocity
-      prevBallX += ball.vx * 0.016 * 60;
-      prevBallY += ball.vy * 0.016 * 60;
-      // Blend with real position (60% real, 40% predicted)
-      prevBallX += (ball.x - prevBallX) * 0.6;
-      prevBallY += (ball.y - prevBallY) * 0.6;
+      prevBallX += (ball.x - prevBallX) * 0.4; prevBallY += (ball.y - prevBallY) * 0.4;
       ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(prevBallX, prevBallY, 10, 0, Math.PI*2); ctx.fill();
-
       if (localPlayer) { ctx.fillStyle = localPlayer.color; ctx.fillRect(predictedX, predictedY, 30, 65); }
-
       if (remotePlayer) {
         if (!remotePlayer._dx) { remotePlayer._dx = remotePlayer.x; remotePlayer._dy = remotePlayer.y; }
-        remotePlayer._dx += remotePlayer.vx * 0.016 * 60;
-        remotePlayer._dy += remotePlayer.vy * 0.016 * 60;
-        remotePlayer._dx += (remotePlayer.x - remotePlayer._dx) * 0.4;
-        remotePlayer._dy += (remotePlayer.y - remotePlayer._dy) * 0.4;
+        remotePlayer._dx += (remotePlayer.x - remotePlayer._dx) * 0.4; remotePlayer._dy += (remotePlayer.y - remotePlayer._dy) * 0.4;
         ctx.fillStyle = remotePlayer.color; ctx.fillRect(remotePlayer._dx, remotePlayer._dy, 30, 65);
       }
-
-      if (prevKeeper1Y === null) { prevKeeper1Y = serverState.keeper1.y; prevKeeper2Y = serverState.keeper2.y; }
-      prevKeeper1Y += (serverState.keeper1.y - prevKeeper1Y) * 0.7;
-      prevKeeper2Y += (serverState.keeper2.y - prevKeeper2Y) * 0.7;
-      ctx.fillStyle = "#ff00ff"; ctx.fillRect(5, prevKeeper1Y, 12, 60);
-      ctx.fillStyle = "#00f2ff"; ctx.fillRect(983, prevKeeper2Y, 12, 60);
+      ctx.fillStyle = "#ff00ff"; ctx.fillRect(5, serverState.keeper1.y, 12, 60);
+      ctx.fillStyle = "#00f2ff"; ctx.fillRect(983, serverState.keeper2.y, 12, 60);
     }
   }
-
-  function loop() {
-    if (gameActive) applyPrediction();
-    draw();
-    requestAnimationFrame(loop);
-  }
+  function loop() { if (gameActive) applyPrediction(); draw(); requestAnimationFrame(loop); }
   loop();
 
   // ==================== UI EVENTS ====================
@@ -687,7 +732,28 @@
   document.getElementById('leaveLobbyBtn').onclick = leaveRoom;
   document.getElementById('leaveGameBtn').onclick = leaveRoom;
 
+  // ==================== MAIN MENU BUTTONS → REDIRECT TO INDEX.HTML ====================
+  function goToMainMenu() {
+    // leave the room first if we are connected
+    if (room) {
+      room.leave();
+      room = null;
+    }
+    // clear intervals
+    if (inputInterval) clearInterval(inputInterval);
+    if (pingInterval) clearInterval(pingInterval);
+    inputInterval = pingInterval = null;
+    gameActive = false;
+    // redirect to the main site menu
+    window.location.href = 'index.html';
+  }
+
+  document.getElementById('lobbyMainMenuBtn').onclick = goToMainMenu;
+  document.getElementById('gameMainMenuBtn').onclick = goToMainMenu;
+
   function leaveRoom() {
+    bgMusic.pause();
+    bgMusic.currentTime = 0;
     if (room) room.leave();
     room = null; gameActive = false;
     if (inputInterval) clearInterval(inputInterval);
@@ -699,8 +765,6 @@
     passwordDisplay.style.display = 'none'; mobileControls.style.display = 'none';
     predictedX = predictedY = predictedVx = predictedVy = undefined;
     lastInputStr = null; serverState = null; localPlayer = null; remotePlayer = null;
-    prevKeeper1Y = prevKeeper2Y = null;
-    prevBallX = prevBallY = undefined;
   }
 
   if (isMobile()) { setupDpad(); setupActionButtons(); }
