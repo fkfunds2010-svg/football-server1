@@ -213,7 +213,7 @@
 </div>
 
 <script>
-  // ==================== CONFIG ====================
+  // ==================== ULTRA‑OPTIMISED CONFIGURATION ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
   
   // ==================== GLOBAL STATE ====================
@@ -465,7 +465,6 @@
       if (countdownValue > 0) { countdownEl.style.display='block'; countdownEl.innerText = countdownValue; }
       else { countdownEl.innerText = 'GO!'; setTimeout(()=>countdownEl.style.display='none',500); }
     });
-    // ✅ SHOT event – immediately apply local ball velocity for instant feedback
     room.onMessage("event", ev => {
       if (ev.type === "GOAL") {
         goalAnimation(ev.data.color); goalHorn.currentTime=0; goalHorn.play().catch(()=>{});
@@ -474,13 +473,6 @@
         setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
-        // 🔥 Instant local shot – the ball reacts NOW, not after server delay
-        if (localBall && localPlayer) {
-          const speed = ev.data.turbo ? 45 : 20;
-          localBall.vx = (localPlayer.side === 'left') ? speed : -speed;
-          // rough vy guess – will be corrected by server quickly
-          localBall.vy = -2;
-        }
       } else if (ev.type === "MUSIC_NEXT") playNextTrack();
     });
     room.onMessage("chat", msg => {
@@ -542,23 +534,22 @@
       if (localPlayer) {
         if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
-        // Smoother correction – only pull if error > 4
-        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-          predictedX += dx * 0.3;
-          predictedY += dy * 0.3;
+        // Smooth correction – only pull if error > 2 (snappy)
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+          predictedX += dx * 0.5;
+          predictedY += dy * 0.5;
         } else {
           predictedX = localPlayer.x;
           predictedY = localPlayer.y;
         }
         predictedVx = localPlayer.vx; predictedVy = localPlayer.vy;
-        // Sync jump flag
         predictedIsJumping = localPlayer.isJumping;
       }
     });
     room.onError(() => handleDisconnect());
     room.onLeave(() => { if (gameActive) handleDisconnect(); });
 
-    // ✅ Send inputs at 60 Hz
+    // ✅ Send inputs at 60 Hz (lightweight setInterval)
     inputInterval = setInterval(() => {
       if (!room || !gameActive) return;
       const inp = getInput();
@@ -595,17 +586,16 @@
     setTimeout(() => toast.remove(), 2500);
   }
 
-  // ==================== PREDICTION & RENDERING (INSTANT RESPONSE) ====================
+  // ==================== PREDICTION & RENDERING (STABLE, FREEZE‑PROOF) ====================
   let predictedIsJumping = false;
   let prevKeeper1Y = null, prevKeeper2Y = null;
 
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
-    // Exact same physics as server
+    // Server‑identical physics, no delta multiplication
     if (inp.left) predictedVx -= 1.1;
     if (inp.right) predictedVx += 1.1;
-    // Jump only if on ground and not already jumping
     if (inp.up && !predictedIsJumping && predictedY >= 415) {
       predictedVy = -14;
       predictedIsJumping = true;
@@ -623,9 +613,8 @@
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
-  // Local ball – predicted independently, blended with server
-  let localBall = { x: 500, y: 250, vx: 5, vy: -3 };
-  let ballInitialized = false;
+  // Ball rendering – simple velocity prediction, no local physics loop
+  let prevBallX, prevBallY;
 
   function draw() {
     ctx.clearRect(0,0,1000,500);
@@ -635,41 +624,21 @@
 
     if (serverState && serverState.ball) {
       const ball = serverState.ball;
-      if (!ballInitialized) {
-        localBall.x = ball.x; localBall.y = ball.y;
-        localBall.vx = ball.vx; localBall.vy = ball.vy;
-        ballInitialized = true;
-      }
-
-      // Predict ball locally
-      localBall.x += localBall.vx;
-      localBall.y += localBall.vy;
-      localBall.vy += 0.25;
-      localBall.vx *= 0.995;
-      if (localBall.y > 480) { localBall.y = 480; localBall.vy *= -0.7; }
-      if (localBall.y < 10)  { localBall.y = 10;  localBall.vy *= -0.7; }
-
-      // Blend with server position (stronger local authority)
-      const dx = ball.x - localBall.x, dy = ball.y - localBall.y;
-      const err = Math.sqrt(dx*dx + dy*dy);
-      if (err > 20) {
-        localBall.x = ball.x; localBall.y = ball.y;
-        localBall.vx = ball.vx; localBall.vy = ball.vy;
-      } else {
-        localBall.x += dx * 0.5;
-        localBall.y += dy * 0.5;
-        localBall.vx += (ball.vx - localBall.vx) * 0.4;
-        localBall.vy += (ball.vy - localBall.vy) * 0.4;
-      }
-
-      ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(localBall.x, localBall.y, 10, 0, Math.PI*2); ctx.fill();
+      if (prevBallX === undefined) { prevBallX = ball.x; prevBallY = ball.y; }
+      // Predict one frame ahead using velocity (no local physics)
+      prevBallX += ball.vx * 0.016 * 60;
+      prevBallY += ball.vy * 0.016 * 60;
+      // Blend with real position (50% = very responsive)
+      prevBallX += (ball.x - prevBallX) * 0.5;
+      prevBallY += (ball.y - prevBallY) * 0.5;
+      ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(prevBallX, prevBallY, 10, 0, Math.PI*2); ctx.fill();
 
       if (localPlayer) { ctx.fillStyle = localPlayer.color; ctx.fillRect(predictedX, predictedY, 30, 65); }
 
       if (remotePlayer) {
         if (!remotePlayer._dx) { remotePlayer._dx = remotePlayer.x; remotePlayer._dy = remotePlayer.y; }
-        remotePlayer._dx += remotePlayer.vx;
-        remotePlayer._dy += remotePlayer.vy;
+        remotePlayer._dx += remotePlayer.vx * 0.016 * 60;
+        remotePlayer._dy += remotePlayer.vy * 0.016 * 60;
         remotePlayer._dx += (remotePlayer.x - remotePlayer._dx) * 0.4;
         remotePlayer._dy += (remotePlayer.y - remotePlayer._dy) * 0.4;
         ctx.fillStyle = remotePlayer.color; ctx.fillRect(remotePlayer._dx, remotePlayer._dy, 30, 65);
@@ -726,7 +695,7 @@
     predictedX = predictedY = predictedVx = predictedVy = undefined;
     lastInputStr = null; serverState = null; localPlayer = null; remotePlayer = null;
     prevKeeper1Y = prevKeeper2Y = null;
-    ballInitialized = false;
+    prevBallX = prevBallY = undefined;
   }
 
   if (isMobile()) { setupDpad(); setupActionButtons(); }
