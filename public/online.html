@@ -673,7 +673,6 @@
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
-  let prevBallX, prevBallY;
   function draw() {
     ctx.clearRect(0,0,1000,500);
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
@@ -681,27 +680,46 @@
     ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
 
     if (serverState && serverState.ball) {
-      const ball = serverState.ball;
-      // Keep ball visible at the very edge of the canvas so you always see it hit the post
-      let targetBallX = ball.x;
-      if (targetBallX < 10) targetBallX = 10;
-      if (targetBallX > 990) targetBallX = 990;
+      // ⚽ Direct ball rendering, no interpolation – exactly like local PvP
+      let renderX = serverState.ball.x;
+      let renderY = serverState.ball.y;
+      // Keep the ball always visible inside the canvas, just like you see it hit the post
+      if (renderX < 10) renderX = 10;
+      if (renderX > 990) renderX = 990;
+      if (renderY < 10) renderY = 10;
+      if (renderY > 490) renderY = 490;
 
-      if (prevBallX === undefined) { prevBallX = targetBallX; prevBallY = ball.y; }
-      prevBallX += (targetBallX - prevBallX) * 0.4;
-      prevBallY += (ball.y - prevBallY) * 0.4;
-      ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(prevBallX, prevBallY, 10, 0, Math.PI*2); ctx.fill();
-      if (localPlayer) { ctx.fillStyle = localPlayer.color; ctx.fillRect(predictedX, predictedY, 30, 65); }
-      if (remotePlayer) {
-        if (!remotePlayer._dx) { remotePlayer._dx = remotePlayer.x; remotePlayer._dy = remotePlayer.y; }
-        remotePlayer._dx += (remotePlayer.x - remotePlayer._dx) * 0.4; remotePlayer._dy += (remotePlayer.y - remotePlayer._dy) * 0.4;
-        ctx.fillStyle = remotePlayer.color; ctx.fillRect(remotePlayer._dx, remotePlayer._dy, 30, 65);
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      ctx.arc(renderX, renderY, 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (localPlayer) {
+        ctx.fillStyle = localPlayer.color;
+        ctx.fillRect(predictedX, predictedY, 30, 65);
       }
-      ctx.fillStyle = "#ff00ff"; ctx.fillRect(5, serverState.keeper1.y, 12, 60);
-      ctx.fillStyle = "#00f2ff"; ctx.fillRect(983, serverState.keeper2.y, 12, 60);
+      if (remotePlayer) {
+        if (!remotePlayer._dx) {
+          remotePlayer._dx = remotePlayer.x;
+          remotePlayer._dy = remotePlayer.y;
+        }
+        remotePlayer._dx += (remotePlayer.x - remotePlayer._dx) * 0.4;
+        remotePlayer._dy += (remotePlayer.y - remotePlayer._dy) * 0.4;
+        ctx.fillStyle = remotePlayer.color;
+        ctx.fillRect(remotePlayer._dx, remotePlayer._dy, 30, 65);
+      }
+      ctx.fillStyle = "#ff00ff";
+      ctx.fillRect(5, serverState.keeper1.y, 12, 60);
+      ctx.fillStyle = "#00f2ff";
+      ctx.fillRect(983, serverState.keeper2.y, 12, 60);
     }
   }
-  function loop() { if (gameActive) applyPrediction(); draw(); requestAnimationFrame(loop); }
+
+  function loop() {
+    if (gameActive) applyPrediction();
+    draw();
+    requestAnimationFrame(loop);
+  }
   loop();
 
   // ==================== UI EVENTS ====================
