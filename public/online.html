@@ -203,14 +203,21 @@
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <span>⏱️ Time (min):</span>
         <select id="timeSelect">
-          <option value="2">2</option><option value="4">4</option><option value="6">6</option>
-          <option value="8">8</option><option value="10">10</option><option value="12">12</option>
-          <option value="14">14</option><option value="16">16</option><option value="18">18</option>
+          <option value="">Start time</option>
+          <option value="2">2</option>
+          <option value="5">5</option>
+          <option value="7">7</option>
+          <option value="10">10</option>
+          <option value="12">12</option>
+          <option value="15">15</option>
           <option value="20">20</option>
         </select>
         <span>⚽ First to:</span>
         <select id="goalSelect">
-          <option value="10">10</option><option value="20">20</option><option value="30">30</option>
+          <option value="">Start goal</option>
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="30">30</option>
         </select>
       </div>
       <div id="chatMessages"><div>💬 Welcome! Chat here with your opponent.</div></div>
@@ -465,8 +472,8 @@
     const password = await showPrompt("Set a room password", "Leave empty for random", true);
     if (password === null) return;
     const pass = password || Math.random().toString(36).substr(2,6);
-    const matchTime = parseInt(timeSelect.value) || 2;
-    const targetGoals = parseInt(goalSelect.value) || 10;
+    const matchTime = parseInt(timeSelect.value) || 2;   // defaults to 2 if "Start time" selected
+    const targetGoals = parseInt(goalSelect.value) || 10; // defaults to 10 if "Start goal" selected
     selectedRegion = regionSelect.value;
     client = new Colyseus.Client(SERVER_URL);
     try {
