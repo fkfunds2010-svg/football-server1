@@ -81,18 +81,89 @@
       100% { box-shadow: 0 0 5px #00ff00; }
     }
 
-    /* ========== Mobile controls – minimal, no heavy CSS ========== */
-    #mobileControls { display:none; position:absolute; bottom:20px; left:0; right:0; justify-content:space-between; padding:0 20px; }
-    .dpad { display:grid; grid-template-columns:60px 60px 60px; grid-template-rows:60px 60px 60px; gap:2px; justify-content:center; align-items:center; }
-    .dpad button { width:60px; height:60px; background:rgba(255,255,255,0.12); border:2px solid #0f0; border-radius:10px; font-size:24px; color:#0f0; display:flex; align-items:center; justify-content:center; }
-    .action-buttons { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
-    #shootBtn, #dashBtn, #turboShotBtn { width:80px; height:80px; border:2px solid #0f0; border-radius:50%; font-size:16px; font-weight:bold; display:flex; align-items:center; justify-content:center; text-transform:uppercase; color:#fff; background:rgba(255,255,255,0.08); }
-    #shootBtn { border-color: #ff6464; color:#ffa0a0; }
-    #dashBtn { border-color: #ffd700; color:#ffd700; }
-    #turboShotBtn { border-color: #ff80ff; color:#ff80ff; }
+    /* ========== MOBILE CONTROLS – VIRTUAL JOYSTICK & BUTTONS ========== */
+    #mobileControls { display:none; position:absolute; bottom:25px; left:0; right:0; justify-content:space-between; padding:0 25px; z-index:60; pointer-events:none; }
+    #mobileControls > * { pointer-events:auto; }
+
+    .joystick-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin-bottom: 5px;
+    }
+    .joystick-base {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(0,255,0,0.5);
+      position: relative;
+    }
+    .joystick-thumb {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(0,255,0,0.25);
+      border: 2px solid #0f0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      transition: background 0.1s;
+    }
+
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    #shootBtn, #dashBtn, #turboShotBtn {
+      width: 75px;
+      height: 75px;
+      border: 2px solid #0f0;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+      color: #fff;
+      background: rgba(255,255,255,0.08);
+    }
+    #shootBtn { border-color: #ff6464; color: #ffa0a0; }
+    #dashBtn { border-color: #ffd700; color: #ffd700; }
+    #turboShotBtn { border-color: #ff80ff; color: #ff80ff; }
+
     .aim-indicator { position:absolute; background:rgba(255,255,0,0.3); border-radius:50%; pointer-events:none; transition:0.1s; }
     .shake{animation: shake 0.5s ease-in-out}
     @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-5px,10px)}50%{transform:translate(5px,-10px)}75%{transform:translate(-5px,-5px)}}
+
+    /* Fullscreen toggle button */
+    #fullscreenToggle {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 200;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(0,255,0,0.6);
+      color: #0f0;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      pointer-events: auto;
+      backdrop-filter: blur(2px);
+    }
+    .nav-buttons-hidden {
+      display: none !important;
+    }
 
     /* Modal */
     .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:1000}
@@ -101,7 +172,7 @@
     .modal-box input{margin:10px 0;padding:12px;width:100%;background:#0a0f0a;border:1px solid #0f0;color:#fff;border-radius:10px;outline:none}
     .modal-box button{margin:10px 5px;padding:12px 25px}
 
-    /* ========== STYLED TIME & GOAL SELECTS (light, no filter) ========== */
+    /* ========== STYLED TIME & GOAL SELECTS ========== */
     #timeSelect, #goalSelect {
       background: #0a0f0a;
       border: 2px solid #00ff00;
@@ -136,7 +207,7 @@
       padding: 8px;
     }
 
-    /* ========== MAIN MENU BUTTON (simple, no shadow) ========== */
+    /* ========== MAIN MENU BUTTON ========== */
     .btn.main-menu {
       border-color: #ffaa00;
       color: #ffaa00;
@@ -243,16 +314,21 @@
     <div id="gamePanel" class="panel hidden" style="position:relative; flex:1; display:flex; flex-direction:column;">
       <div class="scoreboard"><span id="p1Score" style="color:#ff00ff">0</span><span>⚡</span><span id="p2Score" style="color:#00f2ff">0</span></div>
       <canvas id="gameCanvas" width="1000" height="500"></canvas>
-      <button class="btn secondary" id="leaveGameBtn" style="align-self:center; margin:10px 0">🚪 LEAVE</button>
-      <button class="btn main-menu" id="gameMainMenuBtn" style="align-self:center; margin:5px 0 10px 0">🏠 MAIN MENU</button>
-      <p style="color:#9f9;text-align:center;font-size:clamp(0.7rem,2vw,1rem)">P1: WASD+1 · P2: Arrows+Up · Hold Up+Shoot = Turbo</p>
+      <div id="gameNavButtons" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:8px 0;">
+        <button class="btn secondary" id="leaveGameBtn">🚪 LEAVE</button>
+        <button class="btn main-menu" id="gameMainMenuBtn">🏠 MAIN MENU</button>
+      </div>
+      <p style="color:#9f9;text-align:center;font-size:clamp(0.7rem,2vw,1rem)">Arrow Keys to move | Up to shoot | Left alone = Dash | Up + Left/Right = Turbo Shot</p>
 
-      <!-- Mobile controls: D‑pad + three circular action buttons -->
+      <!-- Fullscreen toggle button (inside pitch) -->
+      <div id="fullscreenToggle" title="Toggle fullscreen">⛶</div>
+
+      <!-- 🔥 Mobile controls: Virtual Joystick + Action Buttons -->
       <div id="mobileControls">
-        <div class="dpad">
-          <div></div> <button id="btnUp">▲</button> <div></div>
-          <button id="btnLeft">◀</button> <button id="btnCenter" style="visibility:hidden;"></button> <button id="btnRight">▶</button>
-          <div></div> <button id="btnDown">▼</button> <div></div>
+        <div class="joystick-container" id="joystickContainer">
+          <div class="joystick-base" id="joystickBase">
+            <div class="joystick-thumb" id="joystickThumb"></div>
+          </div>
         </div>
         <div class="action-buttons">
           <button id="shootBtn">⚽<br>SHOT</button>
@@ -292,6 +368,12 @@
   let touchDir = { up: false, down: false, left: false, right: false };
   let shootPressed = false, turboPressed = false, aimMode = false;
   let aimStartX = 0, aimStartY = 0;
+  let joystickActive = false;
+  let joystickCenter = { x: 0, y: 0 };
+  const joystickMaxDist = 35;
+
+  // Fullscreen state
+  let isFullscreen = false;
 
   // UI Elements
   const panels = {
@@ -311,6 +393,8 @@
   const mobileControls = document.getElementById('mobileControls');
   const aimIndicator = document.getElementById('aimIndicator');
   const chatMessages = document.getElementById('chatMessages');
+  const fullscreenToggle = document.getElementById('fullscreenToggle');
+  const gameNavButtons = document.getElementById('gameNavButtons');
 
   const timeSelect = document.getElementById('timeSelect');
   const goalSelect = document.getElementById('goalSelect');
@@ -345,6 +429,41 @@
   window.sendRematch = () => { if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); } };
   regionSelect.addEventListener('change', () => { selectedRegion = regionSelect.value; });
 
+  // ==================== FULLSCREEN LOGIC ====================
+  function requestFullscreen() {
+    const el = document.documentElement;
+    if (el.requestFullscreen) {
+      el.requestFullscreen().catch(() => {});
+    } else if (el.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen();
+    }
+  }
+  function exitFullscreen() {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+  }
+  function updateNavVisibility() {
+    isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (isFullscreen) {
+      gameNavButtons.classList.add('nav-buttons-hidden');
+    } else {
+      gameNavButtons.classList.remove('nav-buttons-hidden');
+    }
+  }
+  document.addEventListener('fullscreenchange', updateNavVisibility);
+  document.addEventListener('webkitfullscreenchange', updateNavVisibility);
+
+  fullscreenToggle.addEventListener('click', () => {
+    if (isFullscreen) {
+      exitFullscreen();
+    } else {
+      requestFullscreen();
+    }
+  });
+
   // ==================== COPY BUTTONS ====================
   document.getElementById('copyRoomCode').onclick = () => {
     navigator.clipboard.writeText(document.getElementById('roomCodeDisplay').innerText);
@@ -369,27 +488,56 @@
   function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
   function showMobileControls() { if (isMobile()) mobileControls.style.display = 'flex'; }
 
-  function setupDpad() {
-    const btnUp = document.getElementById('btnUp');
-    const btnDown = document.getElementById('btnDown');
-    const btnLeft = document.getElementById('btnLeft');
-    const btnRight = document.getElementById('btnRight');
-    function setTouchDir(dir, val) { touchDir[dir] = val; }
-    btnUp.addEventListener('touchstart', e => { e.preventDefault(); setTouchDir('up', true); });
-    btnUp.addEventListener('touchend', e => { e.preventDefault(); setTouchDir('up', false); });
-    btnDown.addEventListener('touchstart', e => { e.preventDefault(); setTouchDir('down', true); });
-    btnDown.addEventListener('touchend', e => { e.preventDefault(); setTouchDir('down', false); });
-    btnLeft.addEventListener('touchstart', e => { e.preventDefault(); setTouchDir('left', true); });
-    btnLeft.addEventListener('touchend', e => { e.preventDefault(); setTouchDir('left', false); });
-    btnRight.addEventListener('touchstart', e => { e.preventDefault(); setTouchDir('right', true); });
-    btnRight.addEventListener('touchend', e => { e.preventDefault(); setTouchDir('right', false); });
+  function setupJoystick() {
+    const base = document.getElementById('joystickBase');
+    const thumb = document.getElementById('joystickThumb');
+    function handleStart(e) {
+      e.preventDefault();
+      joystickActive = true;
+      const rect = base.getBoundingClientRect();
+      joystickCenter.x = rect.left + rect.width/2;
+      joystickCenter.y = rect.top + rect.height/2;
+      updateThumb(e);
+    }
+    function handleMove(e) {
+      if (!joystickActive) return;
+      e.preventDefault();
+      updateThumb(e);
+    }
+    function handleEnd(e) {
+      e.preventDefault();
+      joystickActive = false;
+      thumb.style.transform = `translate(-50%, -50%)`;
+      touchDir = { up: false, down: false, left: false, right: false };
+    }
+    function updateThumb(e) {
+      const touch = e.touches[0];
+      if (!touch) return;
+      let dx = touch.clientX - joystickCenter.x;
+      let dy = touch.clientY - joystickCenter.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const max = joystickMaxDist;
+      let clampedDist = Math.min(dist, max);
+      if (dist > 0) {
+        dx = (dx / dist) * clampedDist;
+        dy = (dy / dist) * clampedDist;
+      }
+      thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      touchDir.left = dx < -10;
+      touchDir.right = dx > 10;
+      touchDir.up = dy < -10;
+      touchDir.down = dy > 10;
+    }
+    base.addEventListener('touchstart', handleStart, { passive: false });
+    base.addEventListener('touchmove', handleMove, { passive: false });
+    base.addEventListener('touchend', handleEnd);
+    base.addEventListener('touchcancel', handleEnd);
   }
 
   function setupActionButtons() {
     const shootBtn = document.getElementById('shootBtn');
     const dashBtn = document.getElementById('dashBtn');
     const turboShotBtn = document.getElementById('turboShotBtn');
-
     shootBtn.addEventListener('touchstart', e => {
       e.preventDefault(); aimMode = true; shootPressed = true;
       const touch = e.touches[0]; aimStartX = touch.clientX; aimStartY = touch.clientY;
@@ -406,10 +554,8 @@
       e.preventDefault(); aimMode = false; shootPressed = false;
       aimIndicator.style.display = 'none';
     });
-
     dashBtn.addEventListener('touchstart', e => { e.preventDefault(); turboPressed = true; });
     dashBtn.addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
-
     turboShotBtn.addEventListener('touchstart', e => {
       e.preventDefault();
       shootPressed = true;
@@ -444,25 +590,29 @@
 
   function getInput() {
     const touch = getTouchInput();
-    if (myPlayerId === 'p1') {
-      return {
-        left: keys['KeyA'] || touch.left,
-        right: keys['KeyD'] || touch.right,
-        up: keys['KeyW'] || touch.up,
-        down: keys['KeyS'] || touch.down,
-        shoot: keys['Digit1'] || touch.shoot,
-        turbo: (keys['KeyW'] && keys['Digit1']) || touch.turbo
-      };
-    } else {
-      return {
-        left: keys['ArrowLeft'] || touch.left,
-        right: keys['ArrowRight'] || touch.right,
-        up: keys['ArrowUp'] || touch.up,
-        down: keys['ArrowDown'] || touch.down,
-        shoot: keys['ArrowUp'] || touch.shoot,
-        turbo: (keys['ArrowUp'] && (keys['ArrowLeft'] || keys['ArrowRight'])) || touch.turbo
-      };
-    }
+    // ========== UNIFIED ARROW KEY CONTROLS FOR BOTH PLAYERS ==========
+    const left = keys['ArrowLeft'] || touch.left;
+    const right = keys['ArrowRight'] || touch.right;
+    const up = keys['ArrowUp'] || touch.up;
+    const down = keys['ArrowDown'] || touch.down;
+    // Dash: left arrow alone (no up) → turbo without shooting
+    const keyboardDash = keys['ArrowLeft'] && !keys['ArrowUp'];
+    // Shoot: ArrowUp alone or with left/right (but without dash logic, we handle turbo separately)
+    const keyboardShoot = keys['ArrowUp'];
+    // Turbo: dash (ArrowLeft alone) or Touch dash, OR traditional turbo (ArrowUp + ArrowLeft/Right)
+    const keyboardTurbo = keyboardDash || (keys['ArrowUp'] && (keys['ArrowLeft'] || keys['ArrowRight']));
+    
+    const shoot = keyboardShoot || touch.shoot;
+    const turbo = keyboardTurbo || touch.turbo;
+
+    return {
+      left: left,
+      right: right,
+      up: up,
+      down: down,
+      shoot: shoot,
+      turbo: turbo
+    };
   }
 
   // ==================== NETWORKING ====================
@@ -472,8 +622,8 @@
     const password = await showPrompt("Set a room password", "Leave empty for random", true);
     if (password === null) return;
     const pass = password || Math.random().toString(36).substr(2,6);
-    const matchTime = parseInt(timeSelect.value) || 2;   // defaults to 2 if "Start time" selected
-    const targetGoals = parseInt(goalSelect.value) || 10; // defaults to 10 if "Start goal" selected
+    const matchTime = parseInt(timeSelect.value) || 2;
+    const targetGoals = parseInt(goalSelect.value) || 10;
     selectedRegion = regionSelect.value;
     client = new Colyseus.Client(SERVER_URL);
     try {
@@ -532,6 +682,7 @@
       playNextTrack(); showMobileControls();
       predictedX = 150; predictedY = 415; predictedVx = 0; predictedVy = 0;
       statusBar.innerText = '🟢 LIVE';
+      requestFullscreen();
     });
     room.onMessage("countdown", data => {
       countdownValue = data.value;
@@ -577,6 +728,7 @@
       if (inputInterval) clearInterval(inputInterval);
       if (pingInterval) clearInterval(pingInterval);
       inputInterval = pingInterval = null;
+      exitFullscreen();
     });
     room.onMessage("error", msg => { alert(msg.message); });
 
@@ -590,6 +742,7 @@
         winnerMsgDiv.innerText = state.winnerMessage;
         winnerMsgDiv.style.display = 'block';
         rematchBtn.classList.remove('hidden');
+        exitFullscreen();
       }
       warningDiv.style.display = (state.timeLeft <= 120 && state.timeLeft > 0) ? 'block' : 'none';
       if (!gameActive) return;
@@ -687,10 +840,8 @@
     ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
 
     if (serverState && serverState.ball) {
-      // ⚽ Direct ball rendering, no interpolation – exactly like local PvP
       let renderX = serverState.ball.x;
       let renderY = serverState.ball.y;
-      // Keep the ball always visible inside the canvas, just like you see it hit the post
       if (renderX < 10) renderX = 10;
       if (renderX > 990) renderX = 990;
       if (renderY < 10) renderY = 10;
@@ -779,8 +930,12 @@
     passwordDisplay.style.display = 'none'; mobileControls.style.display = 'none';
     predictedX = predictedY = predictedVx = predictedVy = undefined;
     lastInputStr = null; serverState = null; localPlayer = null; remotePlayer = null;
+    exitFullscreen();
   }
 
-  if (isMobile()) { setupDpad(); setupActionButtons(); }
+  if (isMobile()) {
+    setupJoystick();
+    setupActionButtons();
+  }
 </script>
 </body></html>
