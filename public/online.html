@@ -276,7 +276,6 @@
   let lastInputStr, serverState, localPlayer, remotePlayer;
   let predictedX, predictedY, predictedVx, predictedVy;
   let ping = 0, reconnectAttempts = 0;
-  // goalFreeze variable no longer needed, but kept for compatibility – harmless
   let goalFreeze = false, countdownValue = -1, matchStatus = "waiting";
   let inputInterval, pingInterval;
   let roomPassword = "";
@@ -306,11 +305,10 @@
   const aimIndicator = document.getElementById('aimIndicator');
   const chatMessages = document.getElementById('chatMessages');
 
-  // Game settings selectors
   const timeSelect = document.getElementById('timeSelect');
   const goalSelect = document.getElementById('goalSelect');
 
-  // 🎵 Music Playlist (local files)
+  // 🎵 Music Playlist
   const playlist = ['/1.mp3', '/3.mp3', '/4.mp3', '/5.mp3'];
   let currentTrack = 0;
   const bgMusic = document.getElementById('bgMusic');
@@ -356,7 +354,6 @@
     });
   });
 
-  // Rematch button listener
   rematchBtn.addEventListener('click', () => {
     if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); }
   });
@@ -364,6 +361,7 @@
   // ==================== MOBILE CONTROLS SETUP ====================
   function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
   function showMobileControls() { if (isMobile()) mobileControls.style.display = 'flex'; }
+
   function setupDpad() {
     const btnUp = document.getElementById('btnUp');
     const btnDown = document.getElementById('btnDown');
@@ -379,12 +377,12 @@
     btnRight.addEventListener('touchstart', e => { e.preventDefault(); setTouchDir('right', true); });
     btnRight.addEventListener('touchend', e => { e.preventDefault(); setTouchDir('right', false); });
   }
+
   function setupActionButtons() {
     const shootBtn = document.getElementById('shootBtn');
     const dashBtn = document.getElementById('dashBtn');
     const turboShotBtn = document.getElementById('turboShotBtn');
 
-    // Shoot button with aiming
     shootBtn.addEventListener('touchstart', e => {
       e.preventDefault(); aimMode = true; shootPressed = true;
       const touch = e.touches[0]; aimStartX = touch.clientX; aimStartY = touch.clientY;
@@ -402,11 +400,9 @@
       aimIndicator.style.display = 'none';
     });
 
-    // Dash button – turbo only
     dashBtn.addEventListener('touchstart', e => { e.preventDefault(); turboPressed = true; });
     dashBtn.addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
 
-    // Turbo shot button – shoot + turbo together
     turboShotBtn.addEventListener('touchstart', e => {
       e.preventDefault();
       shootPressed = true;
@@ -426,7 +422,6 @@
     };
   }
 
-  // Keyboard input
   window.addEventListener('keydown', e => {
     const tag = e.target.tagName;
     const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
@@ -512,10 +507,8 @@
 
   function setupRoom() {
     if (room._handlersSet) return; room._handlersSet = true;
-
     chatMessages.innerHTML = '<div>💬 Welcome! Chat here with your opponent.</div>';
 
-    // Listeners
     room.onMessage("playerNames", data => {
       document.getElementById('p1Name').innerText = data.p1;
       document.getElementById('p2Name').innerText = data.p2;
@@ -547,7 +540,6 @@
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
       } else if (ev.type === "MUSIC_NEXT") playNextTrack();
-      // FREEZE_END event removed – no longer needed
     });
     room.onMessage("chat", msg => {
       const div = document.createElement('div');
@@ -601,14 +593,12 @@
         if (sid === room.sessionId) localPlayer = p;
         else remotePlayer = p;
       });
-
       document.getElementById('p1Score').innerText = state.p1Score;
       document.getElementById('p2Score').innerText = state.p2Score;
 
       if (localPlayer) {
         if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
-        // Smoother correction – only pull if error > 8, otherwise snap
         if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
           predictedX += dx * 0.15;
           predictedY += dy * 0.15;
@@ -622,7 +612,6 @@
     room.onError(() => handleDisconnect());
     room.onLeave(() => { if (gameActive) handleDisconnect(); });
 
-    // ✅ Send inputs at 60 Hz
     inputInterval = setInterval(() => {
       if (!room || !gameActive) return;
       const inp = getInput();
@@ -693,8 +682,14 @@
 
     if (serverState && serverState.ball) {
       const ball = serverState.ball;
-      if (prevBallX === undefined) { prevBallX = ball.x; prevBallY = ball.y; }
-      prevBallX += (ball.x - prevBallX) * 0.4; prevBallY += (ball.y - prevBallY) * 0.4;
+      // Keep ball visible at the very edge of the canvas so you always see it hit the post
+      let targetBallX = ball.x;
+      if (targetBallX < 10) targetBallX = 10;
+      if (targetBallX > 990) targetBallX = 990;
+
+      if (prevBallX === undefined) { prevBallX = targetBallX; prevBallY = ball.y; }
+      prevBallX += (targetBallX - prevBallX) * 0.4;
+      prevBallY += (ball.y - prevBallY) * 0.4;
       ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(prevBallX, prevBallY, 10, 0, Math.PI*2); ctx.fill();
       if (localPlayer) { ctx.fillStyle = localPlayer.color; ctx.fillRect(predictedX, predictedY, 30, 65); }
       if (remotePlayer) {
@@ -734,17 +729,11 @@
 
   // ==================== MAIN MENU BUTTONS → REDIRECT TO INDEX.HTML ====================
   function goToMainMenu() {
-    // leave the room first if we are connected
-    if (room) {
-      room.leave();
-      room = null;
-    }
-    // clear intervals
+    if (room) { room.leave(); room = null; }
     if (inputInterval) clearInterval(inputInterval);
     if (pingInterval) clearInterval(pingInterval);
     inputInterval = pingInterval = null;
     gameActive = false;
-    // redirect to the main site menu
     window.location.href = 'index.html';
   }
 
