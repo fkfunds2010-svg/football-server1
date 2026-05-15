@@ -29,7 +29,7 @@
     }
     .game-wrapper {
       width:100%; max-width:1200px; height:100%; max-height:100vh;
-      background:rgba(5,1,16,0.8); backdrop-filter:blur(8px);
+      background:rgba(5,1,16,0.8);  /* backdrop-filter removed for performance */
       border-radius:clamp(10px,3vw,40px); padding:clamp(5px,2vw,20px);
       box-shadow:0 0 30px #00ff0040; border:2px solid #00ff00;
       display:flex; flex-direction:column; justify-content:center;
@@ -73,7 +73,7 @@
     #sendChatBtn { background: #00ff00; color: #000; font-weight: bold; }
     #chatInput { font-size: 1.2rem; padding: 14px 20px; }
 
-    /* ========== SENT NOTIFICATION RIPPLE ========== */
+    /* ========== SENT NOTIFICATION RIPPLE (only when a message arrives) ========== */
     .sent-flash { animation: flashGreen 0.4s ease; }
     @keyframes flashGreen {
       0% { box-shadow: 0 0 5px #00ff00; }
@@ -158,7 +158,7 @@
       text-transform: uppercase;
       color: #fff;
       background: rgba(255,255,255,0.05);
-      backdrop-filter: blur(2px);
+      /* no backdrop-filter */
     }
     #shootBtn { border-color: rgba(255,100,100,0.5); color: #ffa0a0; }
     #dashBtn { border-color: rgba(255,200,0,0.5); color: #ffd700; }
@@ -186,7 +186,7 @@
       justify-content: center;
       cursor: pointer;
       pointer-events: auto;
-      backdrop-filter: blur(2px);
+      /* no backdrop-filter */
     }
     .nav-buttons-hidden {
       display: none !important;
@@ -234,7 +234,7 @@
       padding: 8px;
     }
 
-    /* ========== MAIN MENU BUTTON ========== */
+    /* ========== MAIN MENU BUTTON (simple, no shadow) ========== */
     .btn.main-menu {
       border-color: #ffaa00;
       color: #ffaa00;
@@ -387,23 +387,18 @@
   let client, room, myPlayerId, amIHost, gameActive = false;
   let keys = {};
   let lastInputStr, serverState, localPlayer, remotePlayer;
-  let predictedX, predictedY, predictedVx, predictedVy;
+  let predictedX = 150, predictedY = 415, predictedVx = 0, predictedVy = 0;
   let ping = 0, reconnectAttempts = 0;
-  let goalFreeze = false, countdownValue = -1, matchStatus = "waiting";
+  let countdownValue = -1, matchStatus = "waiting";
   let inputInterval, pingInterval;
   let roomPassword = "";
   let selectedRegion = "europe";
 
   // Mobile touch state
   let touchDir = { up: false, down: false, left: false, right: false };
-  let shootPressed = false, turboPressed = false, aimMode = false;
-  let aimStartX = 0, aimStartY = 0;
-  let joystickActive = false;
-  let joystickCenter = { x: 0, y: 0 };
-  const joystickMaxDist = 35;
+  let shootPressed = false, turboPressed = false;
+  let joystickActive = false, joystickCenter = { x: 0, y: 0 }, joystickMaxDist = 35;
   let currentAimAngle = null;
-
-  // Fullscreen state
   let isFullscreen = false;
 
   // UI Elements
@@ -416,19 +411,13 @@
   const commentaryDiv = document.getElementById('commentary'), goalBanner = document.getElementById('goalBanner');
   const warningDiv = document.getElementById('warning'), winnerMsgDiv = document.getElementById('winnerMsg');
   const pingEl = document.getElementById('pingDisplay'), statusBar = document.getElementById('statusBar');
-  const countdownEl = document.getElementById('countdownOverlay');
-  const rematchBtn = document.getElementById('rematchBtn');
+  const countdownEl = document.getElementById('countdownOverlay'), rematchBtn = document.getElementById('rematchBtn');
   const passwordDisplay = document.getElementById('passwordDisplay'), passwordText = document.getElementById('passwordText');
-  const reconnectOverlay = document.getElementById('reconnectOverlay');
-  const regionSelect = document.getElementById('regionSelect');
-  const mobileControls = document.getElementById('mobileControls');
-  const aimIndicator = document.getElementById('aimIndicator');
-  const chatMessages = document.getElementById('chatMessages');
-  const fullscreenToggle = document.getElementById('fullscreenToggle');
+  const reconnectOverlay = document.getElementById('reconnectOverlay'), regionSelect = document.getElementById('regionSelect');
+  const mobileControls = document.getElementById('mobileControls'), aimIndicator = document.getElementById('aimIndicator');
+  const chatMessages = document.getElementById('chatMessages'), fullscreenToggle = document.getElementById('fullscreenToggle');
   const gameNavButtons = document.getElementById('gameNavButtons');
-
-  const timeSelect = document.getElementById('timeSelect');
-  const goalSelect = document.getElementById('goalSelect');
+  const timeSelect = document.getElementById('timeSelect'), goalSelect = document.getElementById('goalSelect');
 
   // 🎵 Music Playlist
   const playlist = ['/1.mp3', '/3.mp3', '/4.mp3', '/5.mp3'];
@@ -530,8 +519,7 @@
   function showMobileControls() { if (isMobile()) mobileControls.style.display = 'flex'; }
 
   function setupJoystick() {
-    const base = document.getElementById('joystickBase');
-    const thumb = document.getElementById('joystickThumb');
+    const base = document.getElementById('joystickBase'), thumb = document.getElementById('joystickThumb');
     
     function updateAimAngle(dx, dy) {
       if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
@@ -736,17 +724,11 @@
       document.getElementById('connectionStatus').innerText = '⚡ connected';
     });
 
-    // ✅ Listen for match options updates from the server
     room.onMessage("matchOptionsUpdated", (data) => {
-      if (data.timeLeft !== undefined) {
-        timeSelect.value = (data.timeLeft / 60) || "";
-      }
-      if (data.targetGoals !== undefined) {
-        goalSelect.value = data.targetGoals || "";
-      }
+      if (data.timeLeft !== undefined) timeSelect.value = (data.timeLeft / 60) || "";
+      if (data.targetGoals !== undefined) goalSelect.value = data.targetGoals || "";
     });
 
-    // ✅ Send match options when the host changes a dropdown
     function sendMatchOptions() {
       if (!amIHost || !room) return;
       const matchTime = parseInt(timeSelect.value) || 2;
@@ -776,6 +758,9 @@
         comment(ev.data.scorer==='p1'?"GOAL! PLAYER 1 SCORES!":"GOAL! PLAYER 2 SCORES!",ev.data.color);
         document.getElementById('app').classList.add('shake');
         setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
+        // Goal flash effect (like local pvp)
+        document.getElementById('gameCanvasContainer').style.background = 'rgba(255,255,255,0.3)';
+        setTimeout(() => document.getElementById('gameCanvasContainer').style.background = '', 200);
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
       } else if (ev.type === "MUSIC_NEXT") playNextTrack();
@@ -838,7 +823,7 @@
       document.getElementById('p2Score').innerText = state.p2Score;
 
       if (localPlayer) {
-        if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
+        if (predictedX === undefined) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
         if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
           predictedX += dx * 0.15;
@@ -914,6 +899,7 @@
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
+  let prevBallX = 500, prevBallY = 250;
   function draw() {
     ctx.clearRect(0,0,1000,500);
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
@@ -921,8 +907,11 @@
     ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
 
     if (serverState && serverState.ball) {
-      let renderX = serverState.ball.x;
-      let renderY = serverState.ball.y;
+      const ball = serverState.ball;
+      // Smooth ball interpolation (like local PvP)
+      prevBallX += (ball.x - prevBallX) * 0.4;
+      prevBallY += (ball.y - prevBallY) * 0.4;
+      let renderX = prevBallX, renderY = prevBallY;
       if (renderX < 10) renderX = 10;
       if (renderX > 990) renderX = 990;
       if (renderY < 10) renderY = 10;
@@ -1009,7 +998,7 @@
     countdownEl.style.display = 'none'; statusBar.innerText = '⚪ WAITING';
     reconnectOverlay.style.display = 'none'; rematchBtn.classList.add('hidden');
     passwordDisplay.style.display = 'none'; mobileControls.style.display = 'none';
-    predictedX = predictedY = predictedVx = predictedVy = undefined;
+    predictedX = 150; predictedY = 415; predictedVx = 0; predictedVy = 0;
     lastInputStr = null; serverState = null; localPlayer = null; remotePlayer = null;
     exitFullscreen();
   }
