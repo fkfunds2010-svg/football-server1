@@ -46,7 +46,6 @@ class GameState extends Schema {
     this.gameOver = false; this.winnerMessage = "";
     this.matchState = "waiting"; this.hostId = ""; this.roomCode = "";
     this.countdown = -1;
-    // goalFreeze removed – no more pause after a goal
     this.password = ""; this.lastWinner = "";
   }
 }
@@ -57,7 +56,6 @@ GameState._schema = {
   gameOver: "boolean", winnerMessage: "string",
   matchState: "string", hostId: "string", roomCode: "string",
   countdown: "number",
-  // goalFreeze removed from schema
   password: "string", lastWinner: "string"
 };
 
@@ -107,8 +105,13 @@ class FootballRoom extends Room {
     this.onMessage("move", (client, input) => {
       if (typeof input === "object") {
         this.inputs[client.sessionId] = {
-          left: !!input.left, right: !!input.right, up: !!input.up, down: !!input.down,
-          shoot: !!input.shoot, turbo: !!input.turbo
+          left: !!input.left,
+          right: !!input.right,
+          up: !!input.up,
+          down: !!input.down,
+          shoot: !!input.shoot,
+          turbo: !!input.turbo,
+          aimAngle: input.aimAngle    // can be undefined (keyboard) or a number
         };
       }
     });
@@ -192,12 +195,11 @@ class FootballRoom extends Room {
 
   gameTick() {
     if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return;
-    // ❌ Freeze block removed – game continues immediately after a goal
 
     const FIXED_DT = 1 / 30;
     const ball = this.state.ball;
 
-    // ---------- 1. Ball physics (move first) ----------
+    // ---------- 1. Ball physics ----------
     ball.x += ball.vx;
     ball.y += ball.vy;
     ball.vy += 0.25;
@@ -227,7 +229,6 @@ class FootballRoom extends Room {
       if (ball.y > 150 && ball.y < 350) {
         if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
         this.broadcast("event", { type: "GOAL", data: { scorer: ball.x < 0 ? "p2" : "p1", color: ball.x < 0 ? "#00f2ff" : "#ff00ff" } });
-        // ❌ goalFreeze line removed – no pause
         ball.x = 500; ball.y = 250; ball.vx = (Math.random() > 0.5 ? 5 : -5); ball.vy = -3;
         if (this.state.p1Score >= this.targetGoals || this.state.p2Score >= this.targetGoals) {
           this.state.gameOver = true; this.state.matchState = "end";
@@ -243,28 +244,27 @@ class FootballRoom extends Room {
       const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y;
       const hasBall = dx * dx + dy * dy < 2500;
 
-      let isTurbo = (player.side === 'left') ? (input.up && input.shoot) : (input.up && (input.left || input.right));
-      let attemptingShot = (player.side === 'left') ? input.shoot : input.up;
-// ====== inside the "hasBall && (attemptingShot || isTurbo)" block ======
-if (hasBall && (attemptingShot || isTurbo)) {
-  player.vx = 0;
-  let speed = isTurbo ? 45 : 20;    // turbo = fast, shot = slow
-  // Default direction: straight towards opponent goal
-  let dirX = (player.side === 'left') ? 1 : -1;
-  let dirY = 0;
+      // ✅ Use input.shoot and input.turbo directly – works for both players
+      if (hasBall && input.shoot) {
+        player.vx = 0;
+        let speed = input.turbo ? 45 : 20;   // turbo = fast, normal = slower
+        // Direction – default is towards opponent's goal
+        let dirX = player.side === 'left' ? 1 : -1;
+        let dirY = 0;
 
-  // Use aimAngle if provided by client (sent as input.aimAngle in degrees)
-  if (typeof input.aimAngle === 'number') {
-    const rad = input.aimAngle * Math.PI / 180;
-    dirX = Math.cos(rad);
-    dirY = -Math.sin(rad);   // up is negative in canvas coordinates
-  }
+        // 🔥 Mobile aimAngle (degrees) – overrides default direction
+        if (typeof input.aimAngle === 'number') {
+          const rad = input.aimAngle * Math.PI / 180;
+          dirX = Math.cos(rad);
+          dirY = -Math.sin(rad);   // up is negative Y in canvas
+        }
 
-  ball.vx = dirX * speed;
-  ball.vy = dirY * speed;    // now the ball can go up, down, diagonal
+        ball.vx = dirX * speed;
+        ball.vy = dirY * speed;
 
-  this.broadcast("event", { type: "SHOT", data: { turbo: isTurbo, color: player.color } });
-}else {
+        this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } });
+      } else {
+        // Movement (no ball possession)
         if (input.left) player.vx -= 1.1;
         if (input.right) player.vx += 1.1;
         if (input.up && !player.isJumping) {
@@ -274,6 +274,7 @@ if (hasBall && (attemptingShot || isTurbo)) {
         if (input.down) player.vy += 1;
       }
 
+      // Apply physics
       player.vy += 0.7;
       player.x += player.vx;
       player.y += player.vy;
