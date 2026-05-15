@@ -735,6 +735,28 @@
       if (data.password && amIHost) { passwordText.innerText = data.password; }
       document.getElementById('connectionStatus').innerText = '⚡ connected';
     });
+
+    // ✅ Listen for match options updates from the server
+    room.onMessage("matchOptionsUpdated", (data) => {
+      if (data.timeLeft !== undefined) {
+        timeSelect.value = (data.timeLeft / 60) || "";
+      }
+      if (data.targetGoals !== undefined) {
+        goalSelect.value = data.targetGoals || "";
+      }
+    });
+
+    // ✅ Send match options when the host changes a dropdown
+    function sendMatchOptions() {
+      if (!amIHost || !room) return;
+      const matchTime = parseInt(timeSelect.value) || 2;
+      const targetGoals = parseInt(goalSelect.value) || 10;
+      room.send("setMatchOptions", { matchTime, targetGoals });
+    }
+
+    timeSelect.addEventListener('change', sendMatchOptions);
+    goalSelect.addEventListener('change', sendMatchOptions);
+
     room.onMessage("gameStarted", () => {
       panels.lobby.classList.add('hidden'); panels.game.classList.remove('hidden');
       gameActive = true; rematchBtn.classList.add('hidden');
