@@ -245,16 +245,26 @@ class FootballRoom extends Room {
 
       let isTurbo = (player.side === 'left') ? (input.up && input.shoot) : (input.up && (input.left || input.right));
       let attemptingShot = (player.side === 'left') ? input.shoot : input.up;
+// ====== inside the "hasBall && (attemptingShot || isTurbo)" block ======
+if (hasBall && (attemptingShot || isTurbo)) {
+  player.vx = 0;
+  let speed = isTurbo ? 45 : 20;    // turbo = fast, shot = slow
+  // Default direction: straight towards opponent goal
+  let dirX = (player.side === 'left') ? 1 : -1;
+  let dirY = 0;
 
-      if (hasBall && (attemptingShot || isTurbo)) {
-        player.vx = 0;
-        let speed = isTurbo ? 45 : 20;
-        ball.vx = (player.side === 'left') ? speed : -speed;
-        if (input.up && !input.down) ball.vy = -14;
-        else if (input.down) ball.vy = 10;
-        else ball.vy = -2;
-        this.broadcast("event", { type: "SHOT", data: { turbo: isTurbo, color: player.color } });
-      } else {
+  // Use aimAngle if provided by client (sent as input.aimAngle in degrees)
+  if (typeof input.aimAngle === 'number') {
+    const rad = input.aimAngle * Math.PI / 180;
+    dirX = Math.cos(rad);
+    dirY = -Math.sin(rad);   // up is negative in canvas coordinates
+  }
+
+  ball.vx = dirX * speed;
+  ball.vy = dirY * speed;    // now the ball can go up, down, diagonal
+
+  this.broadcast("event", { type: "SHOT", data: { turbo: isTurbo, color: player.color } });
+}else {
         if (input.left) player.vx -= 1.1;
         if (input.right) player.vx += 1.1;
         if (input.up && !player.isJumping) {
