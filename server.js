@@ -111,7 +111,7 @@ class FootballRoom extends Room {
           down: !!input.down,
           shoot: !!input.shoot,
           turbo: !!input.turbo,
-          aimAngle: input.aimAngle    // can be undefined (keyboard) or a number
+          aimAngle: input.aimAngle    // undefined for keyboard, number for mobile
         };
       }
     });
@@ -244,23 +244,24 @@ class FootballRoom extends Room {
       const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y;
       const hasBall = dx * dx + dy * dy < 2500;
 
-      // ✅ Use input.shoot and input.turbo directly – works for both players
       if (hasBall && input.shoot) {
         player.vx = 0;
-        let speed = input.turbo ? 45 : 20;   // turbo = fast, normal = slower
-        // Direction – default is towards opponent's goal
-        let dirX = player.side === 'left' ? 1 : -1;
-        let dirY = 0;
+        let speed = input.turbo ? 45 : 20;
 
-        // 🔥 Mobile aimAngle (degrees) – overrides default direction
         if (typeof input.aimAngle === 'number') {
+          // 📱 Mobile aiming – use the joystick angle
           const rad = input.aimAngle * Math.PI / 180;
-          dirX = Math.cos(rad);
-          dirY = -Math.sin(rad);   // up is negative Y in canvas
+          const dirX = Math.cos(rad);
+          const dirY = -Math.sin(rad);
+          ball.vx = dirX * speed;
+          ball.vy = dirY * speed;
+        } else {
+          // 💻 Laptop / keyboard – original vertical behaviour
+          ball.vx = (player.side === 'left') ? speed : -speed;
+          if (input.up && !input.down) ball.vy = -14;      // lob
+          else if (input.down) ball.vy = 10;                // low driven
+          else ball.vy = -2;                                // slight lift
         }
-
-        ball.vx = dirX * speed;
-        ball.vy = dirY * speed;
 
         this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } });
       } else {
