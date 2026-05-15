@@ -128,6 +128,24 @@ class FootballRoom extends Room {
 
     this.onMessage("ping", (client, d) => client.send("pong", d));
 
+    // ✅ Allow host to change match settings during lobby
+    this.onMessage("setMatchOptions", (client, opts) => {
+      if (this.state.matchState !== "waiting" && this.state.matchState !== "ready_check") return;
+      const p = this.state.players.get(client.sessionId);
+      if (!p || p.side !== "left") return;   // only host (left side) can change
+      if (typeof opts.matchTime === "number" && opts.matchTime > 0) {
+        this.state.timeLeft = opts.matchTime * 60;
+      }
+      if (typeof opts.targetGoals === "number" && opts.targetGoals > 0) {
+        this.targetGoals = opts.targetGoals;
+      }
+      // Broadcast the new settings to all clients so they can update their UI
+      this.broadcast("matchOptionsUpdated", {
+        timeLeft: this.state.timeLeft,
+        targetGoals: this.targetGoals
+      });
+    });
+
     this.onMessage("rematch", (client) => {
       if (this.state.matchState !== "end") return;
       this.state.players.forEach(p => {
