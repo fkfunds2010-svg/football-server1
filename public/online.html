@@ -29,7 +29,7 @@
     }
     .game-wrapper {
       width:100%; max-width:1200px; height:100%; max-height:100vh;
-      background:rgba(5,1,16,0.8); backdrop-filter:blur(8px);
+      background:rgba(5,1,16,0.8);
       border-radius:clamp(10px,3vw,40px); padding:clamp(5px,2vw,20px);
       box-shadow:0 0 30px #00ff0040; border:2px solid #00ff00;
       display:flex; flex-direction:column; justify-content:center;
@@ -40,6 +40,7 @@
     .btn{background:#111;border:2px solid #00ff00;border-radius:60px;padding:clamp(8px,2vw,14px) clamp(16px,4vw,28px);font-size:clamp(0.9rem,2.5vw,1.2rem);font-weight:bold;color:#00ff00;cursor:pointer;text-transform:uppercase;transition:0.2s;white-space:nowrap}
     .btn:disabled{opacity:0.5;pointer-events:none}
     .btn.secondary{border-color:#00f2ff;color:#00f2ff}
+    .btn.invite-btn{border-color:#ffaa00;color:#ffaa00;background:#0d0800}
     .input-field{background:#0a0f0a;border:2px solid #00ff00;border-radius:40px;padding:14px 24px;color:#fff;width:100%;outline:none;font-size:1rem}
     .room-info{background:#0a1a0a;padding:16px 24px;border-radius:40px;color:#cfc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
     .players-box{display:flex;gap:20px;flex-wrap:wrap}
@@ -73,7 +74,7 @@
     #sendChatBtn { background: #00ff00; color: #000; font-weight: bold; }
     #chatInput { font-size: 1.2rem; padding: 14px 20px; }
 
-    /* ========== SENT NOTIFICATION RIPPLE ========== */
+    /* ========== SENT NOTIFICATION RIPPLE (only when a message arrives) ========== */
     .sent-flash { animation: flashGreen 0.4s ease; }
     @keyframes flashGreen {
       0% { box-shadow: 0 0 5px #00ff00; }
@@ -158,7 +159,6 @@
       text-transform: uppercase;
       color: #fff;
       background: rgba(255,255,255,0.05);
-      backdrop-filter: blur(2px);
     }
     #shootBtn { border-color: rgba(255,100,100,0.5); color: #ffa0a0; }
     #dashBtn { border-color: rgba(255,200,0,0.5); color: #ffd700; }
@@ -186,10 +186,112 @@
       justify-content: center;
       cursor: pointer;
       pointer-events: auto;
-      backdrop-filter: blur(2px);
     }
     .nav-buttons-hidden {
       display: none !important;
+    }
+
+    /* ========== INVITE MODAL ========== */
+    #inviteModal {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      z-index: 900;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #inviteModalContent {
+      background: #111;
+      border: 2px solid #00ff00;
+      border-radius: 20px;
+      padding: clamp(15px, 4vw, 30px);
+      width: min(95%, 500px);
+      max-height: 90vh;
+      overflow-y: auto;
+      color: #fff;
+      box-shadow: 0 0 30px #00ff00;
+    }
+    #inviteModalContent h2 {
+      margin-top: 0;
+      text-align: center;
+      text-shadow: 0 0 10px #00ff00;
+    }
+    .invite-section {
+      margin-bottom: 15px;
+    }
+    .invite-section label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #cfc;
+    }
+    .invite-section input, .invite-section textarea {
+      width: 100%;
+      background: #0a0f0a;
+      border: 1px solid #0f0;
+      color: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+    }
+    .invite-section textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    .app-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .app-btn {
+      background: #1a1a1a;
+      border: 1px solid #00ff00;
+      border-radius: 30px;
+      color: #00ff00;
+      padding: 8px 18px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.2s;
+      font-weight: bold;
+    }
+    .app-btn:hover {
+      background: #00ff00;
+      color: #000;
+    }
+    .invite-close-btn {
+      display: block;
+      margin: 15px auto 0;
+      background: #333;
+      border: 1px solid #f00;
+      color: #f00;
+      padding: 10px 30px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .invite-close-btn:hover {
+      background: #f00;
+      color: #fff;
+    }
+    .send-code-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+      color: #ffcc00;
+    }
+    .send-code-checkbox input {
+      width: 20px;
+      height: 20px;
+      accent-color: #00ff00;
+    }
+    .disabled-input {
+      opacity: 0.6;
+      pointer-events: none;
     }
 
     /* Modal */
@@ -329,12 +431,46 @@
         <button class="btn emote-btn" data-emote="⚽">⚽ Goal</button>
         <button class="btn emote-btn" data-emote="😂">😂 LOL</button>
       </div>
-      <div style="display:flex;gap:20px;flex-wrap:wrap">
+
+      <!-- ✅ INVITE FRIENDS SECTION -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px;">
+        <button class="btn invite-btn" id="invitePhoneBtn">📱 Invite via Phone</button>
+        <button class="btn invite-btn" id="inviteEmailBtn">📧 Invite via Email</button>
+      </div>
+
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:5px;">
         <button class="btn" id="readyBtn">✅ I'M READY</button>
         <button class="btn secondary" id="leaveLobbyBtn">🚪 LEAVE</button>
         <button class="btn main-menu" id="lobbyMainMenuBtn">🏠 MAIN MENU</button>
       </div>
       <button id="rematchBtn" class="btn hidden">⚔️ REMATCH</button>
+    </div>
+
+    <!-- INVITE MODAL -->
+    <div id="inviteModal" class="hidden" style="z-index:900;">
+      <div id="inviteModalContent">
+        <h2>📤 Invite Friend</h2>
+        <div class="invite-section">
+          <label id="recipientLabel">Phone number</label>
+          <input type="text" id="inviteRecipient" placeholder="+234...">
+        </div>
+        <div class="send-code-checkbox">
+          <input type="checkbox" id="sendCodeOnlyCheck">
+          <label for="sendCodeOnlyCheck">📋 Send room code & password only</label>
+        </div>
+        <div class="invite-section" id="subjectSection">
+          <label>Subject</label>
+          <input type="text" id="inviteSubject" placeholder="Subject">
+        </div>
+        <div class="invite-section">
+          <label>Message</label>
+          <textarea id="inviteMessage" placeholder="Type your message..."></textarea>
+        </div>
+        <div class="app-buttons" id="appButtons">
+          <!-- dynamically filled based on mode -->
+        </div>
+        <button class="invite-close-btn" id="inviteBackBtn">🔙 Back</button>
+      </div>
     </div>
 
     <!-- GAME PANEL -->
@@ -387,23 +523,18 @@
   let client, room, myPlayerId, amIHost, gameActive = false;
   let keys = {};
   let lastInputStr, serverState, localPlayer, remotePlayer;
-  let predictedX, predictedY, predictedVx, predictedVy;
+  let predictedX = 150, predictedY = 415, predictedVx = 0, predictedVy = 0;
   let ping = 0, reconnectAttempts = 0;
-  let goalFreeze = false, countdownValue = -1, matchStatus = "waiting";
+  let countdownValue = -1, matchStatus = "waiting";
   let inputInterval, pingInterval;
   let roomPassword = "";
   let selectedRegion = "europe";
 
   // Mobile touch state
   let touchDir = { up: false, down: false, left: false, right: false };
-  let shootPressed = false, turboPressed = false, aimMode = false;
-  let aimStartX = 0, aimStartY = 0;
-  let joystickActive = false;
-  let joystickCenter = { x: 0, y: 0 };
-  const joystickMaxDist = 35;
+  let shootPressed = false, turboPressed = false;
+  let joystickActive = false, joystickCenter = { x: 0, y: 0 }, joystickMaxDist = 35;
   let currentAimAngle = null;
-
-  // Fullscreen state
   let isFullscreen = false;
 
   // UI Elements
@@ -416,19 +547,25 @@
   const commentaryDiv = document.getElementById('commentary'), goalBanner = document.getElementById('goalBanner');
   const warningDiv = document.getElementById('warning'), winnerMsgDiv = document.getElementById('winnerMsg');
   const pingEl = document.getElementById('pingDisplay'), statusBar = document.getElementById('statusBar');
-  const countdownEl = document.getElementById('countdownOverlay');
-  const rematchBtn = document.getElementById('rematchBtn');
+  const countdownEl = document.getElementById('countdownOverlay'), rematchBtn = document.getElementById('rematchBtn');
   const passwordDisplay = document.getElementById('passwordDisplay'), passwordText = document.getElementById('passwordText');
-  const reconnectOverlay = document.getElementById('reconnectOverlay');
-  const regionSelect = document.getElementById('regionSelect');
-  const mobileControls = document.getElementById('mobileControls');
-  const aimIndicator = document.getElementById('aimIndicator');
-  const chatMessages = document.getElementById('chatMessages');
-  const fullscreenToggle = document.getElementById('fullscreenToggle');
+  const reconnectOverlay = document.getElementById('reconnectOverlay'), regionSelect = document.getElementById('regionSelect');
+  const mobileControls = document.getElementById('mobileControls'), aimIndicator = document.getElementById('aimIndicator');
+  const chatMessages = document.getElementById('chatMessages'), fullscreenToggle = document.getElementById('fullscreenToggle');
   const gameNavButtons = document.getElementById('gameNavButtons');
+  const timeSelect = document.getElementById('timeSelect'), goalSelect = document.getElementById('goalSelect');
 
-  const timeSelect = document.getElementById('timeSelect');
-  const goalSelect = document.getElementById('goalSelect');
+  // Invite modal elements
+  const inviteModal = document.getElementById('inviteModal');
+  const inviteRecipient = document.getElementById('inviteRecipient');
+  const recipientLabel = document.getElementById('recipientLabel');
+  const sendCodeOnlyCheck = document.getElementById('sendCodeOnlyCheck');
+  const inviteSubject = document.getElementById('inviteSubject');
+  const inviteMessage = document.getElementById('inviteMessage');
+  const appButtons = document.getElementById('appButtons');
+  const subjectSection = document.getElementById('subjectSection');
+
+  let currentInviteMode = 'phone'; // 'phone' or 'email'
 
   // 🎵 Music Playlist
   const playlist = ['/1.mp3', '/3.mp3', '/4.mp3', '/5.mp3'];
@@ -530,8 +667,7 @@
   function showMobileControls() { if (isMobile()) mobileControls.style.display = 'flex'; }
 
   function setupJoystick() {
-    const base = document.getElementById('joystickBase');
-    const thumb = document.getElementById('joystickThumb');
+    const base = document.getElementById('joystickBase'), thumb = document.getElementById('joystickThumb');
     
     function updateAimAngle(dx, dy) {
       if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
@@ -736,17 +872,11 @@
       document.getElementById('connectionStatus').innerText = '⚡ connected';
     });
 
-    // ✅ Listen for match options updates from the server
     room.onMessage("matchOptionsUpdated", (data) => {
-      if (data.timeLeft !== undefined) {
-        timeSelect.value = (data.timeLeft / 60) || "";
-      }
-      if (data.targetGoals !== undefined) {
-        goalSelect.value = data.targetGoals || "";
-      }
+      if (data.timeLeft !== undefined) timeSelect.value = (data.timeLeft / 60) || "";
+      if (data.targetGoals !== undefined) goalSelect.value = data.targetGoals || "";
     });
 
-    // ✅ Send match options when the host changes a dropdown
     function sendMatchOptions() {
       if (!amIHost || !room) return;
       const matchTime = parseInt(timeSelect.value) || 2;
@@ -776,6 +906,9 @@
         comment(ev.data.scorer==='p1'?"GOAL! PLAYER 1 SCORES!":"GOAL! PLAYER 2 SCORES!",ev.data.color);
         document.getElementById('app').classList.add('shake');
         setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
+        // Goal flash effect (like local pvp)
+        document.getElementById('gameCanvasContainer').style.background = 'rgba(255,255,255,0.3)';
+        setTimeout(() => document.getElementById('gameCanvasContainer').style.background = '', 200);
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
       } else if (ev.type === "MUSIC_NEXT") playNextTrack();
@@ -838,7 +971,7 @@
       document.getElementById('p2Score').innerText = state.p2Score;
 
       if (localPlayer) {
-        if (!predictedX) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
+        if (predictedX === undefined) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
         if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
           predictedX += dx * 0.15;
@@ -914,6 +1047,7 @@
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
+  let prevBallX = 500, prevBallY = 250;
   function draw() {
     ctx.clearRect(0,0,1000,500);
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
@@ -921,8 +1055,11 @@
     ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
 
     if (serverState && serverState.ball) {
-      let renderX = serverState.ball.x;
-      let renderY = serverState.ball.y;
+      const ball = serverState.ball;
+      // Smooth ball interpolation (like local PvP)
+      prevBallX += (ball.x - prevBallX) * 0.4;
+      prevBallY += (ball.y - prevBallY) * 0.4;
+      let renderX = prevBallX, renderY = prevBallY;
       if (renderX < 10) renderX = 10;
       if (renderX > 990) renderX = 990;
       if (renderY < 10) renderY = 10;
@@ -1009,9 +1146,136 @@
     countdownEl.style.display = 'none'; statusBar.innerText = '⚪ WAITING';
     reconnectOverlay.style.display = 'none'; rematchBtn.classList.add('hidden');
     passwordDisplay.style.display = 'none'; mobileControls.style.display = 'none';
-    predictedX = predictedY = predictedVx = predictedVy = undefined;
+    predictedX = 150; predictedY = 415; predictedVx = 0; predictedVy = 0;
     lastInputStr = null; serverState = null; localPlayer = null; remotePlayer = null;
     exitFullscreen();
+  }
+
+  // ==================== INVITE MODAL LOGIC ====================
+  function getRoomCode() { return document.getElementById('roomCodeDisplay').innerText; }
+  function getRoomPassword() { return document.getElementById('passwordText').innerText; }
+
+  function buildCodeOnlyMessage() {
+    const code = getRoomCode();
+    const pass = getRoomPassword();
+    const gameName = "FRANKLIN FOOTBALL 2026";
+    return `Join my game! 🏆 ${gameName}\nRoom Code: ${code}\nPassword: ${pass}`;
+  }
+
+  function updateInviteFields() {
+    const codeOnly = sendCodeOnlyCheck.checked;
+    if (codeOnly) {
+      inviteSubject.value = `Game Invitation - FRANKLIN FOOTBALL 2026`;
+      inviteMessage.value = buildCodeOnlyMessage();
+      inviteSubject.classList.add('disabled-input');
+      inviteMessage.classList.add('disabled-input');
+    } else {
+      inviteSubject.classList.remove('disabled-input');
+      inviteMessage.classList.remove('disabled-input');
+      if (inviteSubject.value === `Game Invitation - FRANKLIN FOOTBALL 2026`) {
+        inviteSubject.value = "Let's play FRANKLIN FOOTBALL 2026!";
+      }
+    }
+  }
+
+  function openInviteModal(mode) {
+    currentInviteMode = mode;
+    inviteModal.classList.remove('hidden');
+    if (mode === 'phone') {
+      recipientLabel.textContent = 'Phone number (with country code)';
+      inviteRecipient.type = 'tel';
+      inviteRecipient.placeholder = '+234...';
+      // App buttons for phone
+      appButtons.innerHTML = `
+        <button class="app-btn" data-app="whatsapp">WhatsApp</button>
+        <button class="app-btn" data-app="telegram">Telegram</button>
+        <button class="app-btn" data-app="snapchat">Snapchat</button>
+        <button class="app-btn" data-app="sms">SMS</button>
+        <button class="app-btn" data-app="clipboard">📋 Copy</button>
+      `;
+    } else {
+      recipientLabel.textContent = 'Email address';
+      inviteRecipient.type = 'email';
+      inviteRecipient.placeholder = 'friend@example.com';
+      appButtons.innerHTML = `
+        <button class="app-btn" data-app="mailto">Email (default)</button>
+        <button class="app-btn" data-app="gmail">Gmail</button>
+        <button class="app-btn" data-app="outlook">Outlook</button>
+        <button class="app-btn" data-app="yahoo">Yahoo</button>
+        <button class="app-btn" data-app="clipboard">📋 Copy</button>
+      `;
+    }
+    // Reset fields
+    inviteRecipient.value = '';
+    sendCodeOnlyCheck.checked = false;
+    inviteSubject.value = "Let's play FRANKLIN FOOTBALL 2026!";
+    inviteMessage.value = '';
+    updateInviteFields();
+
+    // Add listeners to app buttons
+    appButtons.querySelectorAll('.app-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const app = e.target.dataset.app;
+        sendInvite(app);
+      });
+    });
+  }
+
+  function closeInviteModal() {
+    inviteModal.classList.add('hidden');
+  }
+
+  sendCodeOnlyCheck.addEventListener('change', updateInviteFields);
+  document.getElementById('inviteBackBtn').addEventListener('click', closeInviteModal);
+
+  document.getElementById('invitePhoneBtn').addEventListener('click', () => openInviteModal('phone'));
+  document.getElementById('inviteEmailBtn').addEventListener('click', () => openInviteModal('email'));
+
+  function sendInvite(app) {
+    const recipient = inviteRecipient.value.trim();
+    if (!recipient && app !== 'clipboard') {
+      alert('Please enter a recipient.');
+      return;
+    }
+    const subject = inviteSubject.value;
+    const message = inviteMessage.value;
+    let url = '';
+
+    if (app === 'clipboard') {
+      const fullText = `${subject}\n${message}`;
+      navigator.clipboard.writeText(fullText).then(() => showNotification('📋 Invite copied!'));
+      return;
+    }
+
+    if (currentInviteMode === 'phone') {
+      const cleanNumber = recipient.replace(/[^+\d]/g, '');
+      if (app === 'whatsapp') {
+        url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
+      } else if (app === 'telegram') {
+        url = `https://t.me/share/url?url=&text=${encodeURIComponent(message)}`;
+      } else if (app === 'snapchat') {
+        // Snapchat doesn't support direct deep links; copy to clipboard and instruct
+        navigator.clipboard.writeText(message);
+        alert('Snapchat link not supported; message copied. Paste it in Snapchat.');
+        return;
+      } else if (app === 'sms') {
+        url = `sms:${cleanNumber}?body=${encodeURIComponent(message)}`;
+      }
+    } else {
+      if (app === 'mailto') {
+        url = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+      } else if (app === 'gmail') {
+        url = `https://mail.google.com/mail/?view=cm&fs=1&to=${recipient}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+      } else if (app === 'outlook') {
+        url = `https://outlook.office.com/mail/deeplink/compose?to=${recipient}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+      } else if (app === 'yahoo') {
+        url = `https://compose.mail.yahoo.com/?to=${recipient}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+      }
+    }
+
+    if (url) {
+      window.open(url, '_blank');
+    }
   }
 
   if (isMobile()) {
