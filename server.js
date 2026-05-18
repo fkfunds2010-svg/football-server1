@@ -59,13 +59,12 @@ GameState._schema = {
   password: "string", lastWinner: "string"
 };
 
-// ✅ Register schemas
 defineTypes(PlayerState, PlayerState._schema);
 defineTypes(BallState, BallState._schema);
 defineTypes(KeeperState, KeeperState._schema);
 defineTypes(GameState, GameState._schema);
 
-// ---------- Room – full game logic ----------
+// ---------- Room ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -111,7 +110,7 @@ class FootballRoom extends Room {
           down: !!input.down,
           shoot: !!input.shoot,
           turbo: !!input.turbo,
-          aimAngle: input.aimAngle    // undefined for keyboard, number for mobile
+          aimAngle: input.aimAngle
         };
       }
     });
@@ -132,14 +131,13 @@ class FootballRoom extends Room {
     this.onMessage("setMatchOptions", (client, opts) => {
       if (this.state.matchState !== "waiting" && this.state.matchState !== "ready_check") return;
       const p = this.state.players.get(client.sessionId);
-      if (!p || p.side !== "left") return;   // only host (left side) can change
+      if (!p || p.side !== "left") return;   // only host
       if (typeof opts.matchTime === "number" && opts.matchTime > 0) {
         this.state.timeLeft = opts.matchTime * 60;
       }
       if (typeof opts.targetGoals === "number" && opts.targetGoals > 0) {
         this.targetGoals = opts.targetGoals;
       }
-      // Broadcast the new settings to all clients so they can update their UI
       this.broadcast("matchOptionsUpdated", {
         timeLeft: this.state.timeLeft,
         targetGoals: this.targetGoals
@@ -162,7 +160,6 @@ class FootballRoom extends Room {
       this.broadcastPlayerInfo();
     });
 
-    // ✅ 60 Hz tick rate
     this.setSimulationInterval((dt) => {
       try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
     }, 1000 / 60);
@@ -217,7 +214,6 @@ class FootballRoom extends Room {
     const FIXED_DT = 1 / 30;
     const ball = this.state.ball;
 
-    // ---------- 1. Ball physics ----------
     ball.x += ball.vx;
     ball.y += ball.vy;
     ball.vy += 0.25;
@@ -225,7 +221,6 @@ class FootballRoom extends Room {
     if (ball.y > 480) { ball.y = 480; ball.vy *= -0.7; }
     if (ball.y < 10)  { ball.y = 10;  ball.vy *= -0.7; }
 
-    // ---------- 2. Keeper collisions ----------
     [{ x: 5, k: this.state.keeper1 }, { x: 983, k: this.state.keeper2 }].forEach(({ x: kx, k }) => {
       if (ball.x + 10 > kx && ball.x - 10 < kx + 12 && ball.y + 10 > k.y && ball.y - 10 < k.y + 60) {
         if (Math.abs(ball.vx) > 25) this.broadcast("event", { type: "SHOT", data: { turbo: false, color: "#fff" } });
@@ -234,7 +229,6 @@ class FootballRoom extends Room {
       }
     });
 
-    // ---------- 3. Player collisions with ball ----------
     this.state.players.forEach(p => {
       if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
         ball.vx *= -0.5;
@@ -242,7 +236,6 @@ class FootballRoom extends Room {
       }
     });
 
-    // ---------- 4. Goal check ----------
     if (ball.x < 0 || ball.x > 1000) {
       if (ball.y > 150 && ball.y < 350) {
         if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
@@ -256,7 +249,6 @@ class FootballRoom extends Room {
       } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
     }
 
-    // ---------- 5. Player movement + shooting ----------
     this.state.players.forEach((player, sid) => {
       const input = this.inputs[sid] || {};
       const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y;
@@ -267,23 +259,20 @@ class FootballRoom extends Room {
         let speed = input.turbo ? 45 : 20;
 
         if (typeof input.aimAngle === 'number') {
-          // 📱 Mobile aiming – use the joystick angle
           const rad = input.aimAngle * Math.PI / 180;
           const dirX = Math.cos(rad);
           const dirY = -Math.sin(rad);
           ball.vx = dirX * speed;
           ball.vy = dirY * speed;
         } else {
-          // 💻 Laptop / keyboard – original vertical behaviour
           ball.vx = (player.side === 'left') ? speed : -speed;
-          if (input.up && !input.down) ball.vy = -14;      // lob
-          else if (input.down) ball.vy = 10;                // low driven
-          else ball.vy = -2;                                // slight lift
+          if (input.up && !input.down) ball.vy = -14;
+          else if (input.down) ball.vy = 10;
+          else ball.vy = -2;
         }
 
         this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } });
       } else {
-        // Movement (no ball possession)
         if (input.left) player.vx -= 1.1;
         if (input.right) player.vx += 1.1;
         if (input.up && !player.isJumping) {
@@ -293,7 +282,6 @@ class FootballRoom extends Room {
         if (input.down) player.vy += 1;
       }
 
-      // Apply physics
       player.vy += 0.7;
       player.x += player.vx;
       player.y += player.vy;
@@ -302,7 +290,6 @@ class FootballRoom extends Room {
       player.x = Math.min(930, Math.max(40, player.x));
     });
 
-    // ---------- 6. Keeper AI ----------
     const targetY = ball.y - 30;
     [this.state.keeper1, this.state.keeper2].forEach((k, i) => {
       const skill = (i === 0) ? 1.2 : 1.0;
@@ -312,7 +299,6 @@ class FootballRoom extends Room {
       k.y = Math.min(295, Math.max(155, k.y));
     });
 
-    // ---------- 7. Timer ----------
     if (this.state.timeLeft > 0) {
       this.state.timeLeft -= FIXED_DT;
       if (this.state.timeLeft <= 0) {
@@ -324,7 +310,6 @@ class FootballRoom extends Room {
   }
 }
 
-// ==================== SERVER SETUP ====================
 const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
@@ -333,30 +318,21 @@ const server = defineServer({
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') return;
       next();
     });
-
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
-
     app.get("/health", (req, res) => res.send("OK"));
     app.use("/playground", playground());
-
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
       next();
     });
-
-    // ✅ Serve the schema library directly from node_modules
     app.get("/schema.js", (req, res) => {
       res.type("application/javascript");
       res.sendFile(path.join(__dirname, "node_modules", "@colyseus", "schema", "build", "index.js"));
     });
-
-    // Serve your game HTML
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-
-    // Serve audio and other static files from public/
     app.use(express.static("public", { index: false }));
   }
 });
