@@ -4,203 +4,117 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>⚡ FRANKLIN FOOTBALL · ESPORTS</title>
-<!-- ✅ Schema library – served directly from your own server -->
 <script src="/schema.js"></script>
-<!-- ✅ Bridge the global schema object to the names the Colyseus SDK expects -->
 <script>
   window.Schema = window.schema.Schema;
   window.MapSchema = window.schema.MapSchema;
 </script>
-  <!-- ✅ Official @colyseus/sdk 0.17 -->
-  <script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
-  <!-- ✅ Favicon – stops the 404 request -->
-  <link rel="icon" href="data:,">
-  <style>
-    *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
-    html, body {
-      margin:0; padding:0; width:100%; height:100%; overflow:hidden;
-      background:#050110; touch-action: none; -webkit-touch-callout: none;
-      -webkit-user-select: none; user-select: none;
-    }
-    #app {
-      position:fixed; top:0; left:0; width:100%; height:100%;
-      display:flex; justify-content:center; align-items:center;
-      background:radial-gradient(circle at 20% 20%,#1a2b1a,#050110);
-    }
-    .game-wrapper {
-      width:100%; max-width:1200px; height:100%; max-height:100vh;
-      background:rgba(5,1,16,0.8);
-      border-radius:clamp(10px,3vw,40px); padding:clamp(5px,2vw,20px);
-      box-shadow:0 0 30px #00ff0040; border:2px solid #00ff00;
-      display:flex; flex-direction:column; justify-content:center;
-      overflow:hidden;
-    }
-    .panel{display:flex;flex-direction:column;gap:clamp(10px,2vw,20px);flex:1;overflow-y:auto}
-    h1{color:#fff;text-shadow:0 0 20px #00ff00;text-align:center;font-size:clamp(1.5rem,5vw,2.5rem)}
-    .btn{background:#111;border:2px solid #00ff00;border-radius:60px;padding:clamp(8px,2vw,14px) clamp(16px,4vw,28px);font-size:clamp(0.9rem,2.5vw,1.2rem);font-weight:bold;color:#00ff00;cursor:pointer;text-transform:uppercase;transition:0.2s;white-space:nowrap}
-    .btn:disabled{opacity:0.5;pointer-events:none}
-    .btn.secondary{border-color:#00f2ff;color:#00f2ff}
-    .btn.invite-btn{border-color:#ffaa00;color:#ffaa00;background:#0d0800}
-    .input-field{background:#0a0f0a;border:2px solid #00ff00;border-radius:40px;padding:14px 24px;color:#fff;width:100%;outline:none;font-size:1rem}
-    .room-info{background:#0a1a0a;padding:16px 24px;border-radius:40px;color:#cfc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
-    .players-box{display:flex;gap:20px;flex-wrap:wrap}
-    .player-card{background:#132013;border-radius:30px;padding:16px;flex:1;min-width:150px;text-align:center;border:2px solid #00ff00;color:white}
-    .ready-badge{background:#444;padding:6px 18px;border-radius:30px}
-    .ready-badge.ready{background:#2e9a6e}
-    canvas{background:radial-gradient(circle,#1a2b1a 0%,#051005 100%);border:4px solid #00ff00;border-radius:20px;width:100%;aspect-ratio:2/1;touch-action:none;display:block}
-    .scoreboard{display:flex;justify-content:space-between;font-size:clamp(1.5rem,5vw,3rem);color:#fff;text-shadow:0 0 20px #00f2ff;padding:0 20px}
-    #goalBanner{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:clamp(3rem,10vw,100px);color:#fff;text-shadow:0 0 30px #00ff00;transition:0.3s;z-index:100;pointer-events:none}
-    #goalBanner.show{transform:translate(-50%,-50%) scale(1)}
-    #commentary{position:fixed;top:70%;left:50%;transform:translateX(-50%);font-size:clamp(1.2rem,4vw,28px);color:#ffcc00;text-shadow:0 0 10px #000;opacity:0;transition:0.3s;text-transform:uppercase;z-index:90}
-    #commentary.show{opacity:1}
-    #winnerMsg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(2rem,6vw,60px);color:#00ff00;text-shadow:0 0 30px #fff;display:none;z-index:300}
-    #warning{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);font-size:clamp(2rem,5vw,50px);color:#ff0000;display:none;z-index:200}
-    #pingDisplay{position:fixed;bottom:20px;right:20px;color:#0f0;background:rgba(0,0,0,0.5);padding:5px 10px;border-radius:20px;z-index:400;font-size:0.9rem}
-    #statusBar{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#fff;padding:5px 15px;border-radius:20px;font-size:clamp(0.8rem,2vw,16px);z-index:50}
-    #countdownOverlay{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(3rem,10vw,80px);color:#fff;text-shadow:0 0 40px #00ff00;display:none;z-index:310}
-    .hidden{display:none!important}
+<script src="https://unpkg.com/@colyseus/sdk@0.17.42/dist/colyseus.js"></script>
+<link rel="icon" href="data:,">
+<style>
+  *{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#050110;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+  #app{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;background:radial-gradient(circle at 20% 20%,#1a2b1a,#050110)}
+  .game-wrapper{width:100%;max-width:1200px;height:100%;max-height:100vh;background:rgba(5,1,16,0.8);border-radius:clamp(10px,3vw,40px);padding:clamp(5px,2vw,20px);box-shadow:0 0 30px #00ff0040;border:2px solid #00ff00;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+  .panel{display:flex;flex-direction:column;gap:clamp(10px,2vw,20px);flex:1;overflow-y:auto}
+  h1{color:#fff;text-shadow:0 0 20px #00ff00;text-align:center;font-size:clamp(1.5rem,5vw,2.5rem)}
+  .btn{background:#111;border:2px solid #00ff00;border-radius:60px;padding:clamp(8px,2vw,14px) clamp(16px,4vw,28px);font-size:clamp(0.9rem,2.5vw,1.2rem);font-weight:bold;color:#00ff00;cursor:pointer;text-transform:uppercase;transition:0.2s;white-space:nowrap}
+  .btn:disabled{opacity:0.5;pointer-events:none}
+  .btn.secondary{border-color:#00f2ff;color:#00f2ff}
+  .btn.invite-btn{border-color:#ffaa00;color:#ffaa00;background:#0d0800}
+  .btn.lock-btn{border-color:#ff00ff;color:#ff80ff;background:#0d0800}
+  .input-field{background:#0a0f0a;border:2px solid #00ff00;border-radius:40px;padding:14px 24px;color:#fff;width:100%;outline:none;font-size:1rem}
+  .room-info{background:#0a1a0a;padding:16px 24px;border-radius:40px;color:#cfc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .players-box{display:flex;gap:20px;flex-wrap:wrap}
+  .player-card{background:#132013;border-radius:30px;padding:16px;flex:1;min-width:150px;text-align:center;border:2px solid #00ff00;color:white}
+  .ready-badge{background:#444;padding:6px 18px;border-radius:30px}
+  .ready-badge.ready{background:#2e9a6e}
+  canvas{background:radial-gradient(circle,#1a2b1a 0%,#051005 100%);border:4px solid #00ff00;border-radius:20px;width:100%;aspect-ratio:2/1;touch-action:none;display:block}
+  .scoreboard{display:flex;justify-content:space-between;font-size:clamp(1.5rem,5vw,3rem);color:#fff;text-shadow:0 0 20px #00f2ff;padding:0 20px}
+  #goalBanner{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:clamp(3rem,10vw,100px);color:#fff;text-shadow:0 0 30px #00ff00;transition:0.3s;z-index:100;pointer-events:none}
+  #goalBanner.show{transform:translate(-50%,-50%) scale(1)}
+  #commentary{position:fixed;top:70%;left:50%;transform:translateX(-50%);font-size:clamp(1.2rem,4vw,28px);color:#ffcc00;text-shadow:0 0 10px #000;opacity:0;transition:0.3s;text-transform:uppercase;z-index:90}
+  #commentary.show{opacity:1}
+  #winnerMsg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(2rem,6vw,60px);color:#00ff00;text-shadow:0 0 30px #fff;display:none;z-index:300}
+  #warning{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);font-size:clamp(2rem,5vw,50px);color:#ff0000;display:none;z-index:200}
+  #pingDisplay{position:fixed;bottom:20px;right:20px;color:#0f0;background:rgba(0,0,0,0.5);padding:5px 10px;border-radius:20px;z-index:400;font-size:0.9rem}
+  #statusBar{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#fff;padding:5px 15px;border-radius:20px;font-size:clamp(0.8rem,2vw,16px);z-index:50}
+  #countdownOverlay{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(3rem,10vw,80px);color:#fff;text-shadow:0 0 40px #00ff00;display:none;z-index:310}
+  .hidden{display:none!important}
 
-    /* Chat */
-    #chatMessages{flex:1;overflow-y:auto;background:#0b1c0b;padding:12px;border-radius:10px;border:1px solid #00ff00;font-size:1.3rem;line-height:1.7;color:#fff;word-break:break-word;min-height:0}
-    #chatMessages>div{padding:8px 0;border-bottom:1px solid rgba(0,255,0,0.15)}
-    #chatMessages>div:last-child{border-bottom:none}
-    .msg-sender{color:#00f2ff;font-weight:bold;font-size:1.3rem}
-    .msg-text{margin-left:8px;font-size:1.3rem}
-    .msg-emote{font-style:italic;color:#ffcc00;font-size:1.4rem}
-    #sendChatBtn{background:#00ff00;color:#000;font-weight:bold}
-    #chatInput{font-size:1.2rem;padding:14px 20px}
-    .sent-flash{animation:flashGreen 0.4s ease}
-    @keyframes flashGreen{0%{box-shadow:0 0 5px #00ff00}50%{box-shadow:0 0 25px #00ff00,0 0 50px #00ff00}100%{box-shadow:0 0 5px #00ff00}}
+  #chatMessages{flex:1;overflow-y:auto;background:#0b1c0b;padding:12px;border-radius:10px;border:1px solid #00ff00;font-size:1.3rem;line-height:1.7;color:#fff;word-break:break-word;min-height:0}
+  #chatMessages>div{padding:8px 0;border-bottom:1px solid rgba(0,255,0,0.15)}
+  #chatMessages>div:last-child{border-bottom:none}
+  .msg-sender{color:#00f2ff;font-weight:bold;font-size:1.3rem}
+  .msg-text{margin-left:8px;font-size:1.3rem}
+  .msg-emote{font-style:italic;color:#ffcc00;font-size:1.4rem}
+  #sendChatBtn{background:#00ff00;color:#000;font-weight:bold}
+  #chatInput{font-size:1.2rem;padding:14px 20px}
+  .sent-flash{animation:flashGreen 0.4s ease}
+  @keyframes flashGreen{0%{box-shadow:0 0 5px #00ff00}50%{box-shadow:0 0 25px #00ff00,0 0 50px #00ff00}100%{box-shadow:0 0 5px #00ff00}}
 
-    /* ---------- MOBILE CONTROLS – eFootball style: joystick + action buttons inside pitch ---------- */
-    #gameCanvasContainer{position:relative;flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center}
-    #gameCanvas{width:100%;height:100%;object-fit:contain}
+  #gameCanvasContainer{position:relative;flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center}
+  #gameCanvas{width:100%;height:100%;object-fit:contain}
 
-    #mobileControls{
-      display:none;
-      position:absolute;
-      bottom:20px;
-      left:0;
-      right:0;
-      justify-content:space-between;
-      align-items:flex-end;
-      padding:0 25px;
-      z-index:60;
-      pointer-events:none;
-    }
-    #mobileControls>*{pointer-events:auto}
+  #mobileControls{display:none;position:absolute;bottom:20px;left:0;right:0;justify-content:space-between;align-items:flex-end;padding:0 25px;z-index:60;pointer-events:none}
+  #mobileControls>*{pointer-events:auto}
 
-    .joystick-container{
-      position:relative;
-      width:120px;
-      height:120px;
-      margin-bottom:5px;
-    }
-    .joystick-base{
-      width:100%;height:100%;
-      border-radius:50%;
-      background:rgba(255,255,255,0.06);
-      border:1px solid rgba(0,255,0,0.3);
-      position:relative;
-    }
-    .joystick-thumb{
-      width:50px;height:50px;
-      border-radius:50%;
-      background:rgba(0,255,0,0.15);
-      border:1px solid #0f0;
-      position:absolute;
-      top:50%;left:50%;
-      transform:translate(-50%,-50%);
-      transition:background 0.1s;
-    }
+  .joystick-container{position:relative;width:120px;height:120px;margin-bottom:5px}
+  .joystick-base{width:100%;height:100%;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(0,255,0,0.3);position:relative}
+  .joystick-thumb{width:50px;height:50px;border-radius:50%;background:rgba(0,255,0,0.15);border:1px solid #0f0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transition:background 0.1s}
 
-    /* Action buttons area – row layout: shot in middle, dash/turbo column on right */
-    .action-area{
-      display:flex;
-      flex-direction:row;
-      align-items:flex-end;
-      gap:12px;
-      margin-bottom:10px;
-    }
-    .action-column{
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      align-items:center;
-    }
-    #shootBtn,#dashBtn,#turboShotBtn{
-      width:75px;height:75px;
-      border:1px solid rgba(255,255,255,0.3);
-      border-radius:50%;
-      font-size:14px;font-weight:bold;
-      display:flex;align-items:center;justify-content:center;
-      text-transform:uppercase;
-      color:#fff;
-      background:rgba(255,255,255,0.05);
-    }
-    #shootBtn{
-      border-color:rgba(255,100,100,0.5); color:#ffa0a0;
-      width:80px;height:80px;  /* slightly larger shot button */
-      font-size:16px;
-    }
-    #dashBtn{border-color:rgba(255,200,0,0.5); color:#ffd700;}
-    #turboShotBtn{border-color:rgba(255,0,255,0.5); color:#ff80ff;}
-    .aim-indicator{position:absolute;background:rgba(255,255,0,0.2);border-radius:50%;pointer-events:none;transition:0.1s}
-    .shake{animation:shake 0.5s ease-in-out}
-    @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-5px,10px)}50%{transform:translate(5px,-10px)}75%{transform:translate(-5px,-5px)}}
+  .action-area{display:flex;flex-direction:row;align-items:flex-end;gap:12px;margin-bottom:10px}
+  .action-column{display:flex;flex-direction:column;gap:12px;align-items:center}
+  #shootBtn,#dashBtn,#turboShotBtn,#lockBtnMobile{width:75px;height:75px;border:1px solid rgba(255,255,255,0.3);border-radius:50%;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;text-transform:uppercase;color:#fff;background:rgba(255,255,255,0.05)}
+  #shootBtn{border-color:rgba(255,100,100,0.5);color:#ffa0a0;width:80px;height:80px;font-size:16px}
+  #dashBtn{border-color:rgba(255,200,0,0.5);color:#ffd700}
+  #turboShotBtn{border-color:rgba(255,0,255,0.5);color:#ff80ff}
+  #lockBtnMobile{border-color:rgba(0,255,255,0.7);color:#00ffff;font-size:12px}
 
-    /* Fullscreen toggle – inside pitch */
-    #fullscreenToggle{
-      position:absolute;bottom:20px;left:20px;
-      z-index:200;
-      width:40px;height:40px;border-radius:50%;
-      background:rgba(255,255,255,0.06);
-      border:1px solid rgba(0,255,0,0.5);
-      color:#0f0;font-size:20px;
-      display:flex;align-items:center;justify-content:center;
-      cursor:pointer;pointer-events:auto;
-    }
-    .nav-buttons-hidden{display:none!important}
+  .aim-indicator{position:absolute;background:rgba(255,255,0,0.2);border-radius:50%;pointer-events:none;transition:0.1s}
+  .shake{animation:shake 0.5s ease-in-out}
+  @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-5px,10px)}50%{transform:translate(5px,-10px)}75%{transform:translate(-5px,-5px)}}
 
-    /* Invite modal (simplified) */
-    #inviteModal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:900;display:flex;justify-content:center;align-items:center}
-    #inviteModalContent{background:#111;border:2px solid #00ff00;border-radius:20px;padding:clamp(15px,4vw,30px);width:min(95%,500px);max-height:90vh;overflow-y:auto;color:#fff;box-shadow:0 0 30px #00ff00}
-    #inviteModalContent h2{margin-top:0;text-align:center;text-shadow:0 0 10px #00ff00}
-    .invite-section{margin-bottom:15px}
-    .invite-section label{display:block;margin-bottom:5px;font-weight:bold;color:#cfc}
-    .invite-section textarea{width:100%;background:#0a0f0a;border:1px solid #0f0;color:#fff;padding:10px;border-radius:10px;font-size:1rem;outline:none;resize:vertical;min-height:80px}
-    .app-buttons{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:10px}
-    .app-btn{background:#1a1a1a;border:1px solid #00ff00;border-radius:30px;color:#00ff00;padding:8px 18px;font-size:0.9rem;cursor:pointer;transition:0.2s;font-weight:bold}
-    .app-btn:hover{background:#00ff00;color:#000}
-    .invite-close-btn{display:block;margin:15px auto 0;background:#333;border:1px solid #f00;color:#f00;padding:10px 30px;border-radius:30px;cursor:pointer;font-weight:bold}
-    .invite-close-btn:hover{background:#f00;color:#fff}
+  #fullscreenToggle{position:absolute;bottom:20px;left:20px;z-index:200;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(0,255,0,0.5);color:#0f0;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto}
+  .nav-buttons-hidden{display:none!important}
 
-    /* Enhancements panel */
-    #enhancementsPanel{background:#0a1a0a;border:1px solid #0f0;border-radius:20px;padding:15px;margin-top:10px}
-    #enhancementsPanel h3{margin:0 0 10px;color:#00ff00;cursor:pointer;user-select:none}
-    .enhancement-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,255,0,0.1)}
-    .enhancement-row label{color:#cfc;font-size:0.9rem}
-    .enhancement-row select,.enhancement-row input[type="checkbox"],.enhancement-row input[type="range"]{background:#0a0f0a;border:1px solid #0f0;color:#fff;border-radius:10px;padding:4px 10px;font-size:0.9rem}
-    .enhancement-row input[type="checkbox"]{width:20px;height:20px;accent-color:#0f0}
-    .enhancement-row input[type="range"]{width:100px}
-    .chat-wheel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);border:2px solid #0f0;border-radius:20px;z-index:500;padding:20px;display:none;flex-wrap:wrap;gap:10px;max-width:320px;justify-content:center}
-    .chat-wheel button{background:#222;border:1px solid #0f0;color:#0f0;padding:8px 14px;border-radius:20px;cursor:pointer;font-size:0.9rem}
-    .friend-list-item{color:#cfc;padding:4px 0;border-bottom:1px solid rgba(0,255,0,0.2)}
-    .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:1000}
-    .modal-box{background:#111;border:2px solid #00ff00;border-radius:20px;padding:clamp(20px,5vw,30px);text-align:center;color:#fff;min-width:min(90vw,300px);max-width:90%;box-shadow:0 0 30px #00ff00}
-    .modal-box h2{margin:0 0 15px}
-    .modal-box input{margin:10px 0;padding:12px;width:100%;background:#0a0f0a;border:1px solid #0f0;color:#fff;border-radius:10px;outline:none}
-    .modal-box button{margin:10px 5px;padding:12px 25px}
+  #inviteModal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:900;display:flex;justify-content:center;align-items:center}
+  #inviteModalContent{background:#111;border:2px solid #00ff00;border-radius:20px;padding:clamp(15px,4vw,30px);width:min(95%,500px);max-height:90vh;overflow-y:auto;color:#fff;box-shadow:0 0 30px #00ff00}
+  #inviteModalContent h2{margin-top:0;text-align:center;text-shadow:0 0 10px #00ff00}
+  .invite-section{margin-bottom:15px}
+  .invite-section label{display:block;margin-bottom:5px;font-weight:bold;color:#cfc}
+  .invite-section textarea{width:100%;background:#0a0f0a;border:1px solid #0f0;color:#fff;padding:10px;border-radius:10px;font-size:1rem;outline:none;resize:vertical;min-height:80px}
+  .app-buttons{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:10px}
+  .app-btn{background:#1a1a1a;border:1px solid #00ff00;border-radius:30px;color:#00ff00;padding:8px 18px;font-size:0.9rem;cursor:pointer;transition:0.2s;font-weight:bold}
+  .app-btn:hover{background:#00ff00;color:#000}
+  .invite-close-btn{display:block;margin:15px auto 0;background:#333;border:1px solid #f00;color:#f00;padding:10px 30px;border-radius:30px;cursor:pointer;font-weight:bold}
+  .invite-close-btn:hover{background:#f00;color:#fff}
 
-    #timeSelect,#goalSelect{background:#0a0f0a;border:2px solid #00ff00;color:#fff;padding:10px 16px;border-radius:30px;font-size:1rem;font-weight:bold;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300ff00' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;min-width:70px}
-    #timeSelect:hover,#goalSelect:hover{border-color:#00f2ff;background-color:#0d1a0d}
-    #timeSelect:focus,#goalSelect:focus{border-color:#00f2ff;background-color:#0d1a0d}
-    .btn.main-menu{border-color:#ffaa00;color:#ffaa00;background:#0d0800}
-    .btn.main-menu:hover{background:#1a1000;border-color:#ffcc00;color:#ffcc00}
-    .rain-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:55;background:repeating-linear-gradient(0deg,rgba(0,255,255,0.05) 0px,rgba(0,255,255,0.05) 1px,transparent 1px,transparent 3px);animation:rain 0.5s linear infinite}
-    @keyframes rain{from{transform:translateY(-100%)}to{transform:translateY(100%)}}
-    .fog-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:55;background:rgba(200,200,200,0.15)}
-  </style>
+  #enhancementsPanel{background:#0a1a0a;border:1px solid #0f0;border-radius:20px;padding:15px;margin-top:10px}
+  #enhancementsPanel h3{margin:0 0 10px;color:#00ff00;cursor:pointer;user-select:none}
+  .enhancement-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,255,0,0.1)}
+  .enhancement-row label{color:#cfc;font-size:0.9rem}
+  .enhancement-row select,.enhancement-row input[type="checkbox"],.enhancement-row input[type="range"]{background:#0a0f0a;border:1px solid #0f0;color:#fff;border-radius:10px;padding:4px 10px;font-size:0.9rem}
+  .enhancement-row input[type="checkbox"]{width:20px;height:20px;accent-color:#0f0}
+  .enhancement-row input[type="range"]{width:100px}
+  .chat-wheel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);border:2px solid #0f0;border-radius:20px;z-index:500;padding:20px;display:none;flex-wrap:wrap;gap:10px;max-width:320px;justify-content:center}
+  .chat-wheel button{background:#222;border:1px solid #0f0;color:#0f0;padding:8px 14px;border-radius:20px;cursor:pointer;font-size:0.9rem}
+  .friend-list-item{color:#cfc;padding:4px 0;border-bottom:1px solid rgba(0,255,0,0.2)}
+  .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:1000}
+  .modal-box{background:#111;border:2px solid #00ff00;border-radius:20px;padding:clamp(20px,5vw,30px);text-align:center;color:#fff;min-width:min(90vw,300px);max-width:90%;box-shadow:0 0 30px #00ff00}
+  .modal-box h2{margin:0 0 15px}
+  .modal-box input{margin:10px 0;padding:12px;width:100%;background:#0a0f0a;border:1px solid #0f0;color:#fff;border-radius:10px;outline:none}
+  .modal-box button{margin:10px 5px;padding:12px 25px}
+
+  #timeSelect,#goalSelect{background:#0a0f0a;border:2px solid #00ff00;color:#fff;padding:10px 16px;border-radius:30px;font-size:1rem;font-weight:bold;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300ff00' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;min-width:70px}
+  #timeSelect:hover,#goalSelect:hover{border-color:#00f2ff;background-color:#0d1a0d}
+  #timeSelect:focus,#goalSelect:focus{border-color:#00f2ff;background-color:#0d1a0d}
+  .btn.main-menu{border-color:#ffaa00;color:#ffaa00;background:#0d0800}
+  .btn.main-menu:hover{background:#1a1000;border-color:#ffcc00;color:#ffcc00}
+  .rain-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:55;background:repeating-linear-gradient(0deg,rgba(0,255,255,0.05) 0px,rgba(0,255,255,0.05) 1px,transparent 1px,transparent 3px);animation:rain 0.5s linear infinite}
+  @keyframes rain{from{transform:translateY(-100%)}to{transform:translateY(100%)}}
+  .fog-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:55;background:rgba(200,200,200,0.15)}
+</style>
 </head>
 <body>
 <div id="app">
@@ -238,7 +152,7 @@
         <select id="goalSelect"><option value="">Start goal</option><option value="10">10</option><option value="20">20</option><option value="30">30</option></select>
       </div>
 
-      <!-- Enhancements Panel (collapsible) -->
+      <!-- Enhancements Panel -->
       <div id="enhancementsPanel">
         <h3 id="enhancementsToggle">⚙️ Enhancements ▾</h3>
         <div id="enhancementsContent" class="hidden">
@@ -269,25 +183,18 @@
       <div style="display:flex;gap:10px;flex-wrap:wrap"><input type="text" id="chatInput" class="input-field" placeholder="type a message..." style="flex:1;min-width:120px"><button class="btn" id="sendChatBtn">Send</button></div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><button class="btn emote-btn" data-emote="🔥">🔥 Nice</button><button class="btn emote-btn" data-emote="😢">😢 Oops</button><button class="btn emote-btn" data-emote="⚽">⚽ Goal</button><button class="btn emote-btn" data-emote="😂">😂 LOL</button></div>
 
-      <!-- One Invite Button -->
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px"><button class="btn invite-btn" id="inviteFriendBtn">📤 Invite a Friend</button></div>
 
       <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:5px"><button class="btn" id="readyBtn">✅ I'M READY</button><button class="btn secondary" id="leaveLobbyBtn">🚪 LEAVE</button><button class="btn main-menu" id="lobbyMainMenuBtn">🏠 MAIN MENU</button></div>
       <button id="rematchBtn" class="btn hidden">⚔️ REMATCH</button>
     </div>
 
-    <!-- Simplified Invite Modal -->
+    <!-- Invite Modal -->
     <div id="inviteModal" class="hidden">
       <div id="inviteModalContent">
         <h2>📤 Invite a Friend</h2>
-        <div class="invite-section">
-          <label>Personal message (optional)</label>
-          <textarea id="inviteMessage" placeholder="Add a note..."></textarea>
-        </div>
-        <div class="app-buttons">
-          <button class="app-btn" id="shareInviteBtn">📤 Share</button>
-          <button class="app-btn" id="copyInviteBtn">📋 Copy</button>
-        </div>
+        <div class="invite-section"><label>Personal message (optional)</label><textarea id="inviteMessage" placeholder="Add a note..."></textarea></div>
+        <div class="app-buttons"><button class="app-btn" id="shareInviteBtn">📤 Share</button><button class="app-btn" id="copyInviteBtn">📋 Copy</button></div>
         <button class="invite-close-btn" id="inviteBackBtn">🔙 Back</button>
       </div>
     </div>
@@ -298,15 +205,15 @@
       <div id="gameCanvasContainer">
         <canvas id="gameCanvas" width="1000" height="500"></canvas>
 
-        <!-- 🔥 Mobile controls: joystick + eFootball-style action buttons -->
+        <!-- 🔥 Mobile controls: joystick + lock + action buttons -->
         <div id="mobileControls">
           <div class="joystick-container" id="joystickContainer">
             <div class="joystick-base" id="joystickBase"><div class="joystick-thumb" id="joystickThumb"></div></div>
           </div>
           <div class="action-area">
-            <!-- Shot button – in the middle of the action area -->
+            <!-- Lock button (left of shoot) -->
+            <button id="lockBtnMobile" class="lock-btn">🔒<br>LOCK</button>
             <button id="shootBtn">⚽<br>SHOT</button>
-            <!-- Column for Dash (top) and Turbo (bottom) -->
             <div class="action-column">
               <button id="dashBtn">💨<br>DASH</button>
               <button id="turboShotBtn">🚀<br>TURBO<br>SHOT</button>
@@ -321,7 +228,7 @@
       </div>
 
       <div id="gameNavButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:8px 0"><button class="btn secondary" id="leaveGameBtn">🚪 LEAVE</button><button class="btn main-menu" id="gameMainMenuBtn">🏠 MAIN MENU</button></div>
-      <p style="color:#9f9;text-align:center;font-size:clamp(0.7rem,2vw,1rem)">Arrow Keys to move | Up to shoot | Left alone = Dash | Up + Left/Right = Turbo Shot</p>
+      <p style="color:#9f9;text-align:center;font-size:clamp(0.7rem,2vw,1rem)">Arrow Keys to move | Up to shoot | Left alone = Dash | Up + Left/Right = Turbo Shot | Shift = Lock</p>
     </div>
 
     <!-- Chat Wheel -->
@@ -356,12 +263,14 @@
   let inputInterval, pingInterval;
   let roomPassword = "", selectedRegion = "europe";
 
+  // Touch & lock state
   let touchDir = { up: false, down: false, left: false, right: false };
-  let shootPressed = false, turboPressed = false;
+  let shootPressed = false, turboPressed = false, lockPressed = false;
   let joystickActive = false, joystickCenter = { x: 0, y: 0 }, joystickMaxDist = 35;
   let currentAimAngle = null;
   let isFullscreen = false;
 
+  // Enhancements state
   const enhancements = {
     chatWheel: false, flag: '', replay: false, weather: 'none', soundboard: false,
     stats: false, tournament: 'none', showFriends: false, spectator: false,
@@ -455,7 +364,7 @@
   function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
   function showMobileControls() { if (isMobile()) mobileControls.style.display = 'flex'; }
 
-  // ---------- Joystick setup (unchanged) ----------
+  // ---------- Joystick + lock button setup ----------
   function setupJoystick() {
     const base = document.getElementById('joystickBase'), thumb = document.getElementById('joystickThumb');
     function updateAimAngle(dx, dy) {
@@ -492,7 +401,6 @@
     base.addEventListener('touchcancel', handleEnd);
   }
 
-  // ---------- Action buttons (eFootball layout) ----------
   function setupActionButtons() {
     document.getElementById('shootBtn').addEventListener('touchstart', e => { e.preventDefault(); shootPressed = true; });
     document.getElementById('shootBtn').addEventListener('touchend', e => { e.preventDefault(); shootPressed = false; });
@@ -500,11 +408,14 @@
     document.getElementById('dashBtn').addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
     document.getElementById('turboShotBtn').addEventListener('touchstart', e => { e.preventDefault(); shootPressed = true; turboPressed = true; });
     document.getElementById('turboShotBtn').addEventListener('touchend', e => { e.preventDefault(); shootPressed = false; turboPressed = false; });
+    // Lock button
+    document.getElementById('lockBtnMobile').addEventListener('touchstart', e => { e.preventDefault(); lockPressed = true; });
+    document.getElementById('lockBtnMobile').addEventListener('touchend', e => { e.preventDefault(); lockPressed = false; });
   }
 
   function getTouchInput() {
     return { left: touchDir.left, right: touchDir.right, up: touchDir.up, down: touchDir.down,
-      shoot: shootPressed, turbo: turboPressed, aimAngle: currentAimAngle };
+      shoot: shootPressed, turbo: turboPressed, lock: lockPressed, aimAngle: currentAimAngle };
   }
 
   window.addEventListener('keydown', e => {
@@ -515,12 +426,15 @@
     if (e.code === 'KeyC' && gameActive && enhancements.chatWheel) {
       document.getElementById('chatWheel').style.display = 'flex';
     }
+    // Keyboard lock: Shift key
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') lockPressed = true;
   });
   window.addEventListener('keyup', e => {
     const tag = e.target.tagName;
     const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
     if (!isInput) e.preventDefault();
     keys[e.code] = false;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') lockPressed = false;
   });
 
   // Chat wheel
@@ -538,24 +452,30 @@
   document.getElementById('enhancementsToggle').addEventListener('click', () => {
     document.getElementById('enhancementsContent').classList.toggle('hidden');
   });
-  // Binding enhancements (NO SERVER MESSAGES – client‑side only)
+  // Binding enhancements (NO SERVER MESSAGES – client‑side only, but can be synced via server if you wish)
   function bindCheckbox(id, prop) {
     document.getElementById(id).addEventListener('change', (e) => {
       enhancements[prop] = e.target.checked;
       applyEnhancement(prop, e.target.checked);
+      // Sync to opponent (if room exists)
+      if (room) room.send("enhancement", { prop, value: e.target.checked });
     });
   }
   function bindSelect(id, prop) {
-    document.getElementById(id).addEventListener('change', (e) => {
+    const el = document.getElementById(id);
+    el.addEventListener('change', (e) => {
       enhancements[prop] = e.target.value;
       applyEnhancement(prop, e.target.value);
+      if (room) room.send("enhancement", { prop, value: e.target.value });
     });
   }
   function bindSlider(id, prop, transform = v => v) {
-    document.getElementById(id).addEventListener('input', (e) => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', (e) => {
       const val = transform(e.target.value);
       enhancements[prop] = val;
       applyEnhancement(prop, val);
+      if (room) room.send("enhancement", { prop, value: val });
     });
   }
 
@@ -575,13 +495,18 @@
   bindSlider('pitchColorSlider', 'pitchColor', v => parseInt(v));
   bindCheckbox('optHideScore', 'hideScore');
 
-  // Goal horn upload
+  // Goal horn upload (syncs via base64)
   document.getElementById('goalHornUpload').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      goalHorn.src = url;
-      enhancements.customHorn = url;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result;
+        goalHorn.src = base64;
+        enhancements.customHorn = base64;
+        if (room) room.send("enhancement", { prop: "customHorn", value: base64 });
+      };
+      reader.readAsDataURL(file);
     }
   });
 
@@ -594,14 +519,14 @@
     }
   });
 
-  // Spectator link (copies room code to clipboard with a prompt)
+  // Spectator link
   document.getElementById('spectatorLinkBtn').addEventListener('click', () => {
     const code = document.getElementById('roomCodeDisplay').innerText;
     const link = `${window.location.origin}?spectate=${code}`;
     navigator.clipboard.writeText(link).then(() => showNotification('👁️ Spectator link copied!'));
   });
 
-  // Daily challenge badge (simple logic)
+  // Daily challenge badge
   function updateDailyChallenge() {
     const today = new Date().toDateString();
     const stored = localStorage.getItem('fk_daily');
@@ -614,9 +539,8 @@
   }
   updateDailyChallenge();
 
-  // Apply enhancement effects (called on change)
+  // Apply enhancement effects
   function applyEnhancement(prop, value) {
-    const container = document.getElementById('gameCanvasContainer');
     switch (prop) {
       case 'weather':
         document.getElementById('rainOverlay').classList.toggle('hidden', value !== 'rain');
@@ -633,19 +557,19 @@
       case 'pitchColor':
         canvas.style.background = `radial-gradient(circle, rgba(26,43,26,${1 - (value/200)}) 0%, rgba(5,16,5,${1 - (value/200)}) 100%)`;
         break;
+      case 'customHorn':
+        goalHorn.src = value;
+        break;
       case 'disableTurbo':
         // handled in getInput()
         break;
     }
   }
 
-  // Restore enhancements state when entering lobby
+  // Restore enhancements on lobby enter
   function loadEnhancements() {
     const saved = JSON.parse(localStorage.getItem('fk_enhancements') || '{}');
-    Object.keys(saved).forEach(k => {
-      if (enhancements.hasOwnProperty(k)) enhancements[k] = saved[k];
-    });
-    // Apply UI toggles
+    Object.keys(saved).forEach(k => { if (enhancements.hasOwnProperty(k)) enhancements[k] = saved[k]; });
     document.getElementById('optChatWheel').checked = enhancements.chatWheel;
     document.getElementById('flagSelect').value = enhancements.flag;
     document.getElementById('optReplay').checked = enhancements.replay;
@@ -661,7 +585,6 @@
     document.getElementById('optDisableTurbo').checked = enhancements.disableTurbo;
     document.getElementById('pitchColorSlider').value = enhancements.pitchColor;
     document.getElementById('optHideScore').checked = enhancements.hideScore;
-    // Apply initial state
     applyEnhancement('weather', enhancements.weather);
     applyEnhancement('crowd', enhancements.crowd);
     applyEnhancement('hideScore', enhancements.hideScore);
@@ -670,9 +593,7 @@
   function saveEnhancements() {
     localStorage.setItem('fk_enhancements', JSON.stringify(enhancements));
   }
-  // Save on every change
-  const allEnhancementInputs = document.querySelectorAll('#enhancementsContent input, #enhancementsContent select');
-  allEnhancementInputs.forEach(el => el.addEventListener('change', saveEnhancements));
+  document.querySelectorAll('#enhancementsContent input, #enhancementsContent select').forEach(el => el.addEventListener('change', saveEnhancements));
 
   // Invite (simplified)
   function getRoomCode() { return document.getElementById('roomCodeDisplay').innerText; }
@@ -786,11 +707,7 @@
       predictedX = 150; predictedY = 415; predictedVx = 0; predictedVy = 0;
       statusBar.innerText = '🟢 LIVE';
       requestFullscreen();
-      // Apply enhancements at game start
-      if (enhancements.crowd) {
-        const crowd = document.getElementById('crowdNoise');
-        crowd.play().catch(() => {});
-      }
+      if (enhancements.crowd) { document.getElementById('crowdNoise').play().catch(() => {}); }
       updateDailyChallenge();
     });
 
@@ -806,16 +723,13 @@
         comment(ev.data.scorer==='p1'?"GOAL! PLAYER 1 SCORES!":"GOAL! PLAYER 2 SCORES!",ev.data.color);
         document.getElementById('app').classList.add('shake');
         setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
-        // Goal flash
         document.getElementById('gameCanvasContainer').style.background = 'rgba(255,255,255,0.3)';
         setTimeout(() => document.getElementById('gameCanvasContainer').style.background = '', 200);
-        // Replay buffer
         if (enhancements.replay && serverState) {
           goalReplayFrames = [];
           isReplaying = true;
           setTimeout(() => { isReplaying = false; goalReplayFrames = []; }, 2500);
         }
-        // Daily challenge progress
         if (enhancements.dailyChallenge) {
           const today = new Date().toDateString();
           const stored = JSON.parse(localStorage.getItem('fk_daily'));
@@ -826,7 +740,6 @@
             updateDailyChallenge();
           }
         }
-        // Tournament tracking
         if (enhancements.tournament !== 'none') {
           const winner = ev.data.scorer;
           if (winner === 'p1') enhancements.seriesWins.p1++;
@@ -863,10 +776,29 @@
       statusBar.innerText = '⚪ WAITING';
       if (inputInterval) clearInterval(inputInterval); if (pingInterval) clearInterval(pingInterval);
       inputInterval = pingInterval = null; exitFullscreen();
-      // Reset tournament state
       enhancements.seriesWins = { p1: 0, p2: 0 };
     });
     room.onMessage("error", msg => { alert(msg.message); });
+
+    // Listen for opponent's enhancement changes
+    room.onMessage("enhancementUpdate", (data) => {
+      if (data.senderId === room.sessionId) return;
+      if (enhancements.hasOwnProperty(data.prop)) {
+        enhancements[data.prop] = data.value;
+        applyEnhancement(data.prop, data.value);
+        // update UI to match
+        const checkbox = document.getElementById('opt' + data.prop.charAt(0).toUpperCase() + data.prop.slice(1));
+        if (checkbox && checkbox.type === 'checkbox') checkbox.checked = data.value;
+        const select = document.getElementById(data.prop + 'Select');
+        if (select && select.tagName === 'SELECT') select.value = data.value;
+        if (data.prop === 'pitchColor') {
+          document.getElementById('pitchColorSlider').value = data.value;
+        }
+        if (data.prop === 'customHorn') {
+          goalHorn.src = data.value;
+        }
+      }
+    });
 
     room.onStateChange(state => {
       serverState = state;
@@ -879,12 +811,10 @@
         winnerMsgDiv.style.display = 'block';
         rematchBtn.classList.remove('hidden');
         exitFullscreen();
-        // Add friends to list
         const opponentName = remotePlayer?.name || 'Opponent';
         friendList.unshift({ name: opponentName, date: new Date().toLocaleDateString() });
         if (friendList.length > 5) friendList.length = 5;
         localStorage.setItem('fk_friends', JSON.stringify(friendList));
-        // Tournament check
         if (enhancements.tournament !== 'none') {
           const target = parseInt(enhancements.tournament);
           const needed = target - Math.max(enhancements.seriesWins.p1, enhancements.seriesWins.p2);
@@ -896,7 +826,6 @@
             enhancements.seriesWins = { p1: 0, p2: 0 };
           }
         }
-        // Golden goal handling (if enabled)
         if (enhancements.goldenGoal && state.p1Score === state.p2Score) {
           winnerMsgDiv.innerText = "⚡ GOLDEN GOAL – NEXT GOAL WINS!";
           winnerMsgDiv.style.display = 'block';
@@ -917,7 +846,6 @@
         else { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         predictedVx = localPlayer.vx; predictedVy = localPlayer.vy;
       }
-      // Replay capture
       if (enhancements.replay && isReplaying && serverState.ball) {
         goalReplayFrames.push({ x: serverState.ball.x, y: serverState.ball.y });
         if (goalReplayFrames.length > 150) goalReplayFrames.shift();
@@ -937,21 +865,11 @@
     room.onMessage("pong", clientTime => { ping = Date.now() - clientTime; pingEl.innerText = `Ping: ${ping}ms`; reconnectAttempts = 0; });
   }
 
-  function enterLobby() {
-    panels.menu.classList.add('hidden'); panels.lobby.classList.remove('hidden');
-    loadEnhancements();
-  }
-
+  function enterLobby() { panels.menu.classList.add('hidden'); panels.lobby.classList.remove('hidden'); loadEnhancements(); }
   function handleDisconnect() {
-    if (reconnectAttempts < 1) {
-      console.warn("Connection lost. The SDK will try to reconnect automatically.");
-      reconnectAttempts++;
-    } else {
-      alert("Connection lost permanently. Please refresh the page.");
-      leaveRoom();
-    }
+    if (reconnectAttempts < 1) { console.warn("Connection lost. The SDK will try to reconnect automatically."); reconnectAttempts++; }
+    else { alert("Connection lost permanently. Please refresh the page."); leaveRoom(); }
   }
-
   function showNotification(text) {
     const toast = document.createElement('div');
     toast.innerText = text;
@@ -1001,11 +919,23 @@
       }
 
       ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(renderX, renderY, 10, 0, Math.PI*2); ctx.fill();
+
       if (localPlayer) {
         ctx.fillStyle = localPlayer.color; ctx.fillRect(predictedX, predictedY, 30, 65);
         if (enhancements.showNames && localPlayer.name) {
           ctx.fillStyle = 'white'; ctx.font = '12px Segoe UI';
           ctx.fillText(localPlayer.name + (enhancements.flag ? ' ' + enhancements.flag : ''), predictedX, predictedY - 5);
+        }
+        // Lock indicator (ball attached)
+        if (lockPressed && gameActive && serverState && serverState.ball && localPlayer) {
+          // draw a small connection line
+          ctx.strokeStyle = "#00ffff";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(predictedX + 15, predictedY + 30);
+          ctx.lineTo(renderX, renderY);
+          ctx.stroke();
+          ctx.lineWidth = 1;
         }
       }
       if (remotePlayer) {
@@ -1021,7 +951,6 @@
       ctx.fillStyle = "#ff00ff"; ctx.fillRect(5, serverState.keeper1.y, 12, 60);
       ctx.fillStyle = "#00f2ff"; ctx.fillRect(983, serverState.keeper2.y, 12, 60);
 
-      // Goal replay
       if (enhancements.replay && isReplaying && goalReplayFrames.length > 0) {
         ctx.globalAlpha = 0.4; ctx.strokeStyle = "#ffff00"; ctx.beginPath();
         ctx.moveTo(goalReplayFrames[0].x, goalReplayFrames[0].y);
@@ -1030,7 +959,6 @@
       }
     }
 
-    // Stats overlay
     if (enhancements.stats && serverState && !gameActive && serverState.gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(350, 150, 300, 200);
       ctx.fillStyle = '#fff'; ctx.font = '16px Segoe UI';
@@ -1039,11 +967,7 @@
     }
   }
 
-  function loop() {
-    if (gameActive) applyPrediction();
-    draw();
-    requestAnimationFrame(loop);
-  }
+  function loop() { if (gameActive) applyPrediction(); draw(); requestAnimationFrame(loop); }
   loop();
 
   // ==================== UI EVENTS ====================
@@ -1094,7 +1018,7 @@
     isReplaying = false; goalReplayFrames = [];
   }
 
-  // ==================== GET INPUT (with disable turbo) ====================
+  // ==================== GET INPUT (includes lock) ====================
   function getInput() {
     const touch = getTouchInput();
     const left = keys['ArrowLeft'] || touch.left, right = keys['ArrowRight'] || touch.right, up = keys['ArrowUp'] || touch.up, down = keys['ArrowDown'] || touch.down;
@@ -1102,10 +1026,12 @@
     let keyboardTurbo = keyboardDash || (keys['ArrowUp'] && (keys['ArrowLeft'] || keys['ArrowRight']));
     let shoot = keys['ArrowUp'] || touch.shoot;
     let turbo = keyboardTurbo || touch.turbo;
+    // Lock – from keyboard shift or mobile lock button
+    let lock = keys['ShiftLeft'] || keys['ShiftRight'] || touch.lock;
 
     if (enhancements.disableTurbo) turbo = false;
 
-    const inp = { left, right, up, down, shoot, turbo };
+    const inp = { left, right, up, down, shoot, turbo, lock };
     if (touch.aimAngle !== null) inp.aimAngle = touch.aimAngle;
     return inp;
   }
