@@ -22,7 +22,6 @@
   .btn:disabled{opacity:0.5;pointer-events:none}
   .btn.secondary{border-color:#00f2ff;color:#00f2ff}
   .btn.invite-btn{border-color:#ffaa00;color:#ffaa00;background:#0d0800}
-  .btn.lock-btn{border-color:#ff00ff;color:#ff80ff;background:#0d0800}
   .input-field{background:#0a0f0a;border:2px solid #00ff00;border-radius:40px;padding:14px 24px;color:#fff;width:100%;outline:none;font-size:1rem}
   .room-info{background:#0a1a0a;padding:16px 24px;border-radius:40px;color:#cfc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
   .players-box{display:flex;gap:20px;flex-wrap:wrap}
@@ -63,13 +62,37 @@
   .joystick-base{width:100%;height:100%;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(0,255,0,0.3);position:relative}
   .joystick-thumb{width:50px;height:50px;border-radius:50%;background:rgba(0,255,0,0.15);border:1px solid #0f0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transition:background 0.1s}
 
-  .action-area{display:flex;flex-direction:row;align-items:flex-end;gap:12px;margin-bottom:10px}
-  .action-column{display:flex;flex-direction:column;gap:12px;align-items:center}
-  #shootBtn,#dashBtn,#turboShotBtn,#lockBtnMobile{width:75px;height:75px;border:1px solid rgba(255,255,255,0.3);border-radius:50%;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;text-transform:uppercase;color:#fff;background:rgba(255,255,255,0.05)}
-  #shootBtn{border-color:rgba(255,100,100,0.5);color:#ffa0a0;width:80px;height:80px;font-size:16px}
-  #dashBtn{border-color:rgba(255,200,0,0.5);color:#ffd700}
-  #turboShotBtn{border-color:rgba(255,0,255,0.5);color:#ff80ff}
-  #lockBtnMobile{border-color:rgba(0,255,255,0.7);color:#00ffff;font-size:12px}
+  /* ---------- DIAMOND‑SHAPED ACTION BUTTONS ---------- */
+  .diamond-cluster {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+  }
+  .diamond-btn {
+    width: 65px;
+    height: 65px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    color: #fff;
+    background: rgba(255,255,255,0.05);
+    position: absolute;
+    text-shadow: 0 0 4px rgba(0,0,0,0.5);
+  }
+  /* Positions for the rhombus vertices */
+  .dash-diamond { top: 0; left: 50%; transform: translate(-50%, -50%); border-color: rgba(255,200,0,0.5); color: #ffd700; }
+  .shoot-diamond { top: 0; right: 0; transform: translate(50%, -50%); border-color: rgba(255,100,100,0.5); color: #ffa0a0; width: 70px; height: 70px; font-size: 14px; }
+  .lock-diamond { bottom: 0; left: 0; transform: translate(-50%, 50%); border-color: rgba(0,255,255,0.7); color: #00ffff; }
+  .turbo-diamond { bottom: 0; right: 0; transform: translate(50%, 50%); border-color: rgba(255,0,255,0.5); color: #ff80ff; }
 
   .aim-indicator{position:absolute;background:rgba(255,255,0,0.2);border-radius:50%;pointer-events:none;transition:0.1s}
   .shake{animation:shake 0.5s ease-in-out}
@@ -205,19 +228,16 @@
       <div id="gameCanvasContainer">
         <canvas id="gameCanvas" width="1000" height="500"></canvas>
 
-        <!-- 🔥 Mobile controls: joystick + lock + action buttons -->
+        <!-- 🔥 Mobile controls: joystick + diamond action buttons -->
         <div id="mobileControls">
           <div class="joystick-container" id="joystickContainer">
             <div class="joystick-base" id="joystickBase"><div class="joystick-thumb" id="joystickThumb"></div></div>
           </div>
-          <div class="action-area">
-            <!-- Lock button (left of shoot) -->
-            <button id="lockBtnMobile" class="lock-btn">🔒<br>LOCK</button>
-            <button id="shootBtn">⚽<br>SHOT</button>
-            <div class="action-column">
-              <button id="dashBtn">💨<br>DASH</button>
-              <button id="turboShotBtn">🚀<br>TURBO<br>SHOT</button>
-            </div>
+          <div class="diamond-cluster">
+            <button id="dashBtn" class="diamond-btn dash-diamond">💨<br>DASH</button>
+            <button id="shootBtn" class="diamond-btn shoot-diamond">⚽<br>SHOT</button>
+            <button id="lockBtnMobile" class="diamond-btn lock-diamond">🔒<br>LOCK</button>
+            <button id="turboShotBtn" class="diamond-btn turbo-diamond">🚀<br>TURBO<br>SHOT</button>
           </div>
           <div id="aimIndicator" class="aim-indicator" style="display:none"></div>
         </div>
@@ -364,7 +384,7 @@
   function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
   function showMobileControls() { if (isMobile()) mobileControls.style.display = 'flex'; }
 
-  // ---------- Joystick + lock button setup ----------
+  // ---------- Joystick + diamond buttons setup ----------
   function setupJoystick() {
     const base = document.getElementById('joystickBase'), thumb = document.getElementById('joystickThumb');
     function updateAimAngle(dx, dy) {
@@ -417,7 +437,7 @@
     return { left: touchDir.left, right: touchDir.right, up: touchDir.up, down: touchDir.down,
       shoot: shootPressed, turbo: turboPressed, lock: lockPressed, aimAngle: currentAimAngle };
   }
-
+  // Keyboard input
   window.addEventListener('keydown', e => {
     const tag = e.target.tagName;
     const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
@@ -452,12 +472,12 @@
   document.getElementById('enhancementsToggle').addEventListener('click', () => {
     document.getElementById('enhancementsContent').classList.toggle('hidden');
   });
-  // Binding enhancements (NO SERVER MESSAGES – client‑side only, but can be synced via server if you wish)
+
+  // Binding enhancements (with sync via server)
   function bindCheckbox(id, prop) {
     document.getElementById(id).addEventListener('change', (e) => {
       enhancements[prop] = e.target.checked;
       applyEnhancement(prop, e.target.checked);
-      // Sync to opponent (if room exists)
       if (room) room.send("enhancement", { prop, value: e.target.checked });
     });
   }
@@ -495,7 +515,7 @@
   bindSlider('pitchColorSlider', 'pitchColor', v => parseInt(v));
   bindCheckbox('optHideScore', 'hideScore');
 
-  // Goal horn upload (syncs via base64)
+  // Goal horn upload
   document.getElementById('goalHornUpload').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -786,7 +806,6 @@
       if (enhancements.hasOwnProperty(data.prop)) {
         enhancements[data.prop] = data.value;
         applyEnhancement(data.prop, data.value);
-        // update UI to match
         const checkbox = document.getElementById('opt' + data.prop.charAt(0).toUpperCase() + data.prop.slice(1));
         if (checkbox && checkbox.type === 'checkbox') checkbox.checked = data.value;
         const select = document.getElementById(data.prop + 'Select');
@@ -928,7 +947,6 @@
         }
         // Lock indicator (ball attached)
         if (lockPressed && gameActive && serverState && serverState.ball && localPlayer) {
-          // draw a small connection line
           ctx.strokeStyle = "#00ffff";
           ctx.lineWidth = 2;
           ctx.beginPath();
