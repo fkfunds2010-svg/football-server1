@@ -110,6 +110,7 @@ class FootballRoom extends Room {
           down: !!input.down,
           shoot: !!input.shoot,
           turbo: !!input.turbo,
+          dribble: !!input.lock,       // 🔒 lock / dribble
           aimAngle: input.aimAngle
         };
       }
@@ -144,7 +145,7 @@ class FootballRoom extends Room {
       });
     });
 
-    // ✅ NEW: Sync enhancements between both players
+    // ✅ Sync enhancements between both players
     this.onMessage("enhancement", (client, data) => {
       this.broadcast("enhancementUpdate", {
         prop: data.prop,
@@ -224,6 +225,7 @@ class FootballRoom extends Room {
     const FIXED_DT = 1 / 30;
     const ball = this.state.ball;
 
+    // ---------- 1. Ball physics ----------
     ball.x += ball.vx;
     ball.y += ball.vy;
     ball.vy += 0.25;
@@ -231,6 +233,7 @@ class FootballRoom extends Room {
     if (ball.y > 480) { ball.y = 480; ball.vy *= -0.7; }
     if (ball.y < 10)  { ball.y = 10;  ball.vy *= -0.7; }
 
+    // ---------- 2. Keeper collisions ----------
     [{ x: 5, k: this.state.keeper1 }, { x: 983, k: this.state.keeper2 }].forEach(({ x: kx, k }) => {
       if (ball.x + 10 > kx && ball.x - 10 < kx + 12 && ball.y + 10 > k.y && ball.y - 10 < k.y + 60) {
         if (Math.abs(ball.vx) > 25) this.broadcast("event", { type: "SHOT", data: { turbo: false, color: "#fff" } });
@@ -239,6 +242,7 @@ class FootballRoom extends Room {
       }
     });
 
+    // ---------- 3. Player collisions with ball ----------
     this.state.players.forEach(p => {
       if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
         ball.vx *= -0.5;
@@ -246,6 +250,7 @@ class FootballRoom extends Room {
       }
     });
 
+    // ---------- 4. Goal check ----------
     if (ball.x < 0 || ball.x > 1000) {
       if (ball.y > 150 && ball.y < 350) {
         if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
@@ -259,30 +264,74 @@ class FootballRoom extends Room {
       } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
     }
 
+    // ---------- 5. Player movement + shooting + dribble lock ----------
     this.state.players.forEach((player, sid) => {
       const input = this.inputs[sid] || {};
       const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y;
       const hasBall = dx * dx + dy * dy < 2500;
+
+      // 🔒 DRIBBLE LOCK – ball glued to player’s feet
+      if (hasBall && input.dribble) {
+        // Keep ball attached exactly to the player
+        ball.x = player.x + (player.side === 'left' ? 25 : -25);
+        ball.y = player.y + 30;
+        ball.vx = 0;
+        ball.vy = 0;
+
+        // Opponent can steal by running through the carrier
+        this.state.players.forEach((other, otherSid) => {
+          if (otherSid === sid) return;
+          const odx = other.x + 15 - ball.x, ody = other.y + 32 - ball.y;
+          if (odx * odx + ody * ody < 2500) {
+            // Steal! Force the ball away from the carrier
+            ball.vx = (other.side === 'left' ? 3 : -3);
+            ball.vy = -2;
+            // Cancel the dribble for this tick
+            input.dribble = false;
+          }
+        });
+
+        // If still dribbling, skip shooting / movement while locked
+        if (input.dribble) {
+          // Still allow movement so player can move with the ball
+          if (input.left) player.vx -= 1.1;
+          if (input.right) player.vx += 1.1;
+          if (input.up && !player.isJumping) { player.vy = -14; player.isJumping = true; }
+          if (input.down) player.vy += 1;
+          // Physics for player movement
+          player.vy += 0.7;
+          player.x += player.vx;
+          player.y += player.vy;
+          player.vx *= 0.85;
+          if (player.y > 415) { player.y = 415; player.vy = 0; player.isJumping = false; }
+          player.x = Math.min(930, Math.max(40, player.x));
+          // Skip the rest of the loop for this player
+          return;
+        }
+      }
 
       if (hasBall && input.shoot) {
         player.vx = 0;
         let speed = input.turbo ? 45 : 20;
 
         if (typeof input.aimAngle === 'number') {
+          // 📱 Mobile aiming – use the joystick angle
           const rad = input.aimAngle * Math.PI / 180;
           const dirX = Math.cos(rad);
           const dirY = -Math.sin(rad);
           ball.vx = dirX * speed;
           ball.vy = dirY * speed;
         } else {
+          // 💻 Laptop / keyboard – original vertical behaviour
           ball.vx = (player.side === 'left') ? speed : -speed;
-          if (input.up && !input.down) ball.vy = -14;
-          else if (input.down) ball.vy = 10;
-          else ball.vy = -2;
+          if (input.up && !input.down) ball.vy = -14;      // lob
+          else if (input.down) ball.vy = 10;                // low driven
+          else ball.vy = -2;                                // slight lift
         }
 
         this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } });
       } else {
+        // Movement (no ball possession)
         if (input.left) player.vx -= 1.1;
         if (input.right) player.vx += 1.1;
         if (input.up && !player.isJumping) {
@@ -292,6 +341,7 @@ class FootballRoom extends Room {
         if (input.down) player.vy += 1;
       }
 
+      // Apply physics
       player.vy += 0.7;
       player.x += player.vx;
       player.y += player.vy;
@@ -300,6 +350,7 @@ class FootballRoom extends Room {
       player.x = Math.min(930, Math.max(40, player.x));
     });
 
+    // ---------- 6. Keeper AI ----------
     const targetY = ball.y - 30;
     [this.state.keeper1, this.state.keeper2].forEach((k, i) => {
       const skill = (i === 0) ? 1.2 : 1.0;
@@ -309,6 +360,7 @@ class FootballRoom extends Room {
       k.y = Math.min(295, Math.max(155, k.y));
     });
 
+    // ---------- 7. Timer ----------
     if (this.state.timeLeft > 0) {
       this.state.timeLeft -= FIXED_DT;
       if (this.state.timeLeft <= 0) {
@@ -343,16 +395,12 @@ const server = defineServer({
       next();
     });
 
-    // ✅ Serve the schema library directly from node_modules
     app.get("/schema.js", (req, res) => {
       res.type("application/javascript");
       res.sendFile(path.join(__dirname, "node_modules", "@colyseus", "schema", "build", "index.js"));
     });
 
-    // Serve your game HTML
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-
-    // Serve audio and other static files from public/
     app.use(express.static("public", { index: false }));
   }
 });
