@@ -64,7 +64,7 @@ defineTypes(BallState, BallState._schema);
 defineTypes(KeeperState, KeeperState._schema);
 defineTypes(GameState, GameState._schema);
 
-// ---------- Room ----------
+// ---------- Room – full game logic ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -131,7 +131,7 @@ class FootballRoom extends Room {
     this.onMessage("setMatchOptions", (client, opts) => {
       if (this.state.matchState !== "waiting" && this.state.matchState !== "ready_check") return;
       const p = this.state.players.get(client.sessionId);
-      if (!p || p.side !== "left") return;   // only host
+      if (!p || p.side !== "left") return;
       if (typeof opts.matchTime === "number" && opts.matchTime > 0) {
         this.state.timeLeft = opts.matchTime * 60;
       }
@@ -141,6 +141,15 @@ class FootballRoom extends Room {
       this.broadcast("matchOptionsUpdated", {
         timeLeft: this.state.timeLeft,
         targetGoals: this.targetGoals
+      });
+    });
+
+    // ✅ NEW: Sync enhancements between both players
+    this.onMessage("enhancement", (client, data) => {
+      this.broadcast("enhancementUpdate", {
+        prop: data.prop,
+        value: data.value,
+        senderId: client.sessionId
       });
     });
 
@@ -160,6 +169,7 @@ class FootballRoom extends Room {
       this.broadcastPlayerInfo();
     });
 
+    // ✅ 60 Hz tick rate
     this.setSimulationInterval((dt) => {
       try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
     }, 1000 / 60);
@@ -310,6 +320,7 @@ class FootballRoom extends Room {
   }
 }
 
+// ==================== SERVER SETUP ====================
 const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
@@ -318,21 +329,30 @@ const server = defineServer({
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') return;
       next();
     });
+
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
+
     app.get("/health", (req, res) => res.send("OK"));
     app.use("/playground", playground());
+
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
       next();
     });
+
+    // ✅ Serve the schema library directly from node_modules
     app.get("/schema.js", (req, res) => {
       res.type("application/javascript");
       res.sendFile(path.join(__dirname, "node_modules", "@colyseus", "schema", "build", "index.js"));
     });
+
+    // Serve your game HTML
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+    // Serve audio and other static files from public/
     app.use(express.static("public", { index: false }));
   }
 });
