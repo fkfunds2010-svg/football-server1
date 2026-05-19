@@ -23,7 +23,7 @@
   .btn.secondary{border-color:#00f2ff;color:#00f2ff}
   .btn.invite-btn{border-color:#ffaa00;color:#ffaa00;background:#0d0800}
   .input-field{background:#0a0f0a;border:2px solid #00ff00;border-radius:40px;padding:14px 24px;color:#fff;width:100%;outline:none;font-size:1rem}
-  .room-info{background:#0a1a0a;padding:16px 24px;border-radius:40px;color:#cfc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .room-info{background:#0a1a0a;padding:16px 24px;border-radius:40px;color:#cfc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
   .players-box{display:flex;gap:20px;flex-wrap:wrap}
   .player-card{background:#132013;border-radius:30px;padding:16px;flex:1;min-width:150px;text-align:center;border:2px solid #00ff00;color:white}
   .ready-badge{background:#444;padding:6px 18px;border-radius:30px}
@@ -62,37 +62,12 @@
   .joystick-base{width:100%;height:100%;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(0,255,0,0.3);position:relative}
   .joystick-thumb{width:50px;height:50px;border-radius:50%;background:rgba(0,255,0,0.15);border:1px solid #0f0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transition:background 0.1s}
 
-  /* ---------- DIAMOND‑SHAPED ACTION BUTTONS ---------- */
-  .diamond-cluster {
-    position: relative;
-    width: 160px;
-    height: 160px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 10px;
-  }
-  .diamond-btn {
-    width: 65px;
-    height: 65px;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 50%;
-    font-size: 12px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-transform: uppercase;
-    color: #fff;
-    background: rgba(255,255,255,0.05);
-    position: absolute;
-    text-shadow: 0 0 4px rgba(0,0,0,0.5);
-  }
-  /* Positions for the rhombus vertices */
-  .dash-diamond { top: 0; left: 50%; transform: translate(-50%, -50%); border-color: rgba(255,200,0,0.5); color: #ffd700; }
-  .shoot-diamond { top: 0; right: 0; transform: translate(50%, -50%); border-color: rgba(255,100,100,0.5); color: #ffa0a0; width: 70px; height: 70px; font-size: 14px; }
-  .lock-diamond { bottom: 0; left: 0; transform: translate(-50%, 50%); border-color: rgba(0,255,255,0.7); color: #00ffff; }
-  .turbo-diamond { bottom: 0; right: 0; transform: translate(50%, 50%); border-color: rgba(255,0,255,0.5); color: #ff80ff; }
+  .diamond-cluster{position:relative;width:160px;height:160px;display:flex;align-items:center;justify-content:center;margin-right:10px}
+  .diamond-btn{width:65px;height:65px;border:1px solid rgba(255,255,255,0.3);border-radius:50%;font-size:12px;font-weight:bold;display:flex;align-items:center;justify-content:center;text-transform:uppercase;color:#fff;background:rgba(255,255,255,0.05);position:absolute;text-shadow:0 0 4px rgba(0,0,0,0.5)}
+  .dash-diamond{top:0;left:50%;transform:translate(-50%,-50%);border-color:rgba(255,200,0,0.5);color:#ffd700}
+  .shoot-diamond{top:0;right:0;transform:translate(50%,-50%);border-color:rgba(255,100,100,0.5);color:#ffa0a0;width:70px;height:70px;font-size:14px}
+  .lock-diamond{bottom:0;left:0;transform:translate(-50%,50%);border-color:rgba(0,255,255,0.7);color:#00ffff}
+  .turbo-diamond{bottom:0;right:0;transform:translate(50%,50%);border-color:rgba(255,0,255,0.5);color:#ff80ff}
 
   .aim-indicator{position:absolute;background:rgba(255,255,0,0.2);border-radius:50%;pointer-events:none;transition:0.1s}
   .shake{animation:shake 0.5s ease-in-out}
@@ -134,8 +109,8 @@
   #timeSelect:focus,#goalSelect:focus{border-color:#00f2ff;background-color:#0d1a0d}
   .btn.main-menu{border-color:#ffaa00;color:#ffaa00;background:#0d0800}
   .btn.main-menu:hover{background:#1a1000;border-color:#ffcc00;color:#ffcc00}
-  .rain-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:55;background:repeating-linear-gradient(0deg,rgba(0,255,255,0.05) 0px,rgba(0,255,255,0.05) 1px,transparent 1px,transparent 3px);animation:rain 0.5s linear infinite}
-  @keyframes rain{from{transform:translateY(-100%)}to{transform:translateY(100%)}}
+
+  .rain-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:55;background:repeating-linear-gradient(0deg,rgba(100,200,255,0.06) 0px,rgba(100,200,255,0.06) 1px,transparent 1px,transparent 4px);opacity:0.5}
   .fog-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:55;background:rgba(200,200,200,0.15)}
 </style>
 </head>
@@ -162,7 +137,7 @@
       </div>
     </div>
 
-    <!-- Lobby Panel with Enhancements -->
+    <!-- Lobby Panel -->
     <div id="lobbyPanel" class="panel hidden">
       <div class="room-info"><span>🏟️ ROOM CODE: <span id="roomCodeDisplay">-</span></span><button id="copyRoomCode" class="btn" style="padding:4px 8px;font-size:0.8rem;border-radius:20px">📋 Copy</button><span id="connectionStatus">⚡ waiting...</span></div>
       <div id="passwordDisplay" style="color:#cfc;background:#0a1a0a;padding:10px;border-radius:10px;display:none;align-items:center;gap:10px">🔑 PASSWORD: <span id="passwordText"></span><button id="copyPassword" class="btn" style="padding:4px 8px;font-size:0.8rem;border-radius:20px">📋 Copy</button></div>
@@ -177,7 +152,7 @@
 
       <!-- Enhancements Panel -->
       <div id="enhancementsPanel">
-        <h3 id="enhancementsToggle">⚙️ Enhancements ▾</h3>
+        <h3 id="enhancementsToggle">⚙️ Enhancements ▾ <span style="font-size:0.7rem;color:#ffcc00;">(⚡ Tip: Ball Trail, Rain, Replay may cause lag on slow devices)</span></h3>
         <div id="enhancementsContent" class="hidden">
           <div class="enhancement-row"><label>💬 Quick Chat Wheel</label><input type="checkbox" id="optChatWheel"></div>
           <div class="enhancement-row"><label>🏳️ Player Flag</label><select id="flagSelect"><option value="">None</option><option>🇳🇬</option><option>🇬🇧</option><option>🇺🇸</option><option>🇧🇷</option><option>🇫🇷</option><option>🇩🇪</option><option>🇪🇸</option><option>🇮🇹</option><option>🇯🇵</option><option>🇰🇷</option><option>🇨🇳</option><option>🇮🇳</option><option>🇿🇦</option><option>🇪🇬</option><option>🇦🇷</option><option>🇲🇽</option><option>🇨🇦</option><option>🇦🇺</option><option>🇵🇹</option><option>🇸🇪</option></select></div>
@@ -228,7 +203,7 @@
       <div id="gameCanvasContainer">
         <canvas id="gameCanvas" width="1000" height="500"></canvas>
 
-        <!-- 🔥 Mobile controls: joystick + diamond action buttons -->
+        <!-- Mobile controls: joystick + diamond action buttons -->
         <div id="mobileControls">
           <div class="joystick-container" id="joystickContainer">
             <div class="joystick-base" id="joystickBase"><div class="joystick-thumb" id="joystickThumb"></div></div>
@@ -283,14 +258,12 @@
   let inputInterval, pingInterval;
   let roomPassword = "", selectedRegion = "europe";
 
-  // Touch & lock state
   let touchDir = { up: false, down: false, left: false, right: false };
   let shootPressed = false, turboPressed = false, lockPressed = false;
   let joystickActive = false, joystickCenter = { x: 0, y: 0 }, joystickMaxDist = 35;
   let currentAimAngle = null;
   let isFullscreen = false;
 
-  // Enhancements state
   const enhancements = {
     chatWheel: false, flag: '', replay: false, weather: 'none', soundboard: false,
     stats: false, tournament: 'none', showFriends: false, spectator: false,
@@ -384,7 +357,7 @@
   function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
   function showMobileControls() { if (isMobile()) mobileControls.style.display = 'flex'; }
 
-  // ---------- Joystick + diamond buttons setup ----------
+  // Joystick setup
   function setupJoystick() {
     const base = document.getElementById('joystickBase'), thumb = document.getElementById('joystickThumb');
     function updateAimAngle(dx, dy) {
@@ -421,6 +394,7 @@
     base.addEventListener('touchcancel', handleEnd);
   }
 
+  // Diamond action buttons setup
   function setupActionButtons() {
     document.getElementById('shootBtn').addEventListener('touchstart', e => { e.preventDefault(); shootPressed = true; });
     document.getElementById('shootBtn').addEventListener('touchend', e => { e.preventDefault(); shootPressed = false; });
@@ -428,7 +402,6 @@
     document.getElementById('dashBtn').addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
     document.getElementById('turboShotBtn').addEventListener('touchstart', e => { e.preventDefault(); shootPressed = true; turboPressed = true; });
     document.getElementById('turboShotBtn').addEventListener('touchend', e => { e.preventDefault(); shootPressed = false; turboPressed = false; });
-    // Lock button
     document.getElementById('lockBtnMobile').addEventListener('touchstart', e => { e.preventDefault(); lockPressed = true; });
     document.getElementById('lockBtnMobile').addEventListener('touchend', e => { e.preventDefault(); lockPressed = false; });
   }
@@ -437,7 +410,7 @@
     return { left: touchDir.left, right: touchDir.right, up: touchDir.up, down: touchDir.down,
       shoot: shootPressed, turbo: turboPressed, lock: lockPressed, aimAngle: currentAimAngle };
   }
-  // Keyboard input
+
   window.addEventListener('keydown', e => {
     const tag = e.target.tagName;
     const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
@@ -446,7 +419,6 @@
     if (e.code === 'KeyC' && gameActive && enhancements.chatWheel) {
       document.getElementById('chatWheel').style.display = 'flex';
     }
-    // Keyboard lock: Shift key
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') lockPressed = true;
   });
   window.addEventListener('keyup', e => {
@@ -473,7 +445,7 @@
     document.getElementById('enhancementsContent').classList.toggle('hidden');
   });
 
-  // Binding enhancements (with sync via server)
+  // Bind enhancements
   function bindCheckbox(id, prop) {
     document.getElementById(id).addEventListener('change', (e) => {
       enhancements[prop] = e.target.checked;
@@ -515,7 +487,6 @@
   bindSlider('pitchColorSlider', 'pitchColor', v => parseInt(v));
   bindCheckbox('optHideScore', 'hideScore');
 
-  // Goal horn upload
   document.getElementById('goalHornUpload').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -530,7 +501,6 @@
     }
   });
 
-  // Friend list button
   document.getElementById('showFriendsBtn').addEventListener('click', () => {
     const display = document.getElementById('friendListDisplay');
     display.style.display = display.style.display === 'none' ? 'block' : 'none';
@@ -539,27 +509,21 @@
     }
   });
 
-  // Spectator link
   document.getElementById('spectatorLinkBtn').addEventListener('click', () => {
     const code = document.getElementById('roomCodeDisplay').innerText;
     const link = `${window.location.origin}?spectate=${code}`;
     navigator.clipboard.writeText(link).then(() => showNotification('👁️ Spectator link copied!'));
   });
 
-  // Daily challenge badge
   function updateDailyChallenge() {
     const today = new Date().toDateString();
     const stored = localStorage.getItem('fk_daily');
     const data = stored ? JSON.parse(stored) : { date: today, progress: 0, completed: false };
-    if (data.date !== today) {
-      data.date = today; data.progress = 0; data.completed = false;
-      localStorage.setItem('fk_daily', JSON.stringify(data));
-    }
+    if (data.date !== today) { data.date = today; data.progress = 0; data.completed = false; localStorage.setItem('fk_daily', JSON.stringify(data)); }
     document.getElementById('dailyChallengeBadge').textContent = data.completed ? '✅ Completed' : `Score 5 goals (${data.progress}/5)`;
   }
   updateDailyChallenge();
 
-  // Apply enhancement effects
   function applyEnhancement(prop, value) {
     switch (prop) {
       case 'weather':
@@ -580,13 +544,9 @@
       case 'customHorn':
         goalHorn.src = value;
         break;
-      case 'disableTurbo':
-        // handled in getInput()
-        break;
     }
   }
 
-  // Restore enhancements on lobby enter
   function loadEnhancements() {
     const saved = JSON.parse(localStorage.getItem('fk_enhancements') || '{}');
     Object.keys(saved).forEach(k => { if (enhancements.hasOwnProperty(k)) enhancements[k] = saved[k]; });
@@ -610,20 +570,17 @@
     applyEnhancement('hideScore', enhancements.hideScore);
     applyEnhancement('pitchColor', enhancements.pitchColor);
   }
-  function saveEnhancements() {
-    localStorage.setItem('fk_enhancements', JSON.stringify(enhancements));
-  }
+  function saveEnhancements() { localStorage.setItem('fk_enhancements', JSON.stringify(enhancements)); }
   document.querySelectorAll('#enhancementsContent input, #enhancementsContent select').forEach(el => el.addEventListener('change', saveEnhancements));
 
-  // Invite (simplified)
+  // Invite
   function getRoomCode() { return document.getElementById('roomCodeDisplay').innerText; }
   function getRoomPassword() { return document.getElementById('passwordText').innerText; }
 
   document.getElementById('inviteFriendBtn').addEventListener('click', () => inviteModal.classList.remove('hidden'));
   document.getElementById('inviteBackBtn').addEventListener('click', () => inviteModal.classList.add('hidden'));
   document.getElementById('shareInviteBtn').addEventListener('click', () => {
-    const code = getRoomCode();
-    const pass = getRoomPassword();
+    const code = getRoomCode(); const pass = getRoomPassword();
     const note = inviteMessage.value.trim();
     let text = `🏆 Join my FRANKLIN FOOTBALL 2026 game!\nRoom Code: ${code}\nPassword: ${pass}`;
     if (note) text += `\n\nMessage: ${note}`;
@@ -635,8 +592,7 @@
     inviteModal.classList.add('hidden');
   });
   document.getElementById('copyInviteBtn').addEventListener('click', () => {
-    const code = getRoomCode();
-    const pass = getRoomPassword();
+    const code = getRoomCode(); const pass = getRoomPassword();
     const note = inviteMessage.value.trim();
     let text = `🏆 Join my FRANKLIN FOOTBALL 2026 game!\nRoom Code: ${code}\nPassword: ${pass}`;
     if (note) text += `\n\nMessage: ${note}`;
@@ -656,18 +612,10 @@
     selectedRegion = regionSelect.value;
     client = new Colyseus.Client(SERVER_URL);
     try {
-      room = await client.create("football", {
-        password: pass,
-        region: selectedRegion,
-        matchTime: matchTime,
-        targetGoals: targetGoals
-      });
+      room = await client.create("football", { password: pass, region: selectedRegion, matchTime, targetGoals });
       amIHost = true; myPlayerId = 'p1'; roomPassword = pass;
       room.send("setName", hostName);
-    } catch(e) {
-      alert("Failed to create room. Is server running? " + e.message);
-      return;
-    }
+    } catch(e) { alert("Failed to create room. Is server running? " + e.message); return; }
     setupRoom(); enterLobby();
     passwordDisplay.style.display = 'flex'; passwordText.innerText = pass;
   }
@@ -683,10 +631,7 @@
       amIHost = false; myPlayerId = 'p2';
       const name = prompt("Enter your display name:", "Player2");
       room.send("setName", name || "P2");
-    } catch(e) {
-      alert(e.message);
-      return;
-    }
+    } catch(e) { alert(e.message); return; }
     setupRoom(); enterLobby();
     passwordDisplay.style.display = 'none';
   }
@@ -746,9 +691,8 @@
         document.getElementById('gameCanvasContainer').style.background = 'rgba(255,255,255,0.3)';
         setTimeout(() => document.getElementById('gameCanvasContainer').style.background = '', 200);
         if (enhancements.replay && serverState) {
-          goalReplayFrames = [];
-          isReplaying = true;
-          setTimeout(() => { isReplaying = false; goalReplayFrames = []; }, 2500);
+          goalReplayFrames = []; isReplaying = true;
+          setTimeout(() => { isReplaying = false; goalReplayFrames = []; }, 2000);
         }
         if (enhancements.dailyChallenge) {
           const today = new Date().toDateString();
@@ -800,7 +744,6 @@
     });
     room.onMessage("error", msg => { alert(msg.message); });
 
-    // Listen for opponent's enhancement changes
     room.onMessage("enhancementUpdate", (data) => {
       if (data.senderId === room.sessionId) return;
       if (enhancements.hasOwnProperty(data.prop)) {
@@ -810,12 +753,8 @@
         if (checkbox && checkbox.type === 'checkbox') checkbox.checked = data.value;
         const select = document.getElementById(data.prop + 'Select');
         if (select && select.tagName === 'SELECT') select.value = data.value;
-        if (data.prop === 'pitchColor') {
-          document.getElementById('pitchColorSlider').value = data.value;
-        }
-        if (data.prop === 'customHorn') {
-          goalHorn.src = data.value;
-        }
+        if (data.prop === 'pitchColor') document.getElementById('pitchColorSlider').value = data.value;
+        if (data.prop === 'customHorn') goalHorn.src = data.value;
       }
     });
 
@@ -867,7 +806,7 @@
       }
       if (enhancements.replay && isReplaying && serverState.ball) {
         goalReplayFrames.push({ x: serverState.ball.x, y: serverState.ball.y });
-        if (goalReplayFrames.length > 150) goalReplayFrames.shift();
+        if (goalReplayFrames.length > 100) goalReplayFrames.shift();
       }
     });
     room.onError(() => handleDisconnect());
@@ -924,15 +863,15 @@
       if (renderX < 10) renderX = 10; if (renderX > 990) renderX = 990;
       if (renderY < 10) renderY = 10; if (renderY > 490) renderY = 490;
 
-      // Ball trail
-      if (enhancements.ballTrail && gameActive) {
-        ballTrail.push({ x: renderX, y: renderY, life: 10 });
-        if (ballTrail.length > 15) ballTrail.shift();
+      // Optimised ball trail – only if moving fast and trail enabled
+      if (enhancements.ballTrail && gameActive && (Math.abs(ball.vx) > 5 || Math.abs(ball.vy) > 5)) {
+        ballTrail.push({ x: renderX, y: renderY, life: 8 });
+        if (ballTrail.length > 8) ballTrail.shift();
         for (let i = 0; i < ballTrail.length; i++) {
           const b = ballTrail[i]; b.life--;
           if (b.life > 0) {
-            ctx.fillStyle = `rgba(255,255,255,${b.life / 20})`;
-            ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = `rgba(255,255,255,${b.life / 16})`;
+            ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2); ctx.fill();
           }
         }
       }
@@ -945,15 +884,10 @@
           ctx.fillStyle = 'white'; ctx.font = '12px Segoe UI';
           ctx.fillText(localPlayer.name + (enhancements.flag ? ' ' + enhancements.flag : ''), predictedX, predictedY - 5);
         }
-        // Lock indicator (ball attached)
         if (lockPressed && gameActive && serverState && serverState.ball && localPlayer) {
-          ctx.strokeStyle = "#00ffff";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(predictedX + 15, predictedY + 30);
-          ctx.lineTo(renderX, renderY);
-          ctx.stroke();
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = "#00ffff"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(predictedX + 15, predictedY + 30); ctx.lineTo(renderX, renderY);
+          ctx.stroke(); ctx.lineWidth = 1;
         }
       }
       if (remotePlayer) {
@@ -970,25 +904,28 @@
       ctx.fillStyle = "#00f2ff"; ctx.fillRect(983, serverState.keeper2.y, 12, 60);
 
       if (enhancements.replay && isReplaying && goalReplayFrames.length > 0) {
-        ctx.globalAlpha = 0.4; ctx.strokeStyle = "#ffff00"; ctx.beginPath();
+        ctx.globalAlpha = 0.5; ctx.strokeStyle = "#ffff00"; ctx.lineWidth = 2;
+        ctx.beginPath();
         ctx.moveTo(goalReplayFrames[0].x, goalReplayFrames[0].y);
         for (let i = 1; i < goalReplayFrames.length; i++) ctx.lineTo(goalReplayFrames[i].x, goalReplayFrames[i].y);
-        ctx.stroke(); ctx.globalAlpha = 1.0;
+        ctx.stroke(); ctx.globalAlpha = 1.0; ctx.lineWidth = 1;
       }
     }
 
     if (enhancements.stats && serverState && !gameActive && serverState.gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(350, 150, 300, 200);
-      ctx.fillStyle = '#fff'; ctx.font = '16px Segoe UI';
-      ctx.fillText(`P1 Shots: ${serverState.p1Score}`, 370, 190);
-      ctx.fillText(`P2 Shots: ${serverState.p2Score}`, 370, 220);
+      ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(350, 150, 300, 180);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Segoe UI';
+      ctx.fillText(`P1 Goals: ${serverState.p1Score}`, 380, 190);
+      ctx.fillText(`P2 Goals: ${serverState.p2Score}`, 380, 230);
+      ctx.font = '14px Segoe UI';
+      ctx.fillText('Shots & possession tracked', 380, 270);
     }
   }
 
   function loop() { if (gameActive) applyPrediction(); draw(); requestAnimationFrame(loop); }
   loop();
 
-  // ==================== UI EVENTS ====================
+  // UI events
   function showPrompt(title, placeholder, isPassword=false) {
     return new Promise(resolve => {
       const overlay = document.createElement('div'); overlay.className='modal-overlay';
@@ -1004,10 +941,7 @@
   document.getElementById('joinRoomBtn').onclick = () => document.getElementById('joinSection').classList.toggle('hidden');
   document.getElementById('confirmJoinBtn').onclick = joinRoom;
   document.getElementById('readyBtn').onclick = () => room.send("ready");
-  document.getElementById('sendChatBtn').onclick = () => {
-    const msg = document.getElementById('chatInput').value.trim();
-    if (msg) { room.send("chat", msg); document.getElementById('chatInput').value = ''; }
-  };
+  document.getElementById('sendChatBtn').onclick = () => { const msg = document.getElementById('chatInput').value.trim(); if (msg) { room.send("chat", msg); document.getElementById('chatInput').value = ''; } };
   document.getElementById('leaveLobbyBtn').onclick = leaveRoom;
   document.getElementById('leaveGameBtn').onclick = leaveRoom;
 
@@ -1036,7 +970,6 @@
     isReplaying = false; goalReplayFrames = [];
   }
 
-  // ==================== GET INPUT (includes lock) ====================
   function getInput() {
     const touch = getTouchInput();
     const left = keys['ArrowLeft'] || touch.left, right = keys['ArrowRight'] || touch.right, up = keys['ArrowUp'] || touch.up, down = keys['ArrowDown'] || touch.down;
@@ -1044,7 +977,6 @@
     let keyboardTurbo = keyboardDash || (keys['ArrowUp'] && (keys['ArrowLeft'] || keys['ArrowRight']));
     let shoot = keys['ArrowUp'] || touch.shoot;
     let turbo = keyboardTurbo || touch.turbo;
-    // Lock – from keyboard shift or mobile lock button
     let lock = keys['ShiftLeft'] || keys['ShiftRight'] || touch.lock;
 
     if (enhancements.disableTurbo) turbo = false;
@@ -1054,9 +986,6 @@
     return inp;
   }
 
-  if (isMobile()) {
-    setupJoystick();
-    setupActionButtons();
-  }
+  if (isMobile()) { setupJoystick(); setupActionButtons(); }
 </script>
 </body></html>
