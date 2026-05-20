@@ -28,7 +28,7 @@
   .player-card{background:#132013;border-radius:30px;padding:16px;flex:1;min-width:150px;text-align:center;border:2px solid #00ff00;color:white}
   .ready-badge{background:#444;padding:6px 18px;border-radius:30px}
   .ready-badge.ready{background:#2e9a6e}
-  canvas{background:radial-gradient(circle,#1a2b1a 0%,#051005 100%);border:4px solid #00ff00;border-radius:20px;width:100%;aspect-ratio:2/1;touch-action:none;display:block}
+  canvas{background:radial-gradient(circle,#1a2b1a 0%,#051005 100%);border:4px solid #00ff00;border-radius:20px;width:100%;height:100%;display:block;image-rendering:auto;will-change:transform}
   .scoreboard{display:flex;justify-content:space-between;font-size:clamp(1.5rem,5vw,3rem);color:#fff;text-shadow:0 0 20px #00f2ff;padding:0 20px}
   #goalBanner{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:clamp(3rem,10vw,100px);color:#fff;text-shadow:0 0 30px #00ff00;transition:0.3s;z-index:100;pointer-events:none}
   #goalBanner.show{transform:translate(-50%,-50%) scale(1)}
@@ -52,8 +52,8 @@
   .sent-flash{animation:flashGreen 0.4s ease}
   @keyframes flashGreen{0%{box-shadow:0 0 5px #00ff00}50%{box-shadow:0 0 25px #00ff00,0 0 50px #00ff00}100%{box-shadow:0 0 5px #00ff00}}
 
-  #gameCanvasContainer{position:relative;flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center}
-  #gameCanvas{width:100%;height:100%;object-fit:contain}
+  #gameCanvasContainer{position:relative;flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;transform:translateZ(0)}
+  #gameCanvas{width:100%;height:100%;object-fit:none}
 
   #mobileControls{display:none;position:absolute;bottom:20px;left:0;right:0;justify-content:space-between;align-items:flex-end;padding:0 25px;z-index:60;pointer-events:none}
   #mobileControls>*{pointer-events:auto}
@@ -201,7 +201,7 @@
     <div id="gamePanel" class="panel hidden" style="position:relative;flex:1;display:flex;flex-direction:column">
       <div class="scoreboard"><span id="p1Score" style="color:#ff00ff">0</span><span>⚡</span><span id="p2Score" style="color:#00f2ff">0</span></div>
       <div id="gameCanvasContainer">
-        <canvas id="gameCanvas" width="1000" height="500"></canvas>
+        <canvas id="gameCanvas"></canvas>
 
         <!-- Mobile controls: joystick + diamond action buttons -->
         <div id="mobileControls">
@@ -281,6 +281,7 @@
     lobby: document.getElementById('lobbyPanel'), game: document.getElementById('gamePanel')
   };
   const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+  const canvasContainer = document.getElementById('gameCanvasContainer');
   const goalHorn = document.getElementById('goalHorn');
   const commentaryDiv = document.getElementById('commentary'), goalBanner = document.getElementById('goalBanner');
   const warningDiv = document.getElementById('warning'), winnerMsgDiv = document.getElementById('winnerMsg');
@@ -292,6 +293,9 @@
   const chatMessages = document.getElementById('chatMessages'), fullscreenToggle = document.getElementById('fullscreenToggle');
   const gameNavButtons = document.getElementById('gameNavButtons');
   const timeSelect = document.getElementById('timeSelect'), goalSelect = document.getElementById('goalSelect');
+  const p1ScoreEl = document.getElementById('p1Score'), p2ScoreEl = document.getElementById('p2Score');
+  const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+  const connectionStatus = document.getElementById('connectionStatus');
 
   const inviteModal = document.getElementById('inviteModal');
   const inviteMessage = document.getElementById('inviteMessage');
@@ -356,6 +360,16 @@
 
   function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
   function showMobileControls() { if (isMobile()) mobileControls.style.display = 'flex'; }
+
+  // ---------- Canvas sizing ----------
+  function resizeCanvas() {
+    const rect = canvasContainer.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    ctx.imageSmoothingEnabled = false;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
 
   // Joystick setup
   function setupJoystick() {
@@ -445,7 +459,7 @@
     document.getElementById('enhancementsContent').classList.toggle('hidden');
   });
 
-  // Bind enhancements
+  // Bind enhancements (identical to previous, just kept for completeness)
   function bindCheckbox(id, prop) {
     document.getElementById(id).addEventListener('change', (e) => {
       enhancements[prop] = e.target.checked;
@@ -758,11 +772,22 @@
       }
     });
 
+    // Optimised state change handler – only updates when values change
+    let prevP1Score = 0, prevP2Score = 0, prevTimeLeft = 0, prevMatchState = '';
+    let prevRoomCode = '';
     room.onStateChange(state => {
       serverState = state;
-      document.getElementById('roomCodeDisplay').innerText = state.roomCode || room.roomId;
-      matchStatus = state.matchState;
-      statusBar.innerText = {"waiting":"⚪ WAITING","ready_check":"🟡 READY CHECK","countdown":"🟡 COUNTDOWN","live":"🟢 LIVE","end":"🔴 END"}[matchStatus]||matchStatus;
+      // Room code
+      const newRoomCode = state.roomCode || room.roomId;
+      if (newRoomCode !== prevRoomCode) {
+        roomCodeDisplay.innerText = newRoomCode;
+        prevRoomCode = newRoomCode;
+      }
+      // Match state
+      if (state.matchState !== prevMatchState) {
+        prevMatchState = state.matchState;
+        statusBar.innerText = {"waiting":"⚪ WAITING","ready_check":"🟡 READY CHECK","countdown":"🟡 COUNTDOWN","live":"🟢 LIVE","end":"🔴 END"}[state.matchState]||state.matchState;
+      }
       if (state.gameOver) {
         gameActive = false;
         winnerMsgDiv.innerText = state.winnerMessage;
@@ -789,13 +814,22 @@
           winnerMsgDiv.style.display = 'block';
         }
       }
-      warningDiv.style.display = (state.timeLeft <= 120 && state.timeLeft > 0) ? 'block' : 'none';
+      const showWarning = (state.timeLeft <= 120 && state.timeLeft > 0);
+      warningDiv.style.display = showWarning ? 'block' : 'none';
       if (!gameActive) return;
+
+      // Scores
+      if (state.p1Score !== prevP1Score) {
+        prevP1Score = state.p1Score;
+        p1ScoreEl.innerText = state.p1Score;
+      }
+      if (state.p2Score !== prevP2Score) {
+        prevP2Score = state.p2Score;
+        p2ScoreEl.innerText = state.p2Score;
+      }
 
       localPlayer = null; remotePlayer = null;
       state.players.forEach((p, sid) => { if (sid === room.sessionId) localPlayer = p; else remotePlayer = p; });
-      document.getElementById('p1Score').innerText = state.p1Score;
-      document.getElementById('p2Score').innerText = state.p2Score;
 
       if (localPlayer) {
         if (predictedX === undefined) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
@@ -851,7 +885,10 @@
   let prevBallX = 500, prevBallY = 250;
   const ballTrail = [];
   function draw() {
-    ctx.clearRect(0,0,1000,500);
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+    ctx.save();
+    ctx.scale(w/1000, h/500);
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.strokeRect(0,150,40,200); ctx.strokeRect(960,150,40,200);
     ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
@@ -863,7 +900,7 @@
       if (renderX < 10) renderX = 10; if (renderX > 990) renderX = 990;
       if (renderY < 10) renderY = 10; if (renderY > 490) renderY = 490;
 
-      // Optimised ball trail – only if moving fast and trail enabled
+      // Optimised ball trail
       if (enhancements.ballTrail && gameActive && (Math.abs(ball.vx) > 5 || Math.abs(ball.vy) > 5)) {
         ballTrail.push({ x: renderX, y: renderY, life: 8 });
         if (ballTrail.length > 8) ballTrail.shift();
@@ -911,6 +948,7 @@
         ctx.stroke(); ctx.globalAlpha = 1.0; ctx.lineWidth = 1;
       }
     }
+    ctx.restore();
 
     if (enhancements.stats && serverState && !gameActive && serverState.gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(350, 150, 300, 180);
