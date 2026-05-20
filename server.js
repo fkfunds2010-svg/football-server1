@@ -15,12 +15,14 @@ class PlayerState extends Schema {
     this.x = 150; this.y = 415; this.vx = 0; this.vy = 0;
     this.isJumping = false; this.color = "#ff00ff"; this.side = "left";
     this.name = ""; this.ready = false; this.accelX = 0;
+    this.reconnecting = false; this.disconnectTime = 0;
   }
 }
 PlayerState._schema = {
   x: "number", y: "number", vx: "number", vy: "number",
   isJumping: "boolean", color: "string", side: "string",
-  name: "string", ready: "boolean", accelX: "number"
+  name: "string", ready: "boolean", accelX: "number",
+  reconnecting: "boolean", disconnectTime: "number"
 };
 
 class BallState extends Schema {
@@ -62,12 +64,14 @@ defineTypes(BallState, BallState._schema);
 defineTypes(KeeperState, KeeperState._schema);
 defineTypes(GameState, GameState._schema);
 
+// ---------- Room – full game logic ----------
 class FootballRoom extends Room {
   constructor() {
     super();
     this.maxClients = 2;
     this.state = new GameState();
     this.inputs = {};
+    this.reconnectTimers = {};
   }
 
   static onAuth(client, options, request) { return true; }
@@ -75,6 +79,7 @@ class FootballRoom extends Room {
   onCreate(options) {
     this.state.roomCode = this.roomId;
     this.state.password = options.password || Math.random().toString(36).substr(2,6);
+
     const minutes = options.matchTime || 2;
     const goals = options.targetGoals || 10;
     this.state.timeLeft = minutes * 60;
@@ -105,8 +110,7 @@ class FootballRoom extends Room {
           down: !!input.down,
           shoot: !!input.shoot,
           turbo: !!input.turbo,
-          dribble: !!input.lock,
-          aimAngle: input.aimAngle
+          aimAngle: input.aimAngle    // undefined for keyboard, number for mobile
         };
       }
     });
@@ -123,6 +127,7 @@ class FootballRoom extends Room {
 
     this.onMessage("ping", (client, d) => client.send("pong", d));
 
+    // ✅ Allow host to change match settings during lobby
     this.onMessage("setMatchOptions", (client, opts) => {
       if (this.state.matchState !== "waiting" && this.state.matchState !== "ready_check") return;
       const p = this.state.players.get(client.sessionId);
@@ -155,8 +160,10 @@ class FootballRoom extends Room {
       this.broadcastPlayerInfo();
     });
 
-    // 60 Hz tick
-    this.setSimulationInterval(() => { try { this.gameTick(); } catch (e) { console.error(e); } }, 1000/60);
+    // ✅ 60 Hz tick rate
+    this.setSimulationInterval((dt) => {
+      try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
+    }, 1000 / 60);
   }
 
   onJoin(client, options) {
@@ -170,7 +177,9 @@ class FootballRoom extends Room {
     setTimeout(() => this.broadcastPlayerInfo(), 200);
   }
 
-  onLeave(client) { this.state.players.delete(client.sessionId); }
+  onLeave(client) {
+    this.state.players.delete(client.sessionId);
+  }
 
   broadcastPlayerInfo() {
     const p1 = [...this.state.players.values()].find(p => p.side === "left");
@@ -203,9 +212,10 @@ class FootballRoom extends Room {
   gameTick() {
     if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return;
 
+    const FIXED_DT = 1 / 60;
     const ball = this.state.ball;
 
-    // Ball physics (identical to local PvP)
+    // ---------- 1. Ball physics ----------
     ball.x += ball.vx;
     ball.y += ball.vy;
     ball.vy += 0.25;
@@ -213,7 +223,7 @@ class FootballRoom extends Room {
     if (ball.y > 480) { ball.y = 480; ball.vy *= -0.7; }
     if (ball.y < 10)  { ball.y = 10;  ball.vy *= -0.7; }
 
-    // Keeper collisions
+    // ---------- 2. Keeper collisions ----------
     [{ x: 5, k: this.state.keeper1 }, { x: 983, k: this.state.keeper2 }].forEach(({ x: kx, k }) => {
       if (ball.x + 10 > kx && ball.x - 10 < kx + 12 && ball.y + 10 > k.y && ball.y - 10 < k.y + 60) {
         if (Math.abs(ball.vx) > 25) this.broadcast("event", { type: "SHOT", data: { turbo: false, color: "#fff" } });
@@ -222,7 +232,7 @@ class FootballRoom extends Room {
       }
     });
 
-    // Player collisions with ball
+    // ---------- 3. Player collisions with ball ----------
     this.state.players.forEach(p => {
       if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
         ball.vx *= -0.5;
@@ -230,7 +240,7 @@ class FootballRoom extends Room {
       }
     });
 
-    // Goal check
+    // ---------- 4. Goal check ----------
     if (ball.x < 0 || ball.x > 1000) {
       if (ball.y > 150 && ball.y < 350) {
         if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
@@ -244,59 +254,34 @@ class FootballRoom extends Room {
       } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
     }
 
-    // Player movement + shooting (copy of local PvP player.update)
+    // ---------- 5. Player movement + shooting (EXACT copy of your local PvP player.update) ----------
     this.state.players.forEach((player, sid) => {
       const input = this.inputs[sid] || {};
       const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y;
       const hasBall = dx * dx + dy * dy < 2500;
-
-      // Dribble lock (optional, not in original but harmless)
-      if (hasBall && input.dribble) {
-        ball.x = player.x + (player.side === 'left' ? 25 : -25);
-        ball.y = player.y + 30;
-        ball.vx = 0; ball.vy = 0;
-        this.state.players.forEach((other, otherSid) => {
-          if (otherSid === sid) return;
-          const odx = other.x + 15 - ball.x, ody = other.y + 32 - ball.y;
-          if (odx * odx + ody * ody < 2500) {
-            ball.vx = (other.side === 'left' ? 3 : -3);
-            ball.vy = -2;
-            input.dribble = false;
-          }
-        });
-        if (input.dribble) {
-          if (input.left) player.vx -= 1.1;
-          if (input.right) player.vx += 1.1;
-          if (input.up && !player.isJumping) { player.vy = -14; player.isJumping = true; }
-          if (input.down) player.vy += 1;
-          player.vy += 0.7;
-          player.x += player.vx;
-          player.y += player.vy;
-          player.vx *= 0.85;
-          if (player.y > 415) { player.y = 415; player.vy = 0; player.isJumping = false; }
-          player.x = Math.min(930, Math.max(40, player.x));
-          return;
-        }
-      }
 
       if (hasBall && input.shoot) {
         player.vx = 0;
         let speed = input.turbo ? 45 : 20;
 
         if (typeof input.aimAngle === 'number') {
+          // 📱 Mobile aiming – use the joystick angle
           const rad = input.aimAngle * Math.PI / 180;
-          ball.vx = Math.cos(rad) * speed;
-          ball.vy = -Math.sin(rad) * speed;
+          const dirX = Math.cos(rad);
+          const dirY = -Math.sin(rad);
+          ball.vx = dirX * speed;
+          ball.vy = dirY * speed;
         } else {
-          // Original shooting logic (local PvP style)
+          // 💻 Laptop / keyboard – original vertical behaviour
           ball.vx = (player.side === 'left') ? speed : -speed;
-          if (input.up && !input.down) ball.vy = -14;
-          else if (input.down) ball.vy = 10;
-          else ball.vy = -2;
+          if (input.up && !input.down) ball.vy = -14;      // lob
+          else if (input.down) ball.vy = 10;                // low driven
+          else ball.vy = -2;                                // slight lift
         }
+
         this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } });
       } else {
-        // Movement
+        // Movement (no ball possession)
         if (input.left) player.vx -= 1.1;
         if (input.right) player.vx += 1.1;
         if (input.up && !player.isJumping) {
@@ -306,7 +291,7 @@ class FootballRoom extends Room {
         if (input.down) player.vy += 1;
       }
 
-      // Apply gravity and friction (same as local)
+      // Apply physics – identical to local PvP
       player.vy += 0.7;
       player.x += player.vx;
       player.y += player.vy;
@@ -315,7 +300,7 @@ class FootballRoom extends Room {
       player.x = Math.min(930, Math.max(40, player.x));
     });
 
-    // Keeper AI
+    // ---------- 6. Keeper AI ----------
     const targetY = ball.y - 30;
     [this.state.keeper1, this.state.keeper2].forEach((k, i) => {
       const skill = (i === 0) ? 1.2 : 1.0;
@@ -325,9 +310,9 @@ class FootballRoom extends Room {
       k.y = Math.min(295, Math.max(155, k.y));
     });
 
-    // Timer
+    // ---------- 7. Timer ----------
     if (this.state.timeLeft > 0) {
-      this.state.timeLeft -= 1/60;
+      this.state.timeLeft -= FIXED_DT;
       if (this.state.timeLeft <= 0) {
         this.state.gameOver = true; this.state.matchState = "end";
         this.state.winnerMessage = this.state.p1Score > this.state.p2Score ? "Player 1 Wins!" : (this.state.p2Score > this.state.p1Score ? "Player 2 Wins!" : "Draw!");
@@ -337,14 +322,25 @@ class FootballRoom extends Room {
   }
 }
 
+// ==================== SERVER SETUP ====================
 const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
   express: (app) => {
+    app.use((req, res, next) => {
+      if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') return;
+      next();
+    });
+    app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
     app.get("/health", (req, res) => res.send("OK"));
     app.use("/playground", playground());
+    app.use((req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
+      next();
+    });
     app.get("/schema.js", (req, res) => {
       res.type("application/javascript");
       res.sendFile(path.join(__dirname, "node_modules", "@colyseus", "schema", "build", "index.js"));
