@@ -135,12 +135,10 @@
         <input type="password" id="passwordInput" class="input-field" placeholder="Room password">
         <button class="btn secondary" id="confirmJoinBtn">🚪 JOIN</button>
       </div>
-      <!-- Join by host name -->
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
         <input type="text" id="joinHostNameInput" class="input-field" placeholder="Host's display name" style="flex:1;min-width:120px">
         <button class="btn" id="joinByHostBtn">🔍 Join by Name</button>
       </div>
-      <!-- Online rooms list -->
       <button class="btn secondary" id="refreshRoomsBtn">🔄 Refresh Open Rooms</button>
       <div id="onlineRoomsList" style="max-height:150px;overflow-y:auto;margin-top:5px;"></div>
     </div>
@@ -225,7 +223,7 @@
       </div>
     </div>
 
-    <!-- Game Panel (diamond controls) -->
+    <!-- Game Panel -->
     <div id="gamePanel" class="panel hidden" style="position:relative;flex:1;display:flex;flex-direction:column">
       <div class="scoreboard"><span id="p1Score" style="color:#ff00ff">0</span><span>⚡</span><span id="p2Score" style="color:#00f2ff">0</span></div>
       <div id="gameCanvasContainer">
@@ -256,7 +254,6 @@
 </div>
 
 <script>
-  // ==================== CONFIG ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
   let client, room, myPlayerId, amIHost, gameActive = false;
   let keys = {};
@@ -265,14 +262,12 @@
   let ping = 0, reconnectAttempts = 0, countdownValue = -1, matchStatus = "waiting";
   let inputInterval, pingInterval, roomPassword = "", selectedRegion = "europe";
 
-  // Touch / lock / diamond
   let touchDir = { up: false, down: false, left: false, right: false };
   let shootPressed = false, turboPressed = false, lockPressed = false;
   let joystickActive = false, joystickCenter = { x: 0, y: 0 }, joystickMaxDist = 35, currentAimAngle = null;
   let isFullscreen = false, predictedIsJumping = false;
   let prevBallX = 500, prevBallY = 250;
 
-  // Series & stats
   let seriesTarget = 1;
   let seriesWins = { p1: 0, p2: 0 };
   let possessionTime = { p1: 0, p2: 0 };
@@ -312,7 +307,6 @@
   const appButtons = document.getElementById('appButtons');
   let currentInviteMode = 'phone';
 
-  // Dial pad
   let dialCode = '';
   const dialCodeDisplay = document.getElementById('dialCodeDisplay');
   const dialPadModal = document.getElementById('dialPadModal');
@@ -388,12 +382,60 @@
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
-  // Joystick & diamond buttons (unchanged)
-  function setupJoystick() { /* ... identical to previous ... */ }
-  function setupActionButtons() { /* ... identical to previous, includes lockBtnMobile ... */ }
-  function getTouchInput() { /* ... identical ... */ }
+  // Joystick
+  function setupJoystick() {
+    const base = document.getElementById('joystickBase'), thumb = document.getElementById('joystickThumb');
+    function updateAimAngle(dx, dy) {
+      if (Math.abs(dx) < 5 && Math.abs(dy) < 5) { currentAimAngle = null; return; }
+      currentAimAngle = Math.atan2(-dy, dx) * 180 / Math.PI;
+    }
+    function handleStart(e) {
+      e.preventDefault(); joystickActive = true;
+      const rect = base.getBoundingClientRect();
+      joystickCenter.x = rect.left + rect.width/2; joystickCenter.y = rect.top + rect.height/2;
+      updateThumb(e);
+    }
+    function handleMove(e) { if (!joystickActive) return; e.preventDefault(); updateThumb(e); }
+    function handleEnd(e) {
+      e.preventDefault(); joystickActive = false;
+      thumb.style.transform = `translate(-50%, -50%)`;
+      touchDir = { up: false, down: false, left: false, right: false };
+      currentAimAngle = null;
+    }
+    function updateThumb(e) {
+      const touch = e.touches[0]; if (!touch) return;
+      let dx = touch.clientX - joystickCenter.x, dy = touch.clientY - joystickCenter.y;
+      const dist = Math.sqrt(dx*dx + dy*dy), max = joystickMaxDist;
+      let clampedDist = Math.min(dist, max), normalizedDx = 0, normalizedDy = 0;
+      if (dist > 0) { normalizedDx = dx / dist; normalizedDy = dy / dist; dx = normalizedDx * clampedDist; dy = normalizedDy * clampedDist; }
+      thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      touchDir.left = normalizedDx < -0.3; touchDir.right = normalizedDx > 0.3;
+      touchDir.up = normalizedDy < -0.3; touchDir.down = normalizedDy > 0.3;
+      updateAimAngle(normalizedDx, normalizedDy);
+    }
+    base.addEventListener('touchstart', handleStart, { passive: false });
+    base.addEventListener('touchmove', handleMove, { passive: false });
+    base.addEventListener('touchend', handleEnd);
+    base.addEventListener('touchcancel', handleEnd);
+  }
 
-  // Keyboard
+  // Diamond buttons
+  function setupActionButtons() {
+    document.getElementById('shootBtn').addEventListener('touchstart', e => { e.preventDefault(); shootPressed = true; });
+    document.getElementById('shootBtn').addEventListener('touchend', e => { e.preventDefault(); shootPressed = false; });
+    document.getElementById('dashBtn').addEventListener('touchstart', e => { e.preventDefault(); turboPressed = true; });
+    document.getElementById('dashBtn').addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
+    document.getElementById('turboShotBtn').addEventListener('touchstart', e => { e.preventDefault(); shootPressed = true; turboPressed = true; });
+    document.getElementById('turboShotBtn').addEventListener('touchend', e => { e.preventDefault(); shootPressed = false; turboPressed = false; });
+    document.getElementById('lockBtnMobile').addEventListener('touchstart', e => { e.preventDefault(); lockPressed = true; });
+    document.getElementById('lockBtnMobile').addEventListener('touchend', e => { e.preventDefault(); lockPressed = false; });
+  }
+
+  function getTouchInput() {
+    return { left: touchDir.left, right: touchDir.right, up: touchDir.up, down: touchDir.down,
+      shoot: shootPressed, turbo: turboPressed, lock: lockPressed, aimAngle: currentAimAngle };
+  }
+
   window.addEventListener('keydown', e => {
     const tag = e.target.tagName;
     const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
@@ -423,7 +465,7 @@
     return inp;
   }
 
-  // ==================== DIAL PAD LOGIC ====================
+  // --- Dial pad ---
   function updateDialDisplay() {
     let display = '*';
     for (let i = 0; i < 6; i++) {
@@ -433,7 +475,6 @@
     dialCodeDisplay.textContent = display;
   }
 
-  // Dial pad buttons
   document.querySelectorAll('.dial-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const digit = btn.dataset.digit;
@@ -443,104 +484,80 @@
       }
     });
   });
-
-  dialClearBtn.addEventListener('click', () => {
-    dialCode = '';
-    updateDialDisplay();
-  });
-
-  dialCloseBtn.addEventListener('click', () => {
-    dialPadModal.classList.add('hidden');
-  });
+  dialClearBtn.addEventListener('click', () => { dialCode = ''; updateDialDisplay(); });
+  dialCloseBtn.addEventListener('click', () => { dialPadModal.classList.add('hidden'); });
 
   dialJoinBtn.addEventListener('click', async () => {
-    if (dialCode.length < 4) {
-      alert('Please enter at least 4 digits.');
-      return;
-    }
-    if (!client) client = new Colyseus.Client(SERVER_URL);
-    // Send dial code to server to get room ID
-    client.send("joinByDial", dialCode);
-    // We'll listen for the response in the global message handler below
+    if (dialCode.length < 4) { alert('Please enter at least 4 digits.'); return; }
+    try {
+      const res = await fetch(`/api/join-by-dial?code=${dialCode}`);
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      if (!client) client = new Colyseus.Client(SERVER_URL);
+      room = await client.joinById(data.roomId);
+      amIHost = false; myPlayerId = 'p2';
+      const name = prompt("Enter your display name:", "Player2");
+      room.send("setName", name || "P2");
+      setupRoom(); enterLobby();
+      dialPadModal.classList.add('hidden');
+    } catch (e) { alert('Failed to join via dial code.'); }
   });
 
-  // "Get Dial Code" button – generate a code for the current room (host only)
+  // "Get Dial Code" button
   document.getElementById('generateDialCodeBtn').addEventListener('click', () => {
     if (!amIHost || !room) return;
     room.send("generateDialCode");
   });
 
-  // Listener for dial code from server (host receives it)
-  room.onMessage("dialCode", (code) => {
-    dialCode = code;
-    updateDialDisplay();
-    dialPadModal.classList.remove('hidden');
-  });
-
-  // When a player joins by dial code, server sends the room ID to join
-  room.onMessage("dialCodeRoomId", async (roomId) => {
-    // Leave any placeholder room and join the real one
-    if (room) room.leave();
-    room = await client.joinById(roomId);
-    setupRoom(); enterLobby();
-    dialPadModal.classList.add('hidden');
-  });
-
-  // ==================== ONLINE ROOMS & JOIN BY NAME ====================
-  function refreshOpenRooms() {
-    if (!client) client = new Colyseus.Client(SERVER_URL);
-    // Server will respond with "openRoomsList"
-    client.send("listOpenRooms");
-  }
-
-  client.onMessage("openRoomsList", (rooms) => {
-    onlineRoomsList.innerHTML = '';
-    if (rooms.length === 0) {
-      onlineRoomsList.innerHTML = '<div style="color:#ccc;padding:10px;">No open rooms right now.</div>';
-      return;
-    }
-    rooms.forEach(r => {
-      const div = document.createElement('div');
-      div.className = 'room-list-item';
-      div.innerHTML = `<span>${r.hostName} (${r.players}/2)</span>
-        <button class="join-open-room" data-roomid="${r.roomId}">Join</button>`;
-      onlineRoomsList.appendChild(div);
-    });
-    // Add event listeners for the new Join buttons
-    document.querySelectorAll('.join-open-room').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const roomId = btn.dataset.roomid;
-        if (!client) client = new Colyseus.Client(SERVER_URL);
-        room = await client.joinById(roomId);
-        amIHost = false; myPlayerId = 'p2';
-        const name = prompt("Enter your display name:", "Player2");
-        room.send("setName", name || "P2");
-        setupRoom(); enterLobby();
+  // --- Online rooms list & join by host ---
+  async function refreshOpenRooms() {
+    try {
+      const res = await fetch("/api/rooms");
+      const rooms = await res.json();
+      onlineRoomsList.innerHTML = '';
+      if (rooms.length === 0) {
+        onlineRoomsList.innerHTML = '<div style="color:#ccc;padding:10px;">No open rooms right now.</div>';
+        return;
+      }
+      rooms.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'room-list-item';
+        div.innerHTML = `<span>${r.hostName} (${r.players}/2)</span>
+          <button class="join-open-room" data-roomid="${r.roomId}">Join</button>`;
+        onlineRoomsList.appendChild(div);
       });
-    });
-  });
+      document.querySelectorAll('.join-open-room').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const roomId = btn.dataset.roomid;
+          if (!client) client = new Colyseus.Client(SERVER_URL);
+          room = await client.joinById(roomId);
+          amIHost = false; myPlayerId = 'p2';
+          const name = prompt("Enter your display name:", "Player2");
+          room.send("setName", name || "P2");
+          setupRoom(); enterLobby();
+        });
+      });
+    } catch (e) {
+      onlineRoomsList.innerHTML = '<div style="color:#f00;padding:10px;">Could not load rooms.</div>';
+    }
+  }
 
   document.getElementById('refreshRoomsBtn').addEventListener('click', refreshOpenRooms);
 
-  // Join by host name
   document.getElementById('joinByHostBtn').addEventListener('click', async () => {
     const hostName = joinHostNameInput.value.trim();
     if (!hostName) { alert('Please enter a host name.'); return; }
-    if (!client) client = new Colyseus.Client(SERVER_URL);
-    client.send("joinByHost", hostName);
-  });
-
-  client.onMessage("joinByHostResult", async (data) => {
-    if (data.error) {
-      alert(data.error);
-      return;
-    }
-    // data.roomId
-    room = await client.joinById(data.roomId, data.password ? { password: data.password } : {});
-    amIHost = false; myPlayerId = 'p2';
-    const name = prompt("Enter your display name:", "Player2");
-    room.send("setName", name || "P2");
-    setupRoom(); enterLobby();
+    try {
+      const res = await fetch(`/api/join-by-host?name=${encodeURIComponent(hostName)}`);
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      if (!client) client = new Colyseus.Client(SERVER_URL);
+      room = await client.joinById(data.roomId);
+      amIHost = false; myPlayerId = 'p2';
+      const name = prompt("Enter your display name:", "Player2");
+      room.send("setName", name || "P2");
+      setupRoom(); enterLobby();
+    } catch (e) { alert('Failed to join by host name.'); }
   });
 
   // ==================== NETWORKING ====================
@@ -556,13 +573,7 @@
     selectedRegion = regionSelect.value;
     client = new Colyseus.Client(SERVER_URL);
     try {
-      room = await client.create("football", {
-        password: pass,
-        region: selectedRegion,
-        matchTime,
-        targetGoals,
-        seriesTarget   // send series info to server
-      });
+      room = await client.create("football", { password: pass, region: selectedRegion, matchTime, targetGoals, seriesTarget });
       amIHost = true; myPlayerId = 'p1'; roomPassword = pass;
       room.send("setName", hostName);
     } catch(e) { alert("Failed to create room. Is server running? " + e.message); return; }
@@ -626,7 +637,6 @@
       predictedX = 150; predictedY = 415; predictedVx = 0; predictedVy = 0;
       statusBar.innerText = '🟢 LIVE';
       requestFullscreen();
-      // Reset per‑game stats
       shotCount = { p1: 0, p2: 0 };
       lastPossessionUpdate = Date.now();
     });
@@ -645,7 +655,6 @@
         setTimeout(()=>document.getElementById('app').classList.remove('shake'),500);
         canvasContainer.style.background = 'rgba(255,255,255,0.3)';
         setTimeout(() => canvasContainer.style.background = '', 200);
-        // Update shot count
         if (ev.data.scorer === 'p1') shotCount.p1++; else shotCount.p2++;
       } else if (ev.type === "SHOT") {
         comment(ev.data.turbo?"TURBO SHOT!":"POWER SHOT!",ev.data.color);
@@ -682,6 +691,20 @@
       seriesWins = { p1: 0, p2: 0 };
     });
 
+    // DIAL CODE LISTENERS (inside setupRoom)
+    room.onMessage("dialCode", (code) => {
+      dialCode = code;
+      updateDialDisplay();
+      dialPadModal.classList.remove('hidden');
+    });
+
+    room.onMessage("dialCodeRoomId", async (roomId) => {
+      if (room) room.leave();
+      room = await client.joinById(roomId);
+      setupRoom(); enterLobby();
+      dialPadModal.classList.add('hidden');
+    });
+
     room.onStateChange(state => {
       serverState = state;
       roomCodeDisplay.innerText = state.roomCode || room.roomId;
@@ -689,33 +712,28 @@
       statusBar.innerText = {"waiting":"⚪ WAITING","ready_check":"🟡 READY CHECK","countdown":"🟡 COUNTDOWN","live":"🟢 LIVE","end":"🔴 END"}[state.matchState]||state.matchState;
       if (state.gameOver) {
         gameActive = false;
-        // Update series wins
         if (state.p1Score > state.p2Score) seriesWins.p1++;
         else if (state.p2Score > state.p1Score) seriesWins.p2++;
 
         if (seriesTarget > 1 && seriesWins.p1 < seriesTarget && seriesWins.p2 < seriesTarget) {
-          // Not yet decided – show series score and auto‑rematch
           winnerMsgDiv.innerText = `Series: ${seriesWins.p1} - ${seriesWins.p2}`;
           winnerMsgDiv.style.display = 'block';
           rematchBtn.classList.remove('hidden');
         } else {
-          // Series over (or single game)
           let msg = '';
           if (seriesTarget > 1) {
             const champion = seriesWins.p1 >= seriesTarget ? 'Player 1' : 'Player 2';
             msg = `${champion} wins the series! `;
           }
           msg += state.winnerMessage;
-          winnerMsgDiv.innerText = msg;
-          // Show stats
           const possessionPct = (possessionTime.p1 + possessionTime.p2) > 0 ?
             Math.round(possessionTime.p1 / (possessionTime.p1 + possessionTime.p2) * 100) : 50;
-          winnerMsgDiv.innerText += `\nPossession: P1 ${possessionPct}% - P2 ${100-possessionPct}%`;
-          winnerMsgDiv.innerText += `\nShots: P1 ${shotCount.p1} - P2 ${shotCount.p2}`;
+          msg += `\nPossession: P1 ${possessionPct}% - P2 ${100-possessionPct}%`;
+          msg += `\nShots: P1 ${shotCount.p1} - P2 ${shotCount.p2}`;
+          winnerMsgDiv.innerText = msg;
           winnerMsgDiv.style.display = 'block';
           rematchBtn.classList.remove('hidden');
           exitFullscreen();
-          // Reset series for next time
           seriesWins = { p1: 0, p2: 0 };
         }
       }
@@ -727,7 +745,6 @@
       p1ScoreEl.innerText = state.p1Score;
       p2ScoreEl.innerText = state.p2Score;
 
-      // Possession tracking (simplistic: who is closer to the ball)
       if (serverState.ball && localPlayer && remotePlayer) {
         const now = Date.now();
         const dt = (now - lastPossessionUpdate) / 1000;
@@ -736,22 +753,16 @@
         const dx2 = remotePlayer.x + 15 - serverState.ball.x, dy2 = remotePlayer.y + 32 - serverState.ball.y;
         const dist1 = dx1*dx1 + dy1*dy1;
         const dist2 = dx2*dx2 + dy2*dy2;
-        if (dist1 < dist2) {
-          possessionTime.p1 += dt;
-        } else {
-          possessionTime.p2 += dt;
-        }
+        if (dist1 < dist2) possessionTime.p1 += dt; else possessionTime.p2 += dt;
       }
 
       if (localPlayer) {
         if (predictedX === undefined) { predictedX = localPlayer.x; predictedY = localPlayer.y; }
         const dx = localPlayer.x - predictedX, dy = localPlayer.y - predictedY;
         if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-          predictedX += dx * 0.15;
-          predictedY += dy * 0.15;
+          predictedX += dx * 0.15; predictedY += dy * 0.15;
         } else {
-          predictedX = localPlayer.x;
-          predictedY = localPlayer.y;
+          predictedX = localPlayer.x; predictedY = localPlayer.y;
         }
         predictedVx = localPlayer.vx; predictedVy = localPlayer.vy;
       }
@@ -783,26 +794,21 @@
     document.body.appendChild(toast); setTimeout(() => toast.remove(), 2500);
   }
 
-  // ==================== PREDICTION & RENDERING ====================
+  // --- Prediction & Rendering ---
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
     if (inp.left) predictedVx -= 1.1;
     if (inp.right) predictedVx += 1.1;
     if (inp.up && !predictedIsJumping && predictedY >= 415) {
-      predictedVy = -14;
-      predictedIsJumping = true;
+      predictedVy = -14; predictedIsJumping = true;
     }
     if (inp.down) predictedVy += 1;
     predictedVy += 0.7;
     predictedX += predictedVx;
     predictedY += predictedVy;
     predictedVx *= 0.85;
-    if (predictedY > 415) {
-      predictedY = 415;
-      predictedVy = 0;
-      predictedIsJumping = false;
-    }
+    if (predictedY > 415) { predictedY = 415; predictedVy = 0; predictedIsJumping = false; }
     predictedX = Math.min(930, Math.max(40, predictedX));
   }
 
@@ -843,7 +849,6 @@
   function loop() { if (gameActive) applyPrediction(); draw(); requestAnimationFrame(loop); }
   loop();
 
-  // UI events
   function showPrompt(title, placeholder, isPassword=false) {
     return new Promise(resolve => {
       const overlay = document.createElement('div'); overlay.className='modal-overlay';
