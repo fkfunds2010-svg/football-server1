@@ -31,8 +31,6 @@
     animation: moveLTR 5s linear infinite;
 }
 
-
-
 /* === BODY & SCOREBOARD === */
 body { margin:0; background:#050110; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:'Segoe UI', Arial, sans-serif;}
 .scoreboard { position:absolute; top:20px; font-size:45px; font-weight:bold; color:white; display:flex; gap:40px; text-shadow:0 0 15px #00f2ff; z-index:10;}
@@ -51,6 +49,133 @@ button.active { background:#ff00ff; border-color:white; color:white;}
 #warning { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-size:50px; font-weight:bold; color:#ff0000; text-shadow:0 0 20px #fff; display:none; z-index:200;}
 #winnerMsg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:60px; font-weight:bold; color:#00ff00; text-shadow:0 0 30px #fff; display:none; z-index:300;}
 #lastGoalLight { position:absolute; top:10px; right:50px; width:30px; height:30px; border-radius:50%; background:#ff0000; box-shadow:0 0 15px #ff0000; display:none; z-index:400;}
+
+/* ===== ADDED: MOBILE CONTROLS (DIAMOND + JOYSTICK) ===== */
+#mobileControls {
+    display: none;
+    position: absolute;
+    bottom: 25px;
+    left: 0;
+    right: 0;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 25px;
+    z-index: 60;
+    pointer-events: none;
+}
+#mobileControls > * {
+    pointer-events: auto;
+}
+.joystick-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin-bottom: 5px;
+}
+.joystick-base {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(0,255,0,0.3);
+    position: relative;
+}
+.joystick-thumb {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(0,255,0,0.15);
+    border: 1px solid #0f0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: background 0.1s;
+}
+.diamond-cluster {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+}
+.diamond-btn {
+    width: 65px;
+    height: 65px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    color: #fff;
+    background: rgba(255,255,255,0.05);
+    position: absolute;
+    text-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+.dash-diamond {
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-color: rgba(255,200,0,0.5);
+    color: #ffd700;
+}
+.shoot-diamond {
+    top: 0;
+    right: 0;
+    transform: translate(50%, -50%);
+    border-color: rgba(255,100,100,0.5);
+    color: #ffa0a0;
+    width: 70px;
+    height: 70px;
+    font-size: 14px;
+}
+.lock-diamond {
+    bottom: 0;
+    left: 0;
+    transform: translate(-50%, 50%);
+    border-color: rgba(0,255,255,0.7);
+    color: #00ffff;
+}
+.turbo-diamond {
+    bottom: 0;
+    right: 0;
+    transform: translate(50%, 50%);
+    border-color: rgba(255,0,255,0.5);
+    color: #ff80ff;
+}
+.aim-indicator {
+    position: absolute;
+    background: rgba(255,255,0,0.2);
+    border-radius: 50%;
+    pointer-events: none;
+    transition: 0.1s;
+    width: 30px;
+    height: 30px;
+    display: none;
+}
+#fullscreenToggle {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 200;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(0,255,0,0.5);
+    color: #0f0;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    pointer-events: auto;
+}
 </style>
 </head>
 
@@ -74,7 +199,29 @@ button.active { background:#ff00ff; border-color:white; color:white;}
 <audio id="goalHorn" src="9.mp3"></audio>
 <audio id="bgMusic"></audio>
 
-<canvas id="fbCanvas" width="1000" height="500"></canvas>
+<!-- CANVAS CONTAINER WITH MOBILE CONTROLS OVERLAY -->
+<div style="position:relative; width:100%; max-width:1000px; aspect-ratio:1000/500;">
+    <canvas id="fbCanvas" width="1000" height="500" style="width:100%; height:100%; display:block;"></canvas>
+
+    <!-- ADDED: MOBILE CONTROLS (JOYSTICK + DIAMOND) -->
+    <div id="mobileControls">
+        <div class="joystick-container" id="joystickContainer">
+            <div class="joystick-base" id="joystickBase">
+                <div class="joystick-thumb" id="joystickThumb"></div>
+            </div>
+        </div>
+        <div class="diamond-cluster">
+            <button id="dashBtn" class="diamond-btn dash-diamond">💨<br>DASH</button>
+            <button id="shootBtn" class="diamond-btn shoot-diamond">⚽<br>SHOT</button>
+            <button id="lockBtnMobile" class="diamond-btn lock-diamond">🔒<br>LOCK</button>
+            <button id="turboShotBtn" class="diamond-btn turbo-diamond">🚀<br>TURBO<br>SHOT</button>
+        </div>
+        <div id="aimIndicator" class="aim-indicator"></div>
+    </div>
+
+    <!-- ADDED: FULLSCREEN TOGGLE -->
+    <div id="fullscreenToggle" title="Toggle fullscreen">⛶</div>
+</div>
 
 <div class="controls">
 <select onchange="setGameTime(this.value)">
@@ -103,8 +250,6 @@ button.active { background:#ff00ff; border-color:white; color:white;}
 </div>
 
 <script>
-    
-
     function goToPage(page){
     window.location.href = page;
 }
@@ -129,7 +274,7 @@ function postCommentary(msg,color="#ffcc00"){
 // ===================== START PAGE LOGIC =====================
 const startBtn = document.createElement('button');
 startBtn.innerText = "START GAME";
-startBtn.style.cssText = "font-size:40px;padding:20px 50px;background:#111;color:#00ff00;border:2px solid #00ff00;border-radius:10px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);cursor:pointer;";
+startBtn.style.cssText = "font-size:40px;padding:20px 50px;background:#111;color:#00ff00;border:2px solid #00ff00;border-radius:10px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);cursor:pointer;z-index:500;";
 document.body.appendChild(startBtn);
 
 const bgMusic = document.getElementById('bgMusic');
@@ -141,6 +286,8 @@ startBtn.addEventListener('click', ()=>{
     gameStarted = true;
     startBtn.style.display = 'none';
     playNextTrack();
+    // ADDED: Auto fullscreen + auto rotate on game start
+    requestFullscreenAndRotate();
 });
 
 function playNextTrack(){
@@ -150,6 +297,38 @@ function playNextTrack(){
     if(currentTrack >= playlist.length) currentTrack = 0;
     bgMusic.onended = playNextTrack;
 }
+
+// ===================== ADDED: FULLSCREEN + AUTO ROTATE =====================
+function requestFullscreenAndRotate() {
+    const el = document.documentElement;
+    if (el.requestFullscreen) {
+        el.requestFullscreen().then(() => {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(() => {});
+            }
+        }).catch(() => {});
+    } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+        if (screen.lockOrientation) screen.lockOrientation('landscape');
+    }
+}
+function exitFullscreen() {
+    if (document.exitFullscreen) {
+        document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+    }
+    if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+    }
+}
+document.getElementById('fullscreenToggle').addEventListener('click', () => {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+        exitFullscreen();
+    } else {
+        requestFullscreenAndRotate();
+    }
+});
 
 // ===================== BALL, PLAYERS, KEEPERS =====================
 class Ball{
@@ -232,58 +411,91 @@ class Player{
         let hasBall=(dx*dx+dy*dy)<2500;
         let isTurbo=(this.side==='left')?(keys['KeyW']):(keys['ArrowUp']&&(keys['ArrowLeft']||keys['ArrowRight']));
         let attemptingShot=(this.side==='left')?keys['Key1']:(keys['ArrowUp']);
-       if(isAI){
-    let distX = ball.x - (this.x + 15);
-    let distY = ball.y - (this.y + 32);
-    let hasBall = (distX*distX + distY*distY) < 2500;
 
-    // ---- SMART POSITIONING ----
-    let targetX = (this.side === 'left') ? Math.min(ball.x - 50, 300) : Math.max(ball.x + 50, 700);
-    let targetY = ball.y - 30;
+        // ADDED: Touch input for human player
+        const touch = getTouchInput();
+        const leftTouch = touch.left;
+        const rightTouch = touch.right;
+        const upTouch = touch.up;
+        const downTouch = touch.down;
+        const shootTouch = touch.shoot;
+        const turboTouch = touch.turbo;
+        const lockTouch = touch.lock;
 
-    // Move smoothly toward targetX
-    if(this.x < targetX) this.vx += 1.2 * aiLevel/3;
-    if(this.x > targetX) this.vx -= 1.2 * aiLevel/3;
+        // ADDED: Override keyboard with touch
+        const left = keys[this.controls.left] || leftTouch;
+        const right = keys[this.controls.right] || rightTouch;
+        const up = keys[this.controls.up] || upTouch;
+        const down = keys[this.controls.down] || downTouch;
+        const shoot = (this.side==='left' ? (keys['Key1'] || shootTouch) : (keys['ArrowUp'] || shootTouch));
+        const turbo = (this.side==='left' ? (keys['KeyW'] || turboTouch) : ((keys['ArrowUp']&&(keys['ArrowLeft']||keys['ArrowRight'])) || turboTouch));
 
-    // Jump if ball is above AI
-    if(!hasBall && distY < -15 && !this.isJumping && this.y >= 415) {
-        this.vy = -14 * aiLevel/3;
-        this.isJumping = true;
-    }
+        if(isAI){
+            let distX = ball.x - (this.x + 15);
+            let distY = ball.y - (this.y + 32);
+            let hasBall = (distX*distX + distY*distY) < 2500;
 
-    // ---- SHOT DECISION ----
-    if(hasBall){
-        this.vx = 0;
+            // ---- SMART POSITIONING ----
+            let targetX = (this.side === 'left') ? Math.min(ball.x - 50, 300) : Math.max(ball.x + 50, 700);
+            let targetY = ball.y - 30;
 
-        // Determine shot speed based on AI level
-        let speed = 20 + (aiLevel*10);
-        let predictedY = ball.y + ball.vy * 10; // simple trajectory prediction
-        let goalY = 250; // goal center
-        let shootPower = Math.min(50, Math.abs(predictedY - goalY) * 2);
+            // Move smoothly toward targetX
+            if(this.x < targetX) this.vx += 1.2 * aiLevel/3;
+            if(this.x > targetX) this.vx -= 1.2 * aiLevel/3;
 
-        ball.vx = (this.side==='left') ? speed : -speed;
-        ball.vy = -shootPower;
+            // Jump if ball is above AI
+            if(!hasBall && distY < -15 && !this.isJumping && this.y >= 415) {
+                this.vy = -14 * aiLevel/3;
+                this.isJumping = true;
+            }
 
-        // Post commentary
-        if(aiLevel >= 3) postCommentary("AI POWER SHOT!", this.color);
-        else postCommentary("AI SHOT!", this.color);
-    }
+            // ---- SHOT DECISION ----
+            if(hasBall){
+                this.vx = 0;
 
-    // ---- HESITATION FOR LOWER LEVELS ----
-    if(aiLevel < 3 && Math.random() > 0.8) this.vx *= 0.5;
-}
-        if(hasBall && (attemptingShot || isTurbo)){
-            this.vx=0; let speed=isTurbo?45:20; ball.vx=(this.side==='left')?speed:-speed;
-            if(isTurbo) postCommentary("TURBO SHOT!",this.color); else postCommentary("POWER SHOT!","#fff");
-            if(this.side==='left'){ if(keys['KeyW']&&!keys['KeyS']) ball.vy=-14; else if(keys['KeyS']) ball.vy=10; else ball.vy=-2; }
-            else { if(keys['ArrowUp']&&!keys['ArrowDown']) ball.vy=-14; else if(keys['ArrowDown']) ball.vy=10; else ball.vy=-2; }
+                // Determine shot speed based on AI level
+                let speed = 20 + (aiLevel*10);
+                let predictedY = ball.y + ball.vy * 10; // simple trajectory prediction
+                let goalY = 250; // goal center
+                let shootPower = Math.min(50, Math.abs(predictedY - goalY) * 2);
+
+                ball.vx = (this.side==='left') ? speed : -speed;
+                ball.vy = -shootPower;
+
+                // Post commentary
+                if(aiLevel >= 3) postCommentary("AI POWER SHOT!", this.color);
+                else postCommentary("AI SHOT!", this.color);
+            }
+
+            // ---- HESITATION FOR LOWER LEVELS ----
+            if(aiLevel < 3 && Math.random() > 0.8) this.vx *= 0.5;
         } else {
-            if(!isAI){
-                
-                if(keys[this.controls.left]) this.vx-=1.1;
-                if(keys[this.controls.right]) this.vx+=1.1;
-                if(keys[this.controls.up]&&!this.isJumping){ this.vy=-14; this.isJumping=true; }
-                if(keys[this.controls.down]) this.vy+=1;
+            // ---- HUMAN PLAYER (with touch + keyboard) ----
+            if(hasBall && (shoot || turbo)){
+                this.vx=0;
+                let speed=turbo?45:20;
+                ball.vx=(this.side==='left')?speed:-speed;
+                if(turbo) postCommentary("TURBO SHOT!",this.color); else postCommentary("POWER SHOT!","#fff");
+
+                // ADDED: Lock-on or joystick aiming for shot
+                if(lockTouch || keys['ShiftLeft'] || keys['ShiftRight']) {
+                    // Lock-on: aim directly at goal center with slight randomness
+                    ball.vy = -8 + (Math.random() * 4 - 2);
+                } else if (currentAimAngle !== null) {
+                    const angleRad = currentAimAngle * Math.PI / 180;
+                    ball.vy = -12 * Math.sin(angleRad);
+                } else {
+                    if(this.side==='left'){ if(keys['KeyW']&&!keys['KeyS']) ball.vy=-14; else if(keys['KeyS']) ball.vy=10; else ball.vy=-2; }
+                    else { if(keys['ArrowUp']&&!keys['ArrowDown']) ball.vy=-14; else if(keys['ArrowDown']) ball.vy=10; else ball.vy=-2; }
+                }
+            } else {
+                // Movement (keyboard + touch)
+                if(left) this.vx-=1.1;
+                if(right) this.vx+=1.1;
+                if(up && !this.isJumping && this.y >= 415){
+                    this.vy=-14; this.isJumping=true;
+                }
+                if(down) this.vy+=1;
             }
         }
         this.vy+=0.7; this.x+=this.vx; this.y+=this.vy; this.vx*=0.85;
@@ -292,16 +504,125 @@ class Player{
     }
 }
 
-let ball=new Ball();
-let k1=new Keeper(5,1.2);
-let k2=new Keeper(983,1);
-let p1=new Player(150,415,"#ff00ff",{up:'KeyW',down:'KeyS',left:'KeyA',right:'KeyD'},'left');
-let p2=new Player(820,415,"#00f2ff",{up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'},'right');
+// ===================== ADDED: TOUCH STATE =====================
+let touchDir = { up: false, down: false, left: false, right: false };
+let shootPressed = false;
+let turboPressed = false;
+let lockPressed = false;
+let joystickActive = false;
+let joystickCenter = { x: 0, y: 0 };
+let joystickMaxDist = 35;
+let currentAimAngle = null;
 
-function setMode(m){ aiMode=(m==='ai'); resetMatch(); }
-function setGameTime(min){ totalTime=parseInt(min)||0; timeLeft=totalTime*60; resetMatch(); }
-function setGameGoal(goal){ gameType=parseInt(goal)||10; resetMatch(); }
-function setAIHardness(level){ aiLevel=parseInt(level)||3; }
+function getTouchInput() {
+    return {
+        left: touchDir.left,
+        right: touchDir.right,
+        up: touchDir.up,
+        down: touchDir.down,
+        shoot: shootPressed,
+        turbo: turboPressed,
+        lock: lockPressed
+    };
+}
+
+// ===================== ADDED: JOYSTICK SETUP =====================
+function setupJoystick() {
+    const base = document.getElementById('joystickBase');
+    const thumb = document.getElementById('joystickThumb');
+
+    function updateAimAngle(dx, dy) {
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
+            currentAimAngle = null;
+            return;
+        }
+        currentAimAngle = Math.atan2(-dy, dx) * 180 / Math.PI;
+    }
+
+    function updateThumb(e) {
+        const touch = e.touches[0];
+        if (!touch) return;
+        let dx = touch.clientX - joystickCenter.x;
+        let dy = touch.clientY - joystickCenter.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const max = joystickMaxDist;
+        let clampedDist = Math.min(dist, max);
+        let normalizedDx = 0, normalizedDy = 0;
+        if (dist > 0) {
+            normalizedDx = dx / dist;
+            normalizedDy = dy / dist;
+            dx = normalizedDx * clampedDist;
+            dy = normalizedDy * clampedDist;
+        }
+        thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+        touchDir.left = normalizedDx < -0.3;
+        touchDir.right = normalizedDx > 0.3;
+        touchDir.up = normalizedDy < -0.3;
+        touchDir.down = normalizedDy > 0.3;
+
+        updateAimAngle(normalizedDx, normalizedDy);
+    }
+
+    function handleStart(e) {
+        e.preventDefault();
+        joystickActive = true;
+        const rect = base.getBoundingClientRect();
+        joystickCenter.x = rect.left + rect.width/2;
+        joystickCenter.y = rect.top + rect.height/2;
+        updateThumb(e);
+    }
+
+    function handleMove(e) {
+        if (!joystickActive) return;
+        e.preventDefault();
+        updateThumb(e);
+    }
+
+    function handleEnd(e) {
+        e.preventDefault();
+        joystickActive = false;
+        thumb.style.transform = `translate(-50%, -50%)`;
+        touchDir = { up: false, down: false, left: false, right: false };
+        currentAimAngle = null;
+    }
+
+    base.addEventListener('touchstart', handleStart, { passive: false });
+    base.addEventListener('touchmove', handleMove, { passive: false });
+    base.addEventListener('touchend', handleEnd);
+    base.addEventListener('touchcancel', handleEnd);
+}
+
+// ===================== ADDED: DIAMOND BUTTONS =====================
+function setupActionButtons() {
+    const shootBtn = document.getElementById('shootBtn');
+    const dashBtn = document.getElementById('dashBtn');
+    const turboBtn = document.getElementById('turboShotBtn');
+    const lockBtn = document.getElementById('lockBtnMobile');
+
+    shootBtn.addEventListener('touchstart', e => { e.preventDefault(); shootPressed = true; });
+    shootBtn.addEventListener('touchend', e => { e.preventDefault(); shootPressed = false; });
+
+    dashBtn.addEventListener('touchstart', e => { e.preventDefault(); turboPressed = true; });
+    dashBtn.addEventListener('touchend', e => { e.preventDefault(); turboPressed = false; });
+
+    turboBtn.addEventListener('touchstart', e => { e.preventDefault(); shootPressed = true; turboPressed = true; });
+    turboBtn.addEventListener('touchend', e => { e.preventDefault(); shootPressed = false; turboPressed = false; });
+
+    lockBtn.addEventListener('touchstart', e => { e.preventDefault(); lockPressed = true; });
+    lockBtn.addEventListener('touchend', e => { e.preventDefault(); lockPressed = false; });
+}
+
+// ===================== ADDED: SHOW MOBILE CONTROLS =====================
+function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
+function showMobileControls() {
+    if (isMobile()) {
+        document.getElementById('mobileControls').style.display = 'flex';
+    }
+}
+
+// ===================== DRAW SCENE (with aim indicator) =====================
+let prevBallX = 500, prevBallY = 250;
 
 function drawScene(){
     ctx.clearRect(0,0,1000,500);
@@ -310,7 +631,42 @@ function drawScene(){
     ctx.strokeRect(960,150,40,200);
     ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
     if(goalFlash>0){ ctx.fillStyle=`rgba(255,255,255,${goalFlash/10})`; ctx.fillRect(0,0,1000,500); goalFlash--; }
-    ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(ball.x,ball.y,10,0,Math.PI*2); ctx.fill();
+
+    // Ball with interpolation
+    prevBallX += (ball.x - prevBallX) * 0.4;
+    prevBallY += (ball.y - prevBallY) * 0.4;
+    let renderX = prevBallX, renderY = prevBallY;
+    if (renderX < 10) renderX = 10; if (renderX > 990) renderX = 990;
+    if (renderY < 10) renderY = 10; if (renderY > 490) renderY = 490;
+
+    ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(renderX, renderY, 10, 0, Math.PI*2); ctx.fill();
+
+    // ADDED: Lock-on aiming line
+    if ((lockPressed || keys['ShiftLeft'] || keys['ShiftRight']) && gameStarted && !gameOver) {
+        ctx.strokeStyle = "rgba(0, 255, 255, 0.5)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(p1.x + 15, p1.y + 30);
+        ctx.lineTo(renderX, renderY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1;
+    }
+
+    // ADDED: Joystick aim indicator
+    if (currentAimAngle !== null && gameStarted && !gameOver) {
+        const angleRad = currentAimAngle * Math.PI / 180;
+        const indX = p1.x + 15 + 60 * Math.cos(angleRad);
+        const indY = p1.y + 30 + 60 * Math.sin(angleRad);
+        const aimEl = document.getElementById('aimIndicator');
+        aimEl.style.display = 'block';
+        aimEl.style.left = indX + 'px';
+        aimEl.style.top = indY + 'px';
+    } else {
+        document.getElementById('aimIndicator').style.display = 'none';
+    }
+
     ctx.fillStyle=p1.color; ctx.fillRect(p1.x,p1.y,30,65);
     ctx.fillStyle=p2.color; ctx.fillRect(p2.x,p2.y,30,65);
     ctx.fillStyle="#ff00ff"; ctx.fillRect(5,k1.y,12,60);
@@ -342,6 +698,12 @@ function resetMatch(){
     document.getElementById('winnerMsg').style.display='none';
     document.getElementById('lastGoalLight').style.display='none';
 }
+
+// ===================== INIT =====================
+// ADDED: Initialise touch controls
+showMobileControls();
+setupJoystick();
+setupActionButtons();
 
 loop();
 </script>
