@@ -111,6 +111,12 @@
       <div class="room-info"><span>🏟️ ROOM CODE: <span id="roomCodeDisplay">-</span></span><button id="copyRoomCode" class="btn" style="padding:4px 8px;font-size:0.8rem;border-radius:20px">📋 Copy</button><span id="connectionStatus">⚡ waiting...</span></div>
       <div id="passwordDisplay" style="color:#cfc;background:#0a1a0a;padding:10px;border-radius:10px;display:none;align-items:center;gap:10px">🔑 PASSWORD: <span id="passwordText"></span><button id="copyPassword" class="btn" style="padding:4px 8px;font-size:0.8rem;border-radius:20px">📋 Copy</button></div>
       <div class="players-box"><div class="player-card"><div>🥅 PLAYER 1 (HOST)</div><div id="p1Name">—</div><div id="p1ReadyBadge" class="ready-badge">⚪ NOT READY</div></div><div class="player-card"><div>🥅 PLAYER 2</div><div id="p2Name">—</div><div id="p2ReadyBadge" class="ready-badge">⚪ NOT READY</div></div></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span>⏱️ Time (min):</span>
+        <select id="timeSelect"><option value="2">2</option><option value="5">5</option><option value="7">7</option><option value="10">10</option><option value="12">12</option><option value="15">15</option><option value="20">20</option></select>
+        <span>⚽ First to:</span>
+        <select id="goalSelect"><option value="10">10</option><option value="20">20</option><option value="30">30</option></select>
+      </div>
       <div id="chatMessages"><div>💬 Welcome! Chat here with your opponent.</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap"><input type="text" id="chatInput" class="input-field" placeholder="type a message..." style="flex:1;min-width:120px"><button class="btn" id="sendChatBtn">Send</button></div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><button class="btn emote-btn" data-emote="🔥">🔥 Nice</button><button class="btn emote-btn" data-emote="😢">😢 Oops</button><button class="btn emote-btn" data-emote="⚽">⚽ Goal</button><button class="btn emote-btn" data-emote="😂">😂 LOL</button></div>
@@ -345,9 +351,11 @@
     const password = await showPrompt("Set a room password", "Leave empty for random", true);
     if (password === null) return;
     const pass = password || Math.random().toString(36).substr(2,6);
+    const matchTime = parseInt(timeSelect.value) || 2;
+    const targetGoals = parseInt(goalSelect.value) || 10;
     client = new Colyseus.Client(SERVER_URL);
     try {
-      room = await client.create("football", { password: pass, region: selectedRegion, matchTime: 2, targetGoals: 10 });
+      room = await client.create("football", { password: pass, region: selectedRegion, matchTime, targetGoals });
       amIHost = true; myPlayerId = 'p1'; roomPassword = pass;
       room.send("setName", hostName);
     } catch(e) { alert("Failed to create room. Is server running? " + e.message); return; }
@@ -359,9 +367,10 @@
     const code = document.getElementById('roomCodeInput').value.trim();
     const pass = document.getElementById('passwordInput').value.trim();
     if (!code) return;
+    const options = pass ? { password: pass } : {};
     client = new Colyseus.Client(SERVER_URL);
     try {
-      room = await client.joinById(code, pass ? { password: pass } : {});
+      room = await client.joinById(code, options);
       amIHost = false; myPlayerId = 'p2';
       const name = prompt("Enter your display name:", "Player2");
       room.send("setName", name || "P2");
@@ -383,6 +392,20 @@
       if (data.password && amIHost) passwordText.innerText = data.password;
       connectionStatus.innerText = '⚡ connected';
     });
+
+    room.onMessage("matchOptionsUpdated", (data) => {
+      if (data.timeLeft !== undefined) timeSelect.value = (data.timeLeft / 60) || "2";
+      if (data.targetGoals !== undefined) goalSelect.value = data.targetGoals || "10";
+    });
+
+    function sendMatchOptions() {
+      if (!amIHost || !room) return;
+      const matchTime = parseInt(timeSelect.value) || 2;
+      const targetGoals = parseInt(goalSelect.value) || 10;
+      room.send("setMatchOptions", { matchTime, targetGoals });
+    }
+    timeSelect.addEventListener('change', sendMatchOptions);
+    goalSelect.addEventListener('change', sendMatchOptions);
 
     room.onMessage("gameStarted", () => {
       panels.lobby.classList.add('hidden'); panels.game.classList.remove('hidden');
@@ -499,7 +522,7 @@
     document.body.appendChild(toast); setTimeout(() => toast.remove(), 2500);
   }
 
-  // --- Prediction & Rendering (70% client, 30% server correction) ---
+  // --- 70/30 Client Prediction with LOCAL PVP PHYSICS ---
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
