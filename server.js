@@ -64,7 +64,7 @@ defineTypes(BallState, BallState._schema);
 defineTypes(KeeperState, KeeperState._schema);
 defineTypes(GameState, GameState._schema);
 
-// ---------- Room – full game logic ----------
+// ---------- Room ----------
 class FootballRoom extends Room {
   constructor() {
     super();
@@ -78,7 +78,7 @@ class FootballRoom extends Room {
 
   onCreate(options) {
     this.state.roomCode = this.roomId;
-    this.state.password = options.password || Math.random().toString(36).substr(2, 6);
+    this.state.password = options.password || Math.random().toString(36).substr(2,6);
 
     const minutes = options.matchTime || 2;
     const goals = options.targetGoals || 10;
@@ -110,7 +110,7 @@ class FootballRoom extends Room {
           down: !!input.down,
           shoot: !!input.shoot,
           turbo: !!input.turbo,
-          dribble: !!input.lock,       // 🔒 lock / dribble
+          dribble: !!input.lock,
           aimAngle: input.aimAngle
         };
       }
@@ -128,7 +128,6 @@ class FootballRoom extends Room {
 
     this.onMessage("ping", (client, d) => client.send("pong", d));
 
-    // ✅ Allow host to change match settings during lobby
     this.onMessage("setMatchOptions", (client, opts) => {
       if (this.state.matchState !== "waiting" && this.state.matchState !== "ready_check") return;
       const p = this.state.players.get(client.sessionId);
@@ -145,7 +144,6 @@ class FootballRoom extends Room {
       });
     });
 
-    // ✅ Sync enhancements between both players
     this.onMessage("enhancement", (client, data) => {
       this.broadcast("enhancementUpdate", {
         prop: data.prop,
@@ -170,7 +168,7 @@ class FootballRoom extends Room {
       this.broadcastPlayerInfo();
     });
 
-    // ✅ 60 Hz tick rate
+    // ✅ 60 Hz tick rate – stable, smooth
     this.setSimulationInterval((dt) => {
       try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
     }, 1000 / 60);
@@ -222,7 +220,7 @@ class FootballRoom extends Room {
   gameTick() {
     if (this.state.matchState !== "live" || this.state.gameOver || this.state.players.size < 2) return;
 
-    const FIXED_DT = 1 / 30;
+    const FIXED_DT = 1 / 60;   // 60 Hz physics step
     const ball = this.state.ball;
 
     // ---------- 1. Ball physics ----------
@@ -270,42 +268,32 @@ class FootballRoom extends Room {
       const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y;
       const hasBall = dx * dx + dy * dy < 2500;
 
-      // 🔒 DRIBBLE LOCK – ball glued to player’s feet
+      // 🔒 Dribble lock
       if (hasBall && input.dribble) {
-        // Keep ball attached exactly to the player
         ball.x = player.x + (player.side === 'left' ? 25 : -25);
         ball.y = player.y + 30;
-        ball.vx = 0;
-        ball.vy = 0;
-
-        // Opponent can steal by running through the carrier
+        ball.vx = 0; ball.vy = 0;
+        // opponent steal
         this.state.players.forEach((other, otherSid) => {
           if (otherSid === sid) return;
           const odx = other.x + 15 - ball.x, ody = other.y + 32 - ball.y;
           if (odx * odx + ody * ody < 2500) {
-            // Steal! Force the ball away from the carrier
             ball.vx = (other.side === 'left' ? 3 : -3);
             ball.vy = -2;
-            // Cancel the dribble for this tick
             input.dribble = false;
           }
         });
-
-        // If still dribbling, skip shooting / movement while locked
         if (input.dribble) {
-          // Still allow movement so player can move with the ball
           if (input.left) player.vx -= 1.1;
           if (input.right) player.vx += 1.1;
           if (input.up && !player.isJumping) { player.vy = -14; player.isJumping = true; }
           if (input.down) player.vy += 1;
-          // Physics for player movement
           player.vy += 0.7;
           player.x += player.vx;
           player.y += player.vy;
           player.vx *= 0.85;
           if (player.y > 415) { player.y = 415; player.vy = 0; player.isJumping = false; }
           player.x = Math.min(930, Math.max(40, player.x));
-          // Skip the rest of the loop for this player
           return;
         }
       }
@@ -315,23 +303,20 @@ class FootballRoom extends Room {
         let speed = input.turbo ? 45 : 20;
 
         if (typeof input.aimAngle === 'number') {
-          // 📱 Mobile aiming – use the joystick angle
           const rad = input.aimAngle * Math.PI / 180;
           const dirX = Math.cos(rad);
           const dirY = -Math.sin(rad);
           ball.vx = dirX * speed;
           ball.vy = dirY * speed;
         } else {
-          // 💻 Laptop / keyboard – original vertical behaviour
           ball.vx = (player.side === 'left') ? speed : -speed;
-          if (input.up && !input.down) ball.vy = -14;      // lob
-          else if (input.down) ball.vy = 10;                // low driven
-          else ball.vy = -2;                                // slight lift
+          if (input.up && !input.down) ball.vy = -14;
+          else if (input.down) ball.vy = 10;
+          else ball.vy = -2;
         }
 
         this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } });
       } else {
-        // Movement (no ball possession)
         if (input.left) player.vx -= 1.1;
         if (input.right) player.vx += 1.1;
         if (input.up && !player.isJumping) {
@@ -341,7 +326,6 @@ class FootballRoom extends Room {
         if (input.down) player.vy += 1;
       }
 
-      // Apply physics
       player.vy += 0.7;
       player.x += player.vx;
       player.y += player.vy;
@@ -381,25 +365,20 @@ const server = defineServer({
       if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') return;
       next();
     });
-
     app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
-
     app.get("/health", (req, res) => res.send("OK"));
     app.use("/playground", playground());
-
     app.use((req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
       next();
     });
-
     app.get("/schema.js", (req, res) => {
       res.type("application/javascript");
       res.sendFile(path.join(__dirname, "node_modules", "@colyseus", "schema", "build", "index.js"));
     });
-
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
     app.use(express.static("public", { index: false }));
   }
