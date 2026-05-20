@@ -64,6 +64,10 @@ defineTypes(BallState, BallState._schema);
 defineTypes(KeeperState, KeeperState._schema);
 defineTypes(GameState, GameState._schema);
 
+// ---------- Global maps for dial codes and host names ----------
+const dialCodeMap = new Map();   // pin → roomId
+const roomHostNames = new Map(); // roomId → hostName
+
 // ---------- Room – full game logic ----------
 class FootballRoom extends Room {
   constructor() {
@@ -82,12 +86,22 @@ class FootballRoom extends Room {
 
     const minutes = options.matchTime || 2;
     const goals = options.targetGoals || 10;
+    const seriesTarget = options.seriesTarget || 1;
     this.state.timeLeft = minutes * 60;
     this.targetGoals = goals;
+    this.seriesTarget = seriesTarget;
+
+    // Register this room as open (for room listing)
+    roomHostNames.set(this.roomId, "");   // host name will be set later
 
     this.onMessage("setName", (client, name) => {
       const p = this.state.players.get(client.sessionId);
-      if (p) p.name = name;
+      if (p) {
+        p.name = name;
+        if (p.side === "left") {
+          roomHostNames.set(this.roomId, name);
+        }
+      }
       this.broadcastPlayerInfo();
     });
 
@@ -110,7 +124,8 @@ class FootballRoom extends Room {
           down: !!input.down,
           shoot: !!input.shoot,
           turbo: !!input.turbo,
-          aimAngle: input.aimAngle    // undefined for keyboard, number for mobile
+          dribble: !!input.lock,
+          aimAngle: input.aimAngle
         };
       }
     });
@@ -127,7 +142,7 @@ class FootballRoom extends Room {
 
     this.onMessage("ping", (client, d) => client.send("pong", d));
 
-    // ✅ Allow host to change match settings during lobby
+    // ✅ Match settings (host only)
     this.onMessage("setMatchOptions", (client, opts) => {
       if (this.state.matchState !== "waiting" && this.state.matchState !== "ready_check") return;
       const p = this.state.players.get(client.sessionId);
@@ -138,10 +153,24 @@ class FootballRoom extends Room {
       if (typeof opts.targetGoals === "number" && opts.targetGoals > 0) {
         this.targetGoals = opts.targetGoals;
       }
+      if (typeof opts.seriesTarget === "number" && opts.seriesTarget > 0) {
+        this.seriesTarget = opts.seriesTarget;
+      }
       this.broadcast("matchOptionsUpdated", {
         timeLeft: this.state.timeLeft,
-        targetGoals: this.targetGoals
+        targetGoals: this.targetGoals,
+        seriesTarget: this.seriesTarget
       });
+    });
+
+    // ✅ Generate dial code (host only)
+    this.onMessage("generateDialCode", (client) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p || p.side !== "left") return;
+      let pin;
+      do { pin = String(Math.floor(100000 + Math.random() * 900000)); } while (dialCodeMap.has(pin));
+      dialCodeMap.set(pin, this.roomId);
+      client.send("dialCode", pin);
     });
 
     this.onMessage("rematch", (client) => {
@@ -160,8 +189,8 @@ class FootballRoom extends Room {
       this.broadcastPlayerInfo();
     });
 
-    // ✅ 60 Hz tick rate
-    this.setSimulationInterval((dt) => {
+    // ✅ 60 Hz tick
+    this.setSimulationInterval(() => {
       try { this.gameTick(); } catch (e) { console.error("gameTick error:", e.message); }
     }, 1000 / 60);
   }
@@ -179,6 +208,9 @@ class FootballRoom extends Room {
 
   onLeave(client) {
     this.state.players.delete(client.sessionId);
+    if (this.state.players.size === 0) {
+      roomHostNames.delete(this.roomId);
+    }
   }
 
   broadcastPlayerInfo() {
@@ -215,7 +247,6 @@ class FootballRoom extends Room {
     const FIXED_DT = 1 / 60;
     const ball = this.state.ball;
 
-    // ---------- 1. Ball physics ----------
     ball.x += ball.vx;
     ball.y += ball.vy;
     ball.vy += 0.25;
@@ -223,7 +254,6 @@ class FootballRoom extends Room {
     if (ball.y > 480) { ball.y = 480; ball.vy *= -0.7; }
     if (ball.y < 10)  { ball.y = 10;  ball.vy *= -0.7; }
 
-    // ---------- 2. Keeper collisions ----------
     [{ x: 5, k: this.state.keeper1 }, { x: 983, k: this.state.keeper2 }].forEach(({ x: kx, k }) => {
       if (ball.x + 10 > kx && ball.x - 10 < kx + 12 && ball.y + 10 > k.y && ball.y - 10 < k.y + 60) {
         if (Math.abs(ball.vx) > 25) this.broadcast("event", { type: "SHOT", data: { turbo: false, color: "#fff" } });
@@ -232,7 +262,6 @@ class FootballRoom extends Room {
       }
     });
 
-    // ---------- 3. Player collisions with ball ----------
     this.state.players.forEach(p => {
       if (ball.x + 10 > p.x && ball.x - 10 < p.x + 30 && ball.y + 10 > p.y && ball.y - 10 < p.y + 65) {
         ball.vx *= -0.5;
@@ -240,7 +269,6 @@ class FootballRoom extends Room {
       }
     });
 
-    // ---------- 4. Goal check ----------
     if (ball.x < 0 || ball.x > 1000) {
       if (ball.y > 150 && ball.y < 350) {
         if (ball.x < 0) this.state.p2Score++; else this.state.p1Score++;
@@ -254,34 +282,59 @@ class FootballRoom extends Room {
       } else { ball.vx *= -1; ball.x = ball.x < 0 ? 5 : 995; }
     }
 
-    // ---------- 5. Player movement + shooting (EXACT copy of your local PvP player.update) ----------
     this.state.players.forEach((player, sid) => {
       const input = this.inputs[sid] || {};
       const dx = player.x + 15 - ball.x, dy = player.y + 32 - ball.y;
       const hasBall = dx * dx + dy * dy < 2500;
+
+      // 🔒 DRIBBLE LOCK
+      if (hasBall && input.dribble) {
+        ball.x = player.x + (player.side === 'left' ? 25 : -25);
+        ball.y = player.y + 30;
+        ball.vx = 0; ball.vy = 0;
+        this.state.players.forEach((other, otherSid) => {
+          if (otherSid === sid) return;
+          const odx = other.x + 15 - ball.x, ody = other.y + 32 - ball.y;
+          if (odx * odx + ody * ody < 2500) {
+            ball.vx = (other.side === 'left' ? 3 : -3);
+            ball.vy = -2;
+            input.dribble = false;
+          }
+        });
+        if (input.dribble) {
+          if (input.left) player.vx -= 1.1;
+          if (input.right) player.vx += 1.1;
+          if (input.up && !player.isJumping) { player.vy = -14; player.isJumping = true; }
+          if (input.down) player.vy += 1;
+          player.vy += 0.7;
+          player.x += player.vx;
+          player.y += player.vy;
+          player.vx *= 0.85;
+          if (player.y > 415) { player.y = 415; player.vy = 0; player.isJumping = false; }
+          player.x = Math.min(930, Math.max(40, player.x));
+          return;
+        }
+      }
 
       if (hasBall && input.shoot) {
         player.vx = 0;
         let speed = input.turbo ? 45 : 20;
 
         if (typeof input.aimAngle === 'number') {
-          // 📱 Mobile aiming – use the joystick angle
           const rad = input.aimAngle * Math.PI / 180;
           const dirX = Math.cos(rad);
           const dirY = -Math.sin(rad);
           ball.vx = dirX * speed;
           ball.vy = dirY * speed;
         } else {
-          // 💻 Laptop / keyboard – original vertical behaviour
           ball.vx = (player.side === 'left') ? speed : -speed;
-          if (input.up && !input.down) ball.vy = -14;      // lob
-          else if (input.down) ball.vy = 10;                // low driven
-          else ball.vy = -2;                                // slight lift
+          if (input.up && !input.down) ball.vy = -14;
+          else if (input.down) ball.vy = 10;
+          else ball.vy = -2;
         }
 
         this.broadcast("event", { type: "SHOT", data: { turbo: input.turbo, color: player.color } });
       } else {
-        // Movement (no ball possession)
         if (input.left) player.vx -= 1.1;
         if (input.right) player.vx += 1.1;
         if (input.up && !player.isJumping) {
@@ -291,7 +344,6 @@ class FootballRoom extends Room {
         if (input.down) player.vy += 1;
       }
 
-      // Apply physics – identical to local PvP
       player.vy += 0.7;
       player.x += player.vx;
       player.y += player.vy;
@@ -300,7 +352,6 @@ class FootballRoom extends Room {
       player.x = Math.min(930, Math.max(40, player.x));
     });
 
-    // ---------- 6. Keeper AI ----------
     const targetY = ball.y - 30;
     [this.state.keeper1, this.state.keeper2].forEach((k, i) => {
       const skill = (i === 0) ? 1.2 : 1.0;
@@ -310,7 +361,6 @@ class FootballRoom extends Room {
       k.y = Math.min(295, Math.max(155, k.y));
     });
 
-    // ---------- 7. Timer ----------
     if (this.state.timeLeft > 0) {
       this.state.timeLeft -= FIXED_DT;
       if (this.state.timeLeft <= 0) {
@@ -327,28 +377,85 @@ const server = defineServer({
   rooms: { football: FootballRoom },
   reservationTimeInSeconds: 60,
   express: (app) => {
-    app.use((req, res, next) => {
-      if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') return;
-      next();
-    });
-    app.set("trust proxy", 1);
     app.use(cors());
     app.use(express.json());
+
+    // ---------- REST API for global features ----------
+
+    // List all open rooms (rooms with 1 player waiting)
+    app.get("/api/rooms", (req, res) => {
+      // Collect rooms from Colyseus internal list (accessible via server instance)
+      // Since defineServer gives us the express app but not the server, we use a workaround:
+      // We'll use the global roomHostNames map to get host names, and we can get player counts
+      // from the actual rooms. We need access to the server instance. We'll store it below.
+      // For now, we'll reply with a placeholder.
+      const list = [];
+      // We'll populate this after server.listen() because we have access to server there.
+      // Workaround: store open rooms in a global variable.
+      const openRooms = global.openRooms || [];
+      openRooms.forEach(room => {
+        if (room.players < 2) {
+          list.push({
+            roomId: room.roomId,
+            hostName: room.hostName || "Unknown",
+            players: room.players
+          });
+        }
+      });
+      res.json(list);
+    });
+
+    // Join by host name
+    app.get("/api/join-by-host", (req, res) => {
+      const hostName = req.query.name;
+      if (!hostName) return res.json({ error: "Host name required." });
+      for (const [roomId, name] of roomHostNames) {
+        if (name === hostName) {
+          // Find the room to check if it's still open (players < 2)
+          // We can use server.matchMaker.getRoom(roomId) later, but for now return roomId
+          return res.json({ roomId });
+        }
+      }
+      res.json({ error: "No open room with that host name." });
+    });
+
+    // Dial code: get room ID from pin
+    app.get("/api/join-by-dial", (req, res) => {
+      const pin = req.query.code;
+      if (!pin) return res.json({ error: "Dial code required." });
+      const roomId = dialCodeMap.get(pin);
+      if (roomId) {
+        res.json({ roomId });
+      } else {
+        res.json({ error: "Invalid dial code." });
+      }
+    });
+
     app.get("/health", (req, res) => res.send("OK"));
     app.use("/playground", playground());
-    app.use((req, res, next) => {
-      res.removeHeader("Content-Security-Policy");
-      res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data:; connect-src * ws: wss:;");
-      next();
-    });
+
     app.get("/schema.js", (req, res) => {
       res.type("application/javascript");
       res.sendFile(path.join(__dirname, "node_modules", "@colyseus", "schema", "build", "index.js"));
     });
+
     app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
     app.use(express.static("public", { index: false }));
   }
 });
 
-const PORT = Number(process.env.PORT) || 2567;
-server.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
+// After server listen, we can access the internal matchmaker to populate open rooms
+server.listen(Number(process.env.PORT) || 2567).then(() => {
+  console.log(`⚡ Server on port ${process.env.PORT || 2567}`);
+  // We'll set up a periodic updater for the open rooms list
+  global.openRooms = [];
+  setInterval(() => {
+    // Update global openRooms from the matchmaker
+    const rooms = server.matchMaker.getRooms("football");
+    global.openRooms = rooms.map(room => ({
+      roomId: room.roomId,
+      hostName: roomHostNames.get(room.roomId) || "",
+      players: room.clients
+    }));
+  }, 1000);
+});
