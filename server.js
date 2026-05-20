@@ -1,4 +1,4 @@
-const { defineServer, Room } = require("colyseus");
+const { defineServer, Room, matchMaker } = require("colyseus");
 const { Schema, MapSchema, defineTypes } = require("@colyseus/schema");
 const { playground } = require("@colyseus/playground");
 const cors = require("cors");
@@ -92,7 +92,7 @@ class FootballRoom extends Room {
     this.seriesTarget = seriesTarget;
 
     // Register this room as open (for room listing)
-    roomHostNames.set(this.roomId, "");   // host name will be set later
+    roomHostNames.set(this.roomId, "");
 
     this.onMessage("setName", (client, name) => {
       const p = this.state.players.get(client.sessionId);
@@ -382,38 +382,35 @@ const server = defineServer({
 
     // ---------- REST API for global features ----------
 
-    // List all open rooms (rooms with 1 player waiting)
-    app.get("/api/rooms", (req, res) => {
-      // Collect rooms from Colyseus internal list (accessible via server instance)
-      // Since defineServer gives us the express app but not the server, we use a workaround:
-      // We'll use the global roomHostNames map to get host names, and we can get player counts
-      // from the actual rooms. We need access to the server instance. We'll store it below.
-      // For now, we'll reply with a placeholder.
-      const list = [];
-      // We'll populate this after server.listen() because we have access to server there.
-      // Workaround: store open rooms in a global variable.
-      const openRooms = global.openRooms || [];
-      openRooms.forEach(room => {
-        if (room.players < 2) {
-          list.push({
-            roomId: room.roomId,
-            hostName: room.hostName || "Unknown",
-            players: room.players
-          });
-        }
-      });
-      res.json(list);
+    // List all open rooms (rooms with < 2 players)
+    app.get("/api/rooms", async (req, res) => {
+      try {
+        const rooms = await matchMaker.query({ name: "football" });
+        const list = rooms
+          .filter(r => r.clients < 2)
+          .map(r => ({
+            roomId: r.roomId,
+            hostName: roomHostNames.get(r.roomId) || "Unknown",
+            players: r.clients
+          }));
+        res.json(list);
+      } catch (e) {
+        res.json([]);
+      }
     });
 
     // Join by host name
-    app.get("/api/join-by-host", (req, res) => {
+    app.get("/api/join-by-host", async (req, res) => {
       const hostName = req.query.name;
       if (!hostName) return res.json({ error: "Host name required." });
       for (const [roomId, name] of roomHostNames) {
         if (name === hostName) {
-          // Find the room to check if it's still open (players < 2)
-          // We can use server.matchMaker.getRoom(roomId) later, but for now return roomId
-          return res.json({ roomId });
+          try {
+            const room = await matchMaker.getRoomById(roomId);
+            if (room && room.clients < 2) {
+              return res.json({ roomId });
+            }
+          } catch (e) {}
         }
       }
       res.json({ error: "No open room with that host name." });
@@ -444,18 +441,5 @@ const server = defineServer({
   }
 });
 
-// After server listen, we can access the internal matchmaker to populate open rooms
-server.listen(Number(process.env.PORT) || 2567).then(() => {
-  console.log(`⚡ Server on port ${process.env.PORT || 2567}`);
-  // We'll set up a periodic updater for the open rooms list
-  global.openRooms = [];
-  setInterval(() => {
-    // Update global openRooms from the matchmaker
-    const rooms = server.matchMaker.getRooms("football");
-    global.openRooms = rooms.map(room => ({
-      roomId: room.roomId,
-      hostName: roomHostNames.get(room.roomId) || "",
-      players: room.clients
-    }));
-  }, 1000);
-});
+const PORT = Number(process.env.PORT) || 2567;
+server.listen(PORT, () => console.log(`⚡ Server on port ${PORT}`));
