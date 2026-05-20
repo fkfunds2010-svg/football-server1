@@ -1,43 +1,39 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<html lang="en">
+<head>
 <meta charset="UTF-8">
-<title>Franklin Football 2026:FK GAME</title>
-<!-- START PAGE -->
-
-
+<title>Franklin Football 2026 - AI Mode</title>
+<button id="homeBtn" onclick="goToPage('1.html')">HOME</button>
 
 <style>
-    #menuPage {
-    position:absolute;
-    top:0; left:0; width:100%; height:100%;
-    display:flex; justify-content:center; align-items:center; flex-direction:column;
-    background:#050110; z-index:500;
+    #homeBtn {
+    position: absolute;
+    top: 20px;
+    left: 0; /* start from left */
+    padding: 10px 20px;
+    background: #111;
+    border: 2px solid #00f2ff;
+    color: #00f2ff;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: left 0.3s ease; /* smooth move */
 }
 
-#menuPage h1 {
-    color:#fff;
-    font-size:60px;
-    text-shadow:0 0 20px #00ff00;
-    margin-bottom:30px;
+/* Example animation: move LTR continuously */
+@keyframes moveLTR {
+    0% { left: 0; }
+    50% { left: 950px; } /* adjust for canvas width */
+    100% { left: 0; }
 }
 
-#menuPage button {
-    font-size:25px;
-    padding:15px 35px;
-    margin:10px;
-    border:2px solid #00ff00;
-    background:#111;
-    color:#00ff00;
-    border-radius:10px;
-    cursor:pointer;
-    width:250px;
+#homeBtn.animate {
+    animation: moveLTR 5s linear infinite;
 }
 
-#menuPage button:hover {
-    background:#00ff00;
-    color:#111;
-}
+
+
+/* === BODY & SCOREBOARD === */
 body { margin:0; background:#050110; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:'Segoe UI', Arial, sans-serif;}
 .scoreboard { position:absolute; top:20px; font-size:45px; font-weight:bold; color:white; display:flex; gap:40px; text-shadow:0 0 15px #00f2ff; z-index:10;}
 canvas { background: radial-gradient(circle,#1a2b1a 0%,#051005 100%); border:4px solid #00ff00; border-radius:10px; transition:border-color 0.1s;}
@@ -52,42 +48,21 @@ canvas { background: radial-gradient(circle,#1a2b1a 0%,#051005 100%); border:4px
 .controls { position:absolute; bottom:20px; display:flex; gap:10px; flex-wrap:wrap;}
 button, select { background:#111; border:2px solid #00f2ff; color:#00f2ff; padding:8px 15px; cursor:pointer; font-weight:bold; text-transform:uppercase;}
 button.active { background:#ff00ff; border-color:white; color:white;}
-
 #warning { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-size:50px; font-weight:bold; color:#ff0000; text-shadow:0 0 20px #fff; display:none; z-index:200;}
 #winnerMsg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:60px; font-weight:bold; color:#00ff00; text-shadow:0 0 30px #fff; display:none; z-index:300;}
 #lastGoalLight { position:absolute; top:10px; right:50px; width:30px; height:30px; border-radius:50%; background:#ff0000; box-shadow:0 0 15px #ff0000; display:none; z-index:400;}
-/* Pre-Game Start Button Page */
-#startPage {
-    position:absolute;
-    top:0; left:0; width:100%; height:100%;
-    display:flex; justify-content:center; align-items:center; flex-direction:column;
-    background:#050110; z-index:500;
-}
-#startPage h1 { color:#fff; font-size:60px; text-shadow:0 0 20px #00ff00; margin-bottom:30px;}
-#startPage button { font-size:30px; padding:20px 40px; border:2px solid #00ff00; background:#111; color:#00ff00; border-radius:10px; cursor:pointer;}
-#startPage button:hover { background:#00ff00; color:#111; }
 </style>
 </head>
+
 <body>
-<div id="startPage">
-  <h1>Franklin Football 2026</h1>
-  <button id="startBtn">START GAME</button>
-</div>
-<!-- MENU PAGE -->
-<div id="menuPage" style="display:none;">
-  <h1>Game Modes</h1>
-
-  <button onclick="goToPage('story.html')">Story Mode</button>
-  <button onclick="goToPage('ai.html')">Player vs AI</button>
-  <button onclick="goToPage('pvp.html')">PVP Local</button>
-  <button onclick="goToPage('online.html')">Online PVP</button>
-</div>
-
+    <button onclick="window.location.href='/'" style="position:absolute;top:15px;left:20px;z-index:1000;background:#111;border:2px solid #ffcc00;color:#ffcc00;padding:10px 20px;border-radius:30px;font-weight:bold;cursor:pointer;">🏠 HOME</button>
+<!-- SCOREBOARD & HUD -->
 <div class="scoreboard">
 <span id="p1Score" style="color:#ff00ff">0</span>
 <span style="color:white;opacity:0.5">|</span>
 <span id="p2Score" style="color:#00f2ff">0</span>
 </div>
+
 <div id="matchBanner" class="match-banner">MATCH POINT!</div>
 <div id="goalBanner">GOAL!</div>
 <div id="commentary">GREAT SHOT!</div>
@@ -95,73 +70,48 @@ button.active { background:#ff00ff; border-color:white; color:white;}
 <div id="winnerMsg"></div>
 <div id="lastGoalLight"></div>
 
-<!-- Goal Horn -->
+<!-- AUDIO -->
 <audio id="goalHorn" src="9.mp3"></audio>
-
-<!-- Background Music -->
 <audio id="bgMusic"></audio>
+
 <canvas id="fbCanvas" width="1000" height="500"></canvas>
 
 <div class="controls">
-   
-
-
-<select id="timeSelect" onchange="setGameTime(this.value)">
-<option value="" selected="selected">Select Time (min)</option>
+<select onchange="setGameTime(this.value)">
+<option value="">Select Time (min)</option>
 <option value="2">2</option>
 <option value="4">4</option>
 <option value="6">6</option>
 <option value="8">8</option>
 <option value="10">10</option>
-<option value="12">12</option>
-<option value="14">14</option>
-<option value="16">16</option>
-<option value="18">18</option>
-<option value="20">20</option>
 </select>
 
-<select id="goalSelect" onchange="setGameGoal(this.value)">
-<option value="" selected="selected">First X Goals</option>
+<select onchange="setGameGoal(this.value)">
+<option value="">First X Goals</option>
 <option value="10">1st 10</option>
 <option value="20">1st 20</option>
-<option value="30">1st 30</option>
 </select>
 
-<select id="AI DIFFICULTY LEVELS" onchange="setAIHardness(this.value)">
+<select onchange="setAIHardness(this.value)">
 <option value="1">AI Easy</option>
 <option value="2">AI Medium</option>
-<option value="3" selected="selected">AI Hard</option>
+<option value="3" selected>AI Hard</option>
 <option value="4">AI Impossible</option>
 </select>
 
-<button onclick="resetMatch()" style="border-color:white;color:white;">Restart</button>
+<button onclick="resetMatch()">Restart</button>
 </div>
-<script>
-    // Declare missing variables
-let gameStarted = false;
 
-// Show menu when START is clicked
-document.getElementById('startBtn').addEventListener('click', function() {
-    document.getElementById('startPage').style.display = 'none';
-    document.getElementById('menuPage').style.display = 'flex';
-    gameStarted = true;   // allow the game loop to run
-});
-// ========== GAME MODE HANDLER (NAVIGATION) ==========
-function goToPage(page) {
-    // Navigate to the actual HTML file
+<script>
+    
+
+    function goToPage(page){
     window.location.href = page;
 }
-
-
-// Optional: Add a "Back to Menu" button or ESC key to return
-document.addEventListener('keydown', (e) => {
-    if (e.code === 'Escape') {
-        // Show menu and pause game? (you can expand this)
-        document.getElementById('menuPage').style.display = 'flex';
-    }
-});
+let gameStarted = false; // will start after pressing Start
 const canvas=document.getElementById("fbCanvas");
 const ctx=canvas.getContext("2d");
+
 let aiMode=true,p1Score=0,p2Score=0,gameOver=false,goalFlash=0;
 let totalTime=0,timeLeft=0,gameType=10,aiLevel=3;
 const keys={};
@@ -175,77 +125,170 @@ function postCommentary(msg,color="#ffcc00"){
     comm.classList.add('show');
     setTimeout(()=>comm.classList.remove('show'),2000);
 }
-// Player
+
+// ===================== START PAGE LOGIC =====================
+const startBtn = document.createElement('button');
+startBtn.innerText = "START GAME";
+startBtn.style.cssText = "font-size:40px;padding:20px 50px;background:#111;color:#00ff00;border:2px solid #00ff00;border-radius:10px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);cursor:pointer;";
+document.body.appendChild(startBtn);
+
+const bgMusic = document.getElementById('bgMusic');
+const playlist = ['1.mp3','3.mp3','4.mp3','5.MP3','6.mp3'];
+let currentTrack = 0;
+bgMusic.volume = 1.0;
+
+startBtn.addEventListener('click', ()=>{
+    gameStarted = true;
+    startBtn.style.display = 'none';
+    playNextTrack();
+});
+
+function playNextTrack(){
+    bgMusic.src = playlist[currentTrack];
+    bgMusic.play().catch(()=>{});
+    currentTrack++;
+    if(currentTrack >= playlist.length) currentTrack = 0;
+    bgMusic.onended = playNextTrack;
+}
+
+// ===================== BALL, PLAYERS, KEEPERS =====================
+class Ball{
+    constructor(){ this.reset(); }
+    reset(){ this.x=500; this.y=250; this.vx=(Math.random()>0.5?5:-5); this.vy=-3; }
+    update(k1,k2,players){
+        if(gameOver) return;
+        this.x+=this.vx; this.y+=this.vy; this.vy+=0.25; this.vx*=0.995;
+        if(this.y>480){this.y=480; this.vy*=-0.7;}
+        if(this.y<10){this.y=10; this.vy*=-0.7;}
+
+        [k1,k2].forEach(k=>{
+            if(this.x+10>k.x && this.x-10<k.x+12 && this.y+10>k.y && this.y-10<k.y+60){
+                if(Math.abs(this.vx)>25) postCommentary("WHAT A SAVE!","#fff");
+                this.vx*=-1.1; this.x=(k.x<500)?25:970;
+            }
+        });
+
+        players.forEach(p=>{
+            if(this.x+10>p.x && this.x-10<p.x+30 && this.y+10>p.y && this.y-10<p.y+65){
+                this.vx*=-0.5; this.x=(this.x<p.x+15)?p.x-11:p.x+31;
+            }
+        });
+
+        if(this.x<0 || this.x>1000) this.checkGoal();
+    }
+
+    checkGoal(){
+        if(this.y>150 && this.y<350){
+            if(this.x<0) p2Score++; else p1Score++;
+            goalFlash=25;
+            showGoalBanner(this.x<0?"#00f2ff":"#ff00ff");
+            flashLastGoalLight();
+ const horn = document.getElementById('goalHorn');
+horn.pause();
+horn.currentTime = 0;
+horn.play().catch(()=>{});
+            if(p1Score>=gameType || p2Score>=gameType){
+                gameOver=true;
+                document.getElementById('winnerMsg').innerText=(p1Score>=gameType && aiMode)?"AI Wins!":"Human Wins!";
+                document.getElementById('winnerMsg').style.display="block";
+            }
+
+            this.reset();
+        } else { this.vx*=-1; this.x=this.x<0?5:995; }
+    }
+}
+
+function showGoalBanner(color){
+    const el=document.getElementById('goalBanner');
+    el.style.textShadow=`0 0 30px ${color},0 0 60px ${color}`;
+    el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'),1500);
+}
+function flashLastGoalLight(){
+    const light=document.getElementById('lastGoalLight');
+    light.style.display='block';
+    setTimeout(()=>light.style.display='none',1500);
+}
+
+class Keeper{
+    constructor(x,skill=1){ this.x=x; this.y=250; this.vy=0; this.skill=skill; }
+    update(ball){
+        let targetY=ball.y-30;
+        let delta=(targetY-this.y)*0.1*this.skill;
+        this.vy+=delta; this.vy*=0.7; this.y+=this.vy;
+        if(this.y<155) this.y=155;
+        if(this.y>295) this.y=295;
+    }
+}
+
 class Player{
     constructor(x,y,color,controls,side){
         this.x=x; this.y=y; this.color=color; this.controls=controls; this.side=side;
         this.vx=0; this.vy=0; this.isJumping=false;
     }
     update(ball,isAI){
-       let dx=(this.x+15)-ball.x;
-let dy=(this.y+32)-ball.y;
-let hasBall=(dx*dx+dy*dy)<2500;
+        let dx=(this.x+15)-ball.x;
+        let dy=(this.y+32)-ball.y;
+        let hasBall=(dx*dx+dy*dy)<2500;
         let isTurbo=(this.side==='left')?(keys['KeyW']):(keys['ArrowUp']&&(keys['ArrowLeft']||keys['ArrowRight']));
         let attemptingShot=(this.side==='left')?keys['Key1']:(keys['ArrowUp']);
-
-      
-if(isAI){
+       if(isAI){
     let distX = ball.x - (this.x + 15);
     let distY = ball.y - (this.y + 32);
-    
+    let hasBall = (distX*distX + distY*distY) < 2500;
 
-    // Horizontal movement toward the ball
-    if(distX < -5) this.vx -= 1.1 * aiLevel/3; 
-    else if(distX > 5) this.vx += 1.1 * aiLevel/3;
+    // ---- SMART POSITIONING ----
+    let targetX = (this.side === 'left') ? Math.min(ball.x - 50, 300) : Math.max(ball.x + 50, 700);
+    let targetY = ball.y - 30;
 
-    // Vertical movement: only jump if on ground AND below the ball, AND does not have the ball
-    if(!hasBall){
-        if(distY < -10 && !this.isJumping && this.y >= 415){ 
-            this.vy = -14; // same jump height as human
-            this.isJumping = true;
-        }
-        // Gravity/coming back down handled naturally in main update
+    // Move smoothly toward targetX
+    if(this.x < targetX) this.vx += 1.2 * aiLevel/3;
+    if(this.x > targetX) this.vx -= 1.2 * aiLevel/3;
+
+    // Jump if ball is above AI
+    if(!hasBall && distY < -15 && !this.isJumping && this.y >= 415) {
+        this.vy = -14 * aiLevel/3;
+        this.isJumping = true;
     }
 
-    // Shooting logic: only if AI has the ball
+    // ---- SHOT DECISION ----
     if(hasBall){
-        this.vx = 0; // stop horizontal
-        let speed = (aiLevel>=3) ?45 : 20;
+        this.vx = 0;
+
+        // Determine shot speed based on AI level
+        let speed = 20 + (aiLevel*10);
+        let predictedY = ball.y + ball.vy * 10; // simple trajectory prediction
+        let goalY = 250; // goal center
+        let shootPower = Math.min(50, Math.abs(predictedY - goalY) * 2);
+
         ball.vx = (this.side==='left') ? speed : -speed;
-        ball.vy = -200; // normal shot
-        postCommentary("AI POWER SHOT!", this.color);
+        ball.vy = -shootPower;
+
+        // Post commentary
+        if(aiLevel >= 3) postCommentary("AI POWER SHOT!", this.color);
+        else postCommentary("AI SHOT!", this.color);
     }
+
+    // ---- HESITATION FOR LOWER LEVELS ----
+    if(aiLevel < 3 && Math.random() > 0.8) this.vx *= 0.5;
 }
-
         if(hasBall && (attemptingShot || isTurbo)){
-            this.vx=0;
-            let speed=isTurbo?45:20;
-            ball.vx=(this.side==='left')?speed:-speed;
-            if(isTurbo) postCommentary("TURBO SHOT!",this.color);
-            else postCommentary("POWER SHOT!","#fff");
-
-            if(this.side==='left'){
-                if(keys['KeyW'] && !keys['KeyS']) ball.vy=-14;
-                else if(keys['KeyS']) ball.vy=10;
-                else ball.vy=-2;
-            } else {
-                if(keys['ArrowUp'] && !keys['ArrowDown']) ball.vy=-14;
-                else if(keys['ArrowDown']) ball.vy=10;
-                else ball.vy=-2;
-            }
+            this.vx=0; let speed=isTurbo?45:20; ball.vx=(this.side==='left')?speed:-speed;
+            if(isTurbo) postCommentary("TURBO SHOT!",this.color); else postCommentary("POWER SHOT!","#fff");
+            if(this.side==='left'){ if(keys['KeyW']&&!keys['KeyS']) ball.vy=-14; else if(keys['KeyS']) ball.vy=10; else ball.vy=-2; }
+            else { if(keys['ArrowUp']&&!keys['ArrowDown']) ball.vy=-14; else if(keys['ArrowDown']) ball.vy=10; else ball.vy=-2; }
         } else {
             if(!isAI){
+                
                 if(keys[this.controls.left]) this.vx-=1.1;
                 if(keys[this.controls.right]) this.vx+=1.1;
-                if(keys[this.controls.up]&&!this.isJumping){this.vy=-14; this.isJumping=true;}
+                if(keys[this.controls.up]&&!this.isJumping){ this.vy=-14; this.isJumping=true; }
                 if(keys[this.controls.down]) this.vy+=1;
             }
         }
-
         this.vy+=0.7; this.x+=this.vx; this.y+=this.vy; this.vx*=0.85;
-        if(this.y>415){this.y=415; this.vy=0; this.isJumping=false;}
-        if(this.x<40) this.x=40;
-        if(this.x>930) this.x=930;
+        if(this.y>415){ this.y=415; this.vy=0; this.isJumping=false;}
+        if(this.x<40) this.x=40; if(this.x>930) this.x=930;
     }
 }
 
@@ -262,53 +305,31 @@ function setAIHardness(level){ aiLevel=parseInt(level)||3; }
 
 function drawScene(){
     ctx.clearRect(0,0,1000,500);
-
-    // Normal pitch lines (original style)
     ctx.strokeStyle="rgba(255,255,255,0.1)";
     ctx.strokeRect(0,150,40,200);
     ctx.strokeRect(960,150,40,200);
     ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
-
     if(goalFlash>0){ ctx.fillStyle=`rgba(255,255,255,${goalFlash/10})`; ctx.fillRect(0,0,1000,500); goalFlash--; }
-
     ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(ball.x,ball.y,10,0,Math.PI*2); ctx.fill();
-
     ctx.fillStyle=p1.color; ctx.fillRect(p1.x,p1.y,30,65);
     ctx.fillStyle=p2.color; ctx.fillRect(p2.x,p2.y,30,65);
     ctx.fillStyle="#ff00ff"; ctx.fillRect(5,k1.y,12,60);
     ctx.fillStyle="#00f2ff"; ctx.fillRect(983,k2.y,12,60);
 }
-let lastTime = 0;
-function loop(currentTime){
-    if(!gameStarted){ 
-        requestAnimationFrame(loop); 
-        return; 
-    }
+
+let lastTime=0;
+function loop(){
+    if(!gameStarted){ requestAnimationFrame(loop); return; }
     if(!gameOver){
         ball.update(k1,k2,[p1,p2]);
         k1.update(ball); k2.update(ball);
         p1.update(ball,aiMode); p2.update(ball,false);
-        
-
-        if(totalTime>0){
-            timeLeft-=1/60;
-            if(timeLeft<=2*60) document.getElementById('warning').style.display='block';
-            if(timeLeft<=0){ gameOver=true; document.getElementById('winnerMsg').innerText=(p1Score>p2Score)?"Human Wins!":"AI Wins!"; document.getElementById('winnerMsg').style.display="block"; }
-        }
+        if(totalTime>0){ timeLeft-=1/60; if(timeLeft<=2*60) document.getElementById('warning').style.display='block';
+        if(timeLeft<=0){ gameOver=true; document.getElementById('winnerMsg').innerText=(p1Score>p2Score)?"Human Wins!":"AI Wins!"; document.getElementById('winnerMsg').style.display="block"; } }
     }
-
     drawScene();
-   let lastP1=-1,lastP2=-1;
-
-if(p1Score!==lastP1){
     document.getElementById('p1Score').innerText=p1Score;
-    lastP1=p1Score;
-}
-if(p2Score!==lastP2){
     document.getElementById('p2Score').innerText=p2Score;
-    lastP2=p2Score;
-}
-
     requestAnimationFrame(loop);
 }
 
@@ -321,48 +342,8 @@ function resetMatch(){
     document.getElementById('winnerMsg').style.display='none';
     document.getElementById('lastGoalLight').style.display='none';
 }
-document.addEventListener("click", () => {
-    const bg = document.getElementById("bgMusic");
-    bg.volume = 1;
-    bg.play().catch(()=>{}); // plays music after first click
-
-    const horn = document.getElementById("goalHorn");
-    horn.load(); // preload horn
-}, { once: true });
-const bgMusic = document.getElementById('bgMusic');
-
-// List of songs
-const playlist = [
-    
-    '1.mp3',
-    '3.mp3',
-    '4.mp3',
-    '5.MP3',
-    '6.mp3'
-];
-
-let currentTrack = 0;
-
-// Set volume to max
-bgMusic.volume = 1.0; // 1.0 is 100%
-function playNextTrack() {
-    bgMusic.src = playlist[currentTrack];
-    bgMusic.play().catch(()=>{}); // autoplay may require user interaction
-    currentTrack++;
-    if(currentTrack >= playlist.length) currentTrack = 0; // loop playlist
-}
-
-// When one track ends, play the next
-bgMusic.addEventListener('ended', playNextTrack);
-
-// Start the first track after user clicks anywhere (required by browser autoplay rules)
-document.addEventListener('click', () => {
-    playNextTrack();
-}, { once: true });
 
 loop();
 </script>
-
-
-
- </body></html>
+</body>
+</html>
