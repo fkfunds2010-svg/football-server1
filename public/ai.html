@@ -1,1277 +1,349 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Franklin Football 2026 – AI Mode</title>
-    <style>
-        /* ===== GLOBAL RESET ===== */
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
+<meta charset="UTF-8">
+<title>Franklin Football 2026 - AI Mode</title>
+<button id="homeBtn" onclick="goToPage('1.html')">HOME</button>
 
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: #050110;
-            touch-action: none;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-            position: fixed;
-            /* prevent any scrolling */;
-        }
+<style>
+    #homeBtn {
+    position: absolute;
+    top: 20px;
+    left: 0; /* start from left */
+    padding: 10px 20px;
+    background: #111;
+    border: 2px solid #00f2ff;
+    color: #00f2ff;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: left 0.3s ease; /* smooth move */
+}
 
-        /* ===== APP CONTAINER ===== */
-        #app {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: radial-gradient(circle at 20% 20%, #1a2b1a, #050110);
-            overflow: hidden;
-        }
+/* Example animation: move LTR continuously */
+@keyframes moveLTR {
+    0% { left: 0; }
+    50% { left: 950px; } /* adjust for canvas width */
+    100% { left: 0; }
+}
 
-        .game-wrapper {
-            width: 100%;
-            max-width: 1200px;
-            height: 100%;
-            max-height: 100vh;
-            background: rgba(5, 1, 16, 0.8);
-            border-radius: clamp(10px, 3vw, 40px);
-            padding: clamp(5px, 2vw, 20px);
-            box-shadow: 0 0 30px #00ff0040;
-            border: 2px solid #00ff00;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
+#homeBtn.animate {
+    animation: moveLTR 5s linear infinite;
+}
 
-        /* ===== SCOREBOARD ===== */
-        .scoreboard {
-            position: absolute;
-            top: 10px;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: space-between;
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 0 0 20px #00f2ff;
-            padding: 0 25px;
-            z-index: 10;
-            pointer-events: none;
-        }
-        .scoreboard span {
-            pointer-events: none;
-        }
-        #p1Score {
-            color: #ff00ff;
-        }
-        #p2Score {
-            color: #00f2ff;
-        }
-        .score-divider {
-            color: rgba(255, 255, 255, 0.3);
-            font-weight: 100;
-        }
 
-        /* ===== GOAL BANNER ===== */
-        #goalBanner {
-            position: fixed;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            font-size: clamp(3rem, 10vw, 100px);
-            font-weight: 900;
-            color: #fff;
-            text-shadow: 0 0 30px #00ff00;
-            z-index: 100;
-            pointer-events: none;
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            font-style: italic;
-        }
-        #goalBanner.show {
-            transform: translate(-50%, -50%) scale(1);
-        }
 
-        /* ===== COMMENTARY ===== */
-        #commentary {
-            position: fixed;
-            top: 70%;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: clamp(1.2rem, 4vw, 28px);
-            font-weight: bold;
-            color: #ffcc00;
-            text-shadow: 0 0 10px #000;
-            z-index: 90;
-            opacity: 0;
-            transition: opacity 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            pointer-events: none;
-        }
-        #commentary.show {
-            opacity: 1;
-        }
-
-        /* ===== WARNING & WINNER ===== */
-        #warning {
-            position: fixed;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: clamp(2rem, 5vw, 50px);
-            font-weight: bold;
-            color: #ff0000;
-            text-shadow: 0 0 20px #fff;
-            display: none;
-            z-index: 200;
-            pointer-events: none;
-        }
-        #winnerMsg {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: clamp(1.5rem, 4vw, 50px);
-            font-weight: bold;
-            color: #00ff00;
-            text-shadow: 0 0 30px #fff;
-            display: none;
-            z-index: 300;
-            text-align: center;
-            line-height: 1.6;
-            pointer-events: none;
-            white-space: pre-line;
-        }
-
-        /* ===== LAST GOAL LIGHT ===== */
-        #lastGoalLight {
-            position: absolute;
-            top: 10px;
-            right: 50px;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background: #ff0000;
-            box-shadow: 0 0 15px #ff0000;
-            display: none;
-            z-index: 400;
-            pointer-events: none;
-        }
-
-        /* ===== CANVAS ===== */
-        #gameCanvasContainer {
-            position: relative;
-            flex: 1 1 auto;
-            min-height: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-        #gameCanvas {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            background: radial-gradient(circle, #1a2b1a 0%, #051005 100%);
-            border: 4px solid #00ff00;
-            border-radius: 20px;
-            touch-action: none;
-            display: block;
-        }
-
-        /* ===== MOBILE CONTROLS – OVERLAY (fixed inside canvas container) ===== */
-        #mobileControls {
-            display: none;
-            position: absolute;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            justify-content: space-between;
-            align-items: flex-end;
-            padding: 0 25px;
-            z-index: 60;
-            pointer-events: none;
-        }
-        #mobileControls>* {
-            pointer-events: auto;
-        }
-
-        /* ===== JOYSTICK ===== */
-        .joystick-container {
-            position: relative;
-            width: clamp(90px, 15vw, 130px);
-            height: clamp(90px, 15vw, 130px);
-            margin-bottom: 5px;
-            flex-shrink: 0;
-        }
-        .joystick-base {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(0, 255, 0, 0.3);
-            position: relative;
-        }
-        .joystick-thumb {
-            width: clamp(35px, 7vw, 55px);
-            height: clamp(35px, 7vw, 55px);
-            border-radius: 50%;
-            background: rgba(0, 255, 0, 0.15);
-            border: 1px solid #0f0;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            transition: background 0.1s;
-        }
-
-        /* ===== DIAMOND BUTTON CLUSTER ===== */
-        .diamond-cluster {
-            position: relative;
-            width: clamp(140px, 22vw, 180px);
-            height: clamp(140px, 22vw, 180px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: clamp(5px, 2vw, 15px);
-            flex-shrink: 0;
-        }
-        .diamond-btn {
-            width: clamp(55px, 9vw, 70px);
-            height: clamp(55px, 9vw, 70px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 50%;
-            font-size: clamp(9px, 1.5vw, 13px);
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-transform: uppercase;
-            color: #fff;
-            background: rgba(255, 255, 255, 0.05);
-            position: absolute;
-            text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
-            touch-action: none;
-            cursor: pointer;
-            user-select: none;
-            transition: transform 0.1s, box-shadow 0.1s;
-            line-height: 1.2;
-            text-align: center;
-            padding: 0;
-        }
-        .diamond-btn:active {
-            transform: scale(0.88);
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
-        }
-
-        .dash-diamond {
-            top: 0;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border-color: rgba(255, 200, 0, 0.5);
-            color: #ffd700;
-        }
-        .dash-diamond:active {
-            transform: translate(-50%, -50%) scale(0.88);
-        }
-
-        .shoot-diamond {
-            top: 0;
-            right: 0;
-            transform: translate(50%, -50%);
-            border-color: rgba(255, 100, 100, 0.5);
-            color: #ffa0a0;
-            width: clamp(60px, 10vw, 75px);
-            height: clamp(60px, 10vw, 75px);
-            font-size: clamp(11px, 1.8vw, 15px);
-        }
-        .shoot-diamond:active {
-            transform: translate(50%, -50%) scale(0.88);
-        }
-
-        .lock-diamond {
-            bottom: 0;
-            left: 0;
-            transform: translate(-50%, 50%);
-            border-color: rgba(0, 255, 255, 0.7);
-            color: #00ffff;
-        }
-        .lock-diamond:active {
-            transform: translate(-50%, 50%) scale(0.88);
-        }
-
-        .turbo-diamond {
-            bottom: 0;
-            right: 0;
-            transform: translate(50%, 50%);
-            border-color: rgba(255, 0, 255, 0.5);
-            color: #ff80ff;
-        }
-        .turbo-diamond:active {
-            transform: translate(50%, 50%) scale(0.88);
-        }
-
-        /* ===== AIM INDICATOR ===== */
-        .aim-indicator {
-            position: absolute;
-            background: rgba(255, 255, 0, 0.15);
-            border: 1px solid rgba(255, 255, 0, 0.3);
-            border-radius: 50%;
-            pointer-events: none;
-            transition: 0.05s;
-            display: none;
-            width: 30px;
-            height: 30px;
-            transform: translate(-50%, -50%);
-        }
-
-        /* ===== FULLSCREEN TOGGLE ===== */
-        #fullscreenToggle {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            z-index: 200;
-            width: clamp(35px, 6vw, 45px);
-            height: clamp(35px, 6vw, 45px);
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(0, 255, 0, 0.5);
-            color: #0f0;
-            font-size: clamp(16px, 2.5vw, 22px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            pointer-events: auto;
-            transition: background 0.2s;
-        }
-        #fullscreenToggle:hover {
-            background: rgba(0, 255, 0, 0.15);
-        }
-
-        /* ===== START BUTTON ===== */
-        #startBtn {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: clamp(1.8rem, 5vw, 3.5rem);
-            font-weight: bold;
-            padding: clamp(15px, 3vw, 30px) clamp(30px, 6vw, 60px);
-            background: #111;
-            color: #00ff00;
-            border: 3px solid #00ff00;
-            border-radius: 20px;
-            cursor: pointer;
-            z-index: 500;
-            text-transform: uppercase;
-            box-shadow: 0 0 40px rgba(0, 255, 0, 0.2);
-            transition: transform 0.2s, box-shadow 0.2s;
-            touch-action: manipulation;
-            white-space: nowrap;
-        }
-        #startBtn:active {
-            transform: translate(-50%, -50%) scale(0.95);
-            box-shadow: 0 0 60px rgba(0, 255, 0, 0.4);
-        }
-
-        /* ===== BOTTOM CONTROLS BAR (keyboard hint) ===== */
-        .controls-bar {
-            display: flex;
-            gap: clamp(8px, 1.5vw, 18px);
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: clamp(4px, 0.8vw, 10px);
-            padding: 0 10px;
-        }
-        .controls-bar button,
-        .controls-bar select {
-            background: #111;
-            border: 2px solid #00f2ff;
-            color: #00f2ff;
-            padding: clamp(4px, 0.8vw, 10px) clamp(10px, 2vw, 20px);
-            cursor: pointer;
-            font-weight: bold;
-            text-transform: uppercase;
-            border-radius: 30px;
-            font-size: clamp(0.7rem, 1.2vw, 0.95rem);
-            touch-action: manipulation;
-        }
-        .controls-bar select {
-            background: #0a0f0a;
-            color: #fff;
-            border-color: #00ff00;
-            min-width: 70px;
-            appearance: none;
-            -webkit-appearance: none;
-            padding-right: 28px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2300ff00' d='M5 7L1 2h8z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 10px center;
-        }
-        .controls-bar button:hover {
-            background: #1a2b1a;
-            box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
-        }
-        .controls-bar button:active {
-            transform: scale(0.95);
-        }
-
-        /* ===== SHAKE ===== */
-        .shake {
-            animation: shake 0.5s ease-in-out;
-        }
-        @keyframes shake {
-            0%,
-            100% {
-                transform: translate(0);
-            }
-            25% {
-                transform: translate(-5px, 10px);
-            }
-            50% {
-                transform: translate(5px, -10px);
-            }
-            75% {
-                transform: translate(-5px, -5px);
-            }
-        }
-
-        /* ===== HIDDEN ===== */
-        .hidden {
-            display: none !important;
-        }
-
-        /* ===== RESPONSIVE ===== */
-        @media (orientation: portrait) {
-            .game-wrapper {
-                border-radius: 0;
-                border-width: 0;
-                box-shadow: none;
-            }
-        }
-        @media (max-width: 480px) {
-            .diamond-btn {
-                font-size: 8px;
-            }
-            .dash-diamond,
-            .lock-diamond {
-                font-size: 10px;
-            }
-            .shoot-diamond {
-                font-size: 11px;
-            }
-            .turbo-diamond {
-                font-size: 9px;
-            }
-        }
-    </style>
+/* === BODY & SCOREBOARD === */
+body { margin:0; background:#050110; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:'Segoe UI', Arial, sans-serif;}
+.scoreboard { position:absolute; top:20px; font-size:45px; font-weight:bold; color:white; display:flex; gap:40px; text-shadow:0 0 15px #00f2ff; z-index:10;}
+canvas { background: radial-gradient(circle,#1a2b1a 0%,#051005 100%); border:4px solid #00ff00; border-radius:10px; transition:border-color 0.1s;}
+#goalBanner { position:absolute; top:40%; left:50%; transform:translate(-50%, -50%) scale(0); font-size:100px; font-weight:900; color:#fff; text-shadow:0 0 30px #00ff00; z-index:100; pointer-events:none; transition:transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); font-style:italic;}
+#goalBanner.show { transform:translate(-50%, -50%) scale(1);}
+#commentary { position:absolute; top:70%; left:50%; transform:translateX(-50%); font-size:28px; font-weight:bold; color:#ffcc00; text-shadow:0 0 10px #000; z-index:90; opacity:0; transition:opacity 0.3s; text-transform:uppercase; letter-spacing:2px;}
+#commentary.show { opacity:1;}
+.match-banner { position:absolute; top:85px; font-size:20px; font-weight:bold; color:#fff; text-shadow:0 0 10px #ff0000; display:none; text-transform:uppercase; animation:pulse 1s infinite;}
+@keyframes pulse {0%,100%{opacity:0.3;}50%{opacity:1;}}
+.match-point { animation:flicker 0.3s infinite;}
+@keyframes flicker {0%,100%{border-color:#00ff00;}50%{border-color:#ffffff;box-shadow:0 0 40px #ffffff;}}
+.controls { position:absolute; bottom:20px; display:flex; gap:10px; flex-wrap:wrap;}
+button, select { background:#111; border:2px solid #00f2ff; color:#00f2ff; padding:8px 15px; cursor:pointer; font-weight:bold; text-transform:uppercase;}
+button.active { background:#ff00ff; border-color:white; color:white;}
+#warning { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-size:50px; font-weight:bold; color:#ff0000; text-shadow:0 0 20px #fff; display:none; z-index:200;}
+#winnerMsg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:60px; font-weight:bold; color:#00ff00; text-shadow:0 0 30px #fff; display:none; z-index:300;}
+#lastGoalLight { position:absolute; top:10px; right:50px; width:30px; height:30px; border-radius:50%; background:#ff0000; box-shadow:0 0 15px #ff0000; display:none; z-index:400;}
+</style>
 </head>
 
 <body>
+    <button onclick="window.location.href='/'" style="position:absolute;top:15px;left:20px;z-index:1000;background:#111;border:2px solid #ffcc00;color:#ffcc00;padding:10px 20px;border-radius:30px;font-weight:bold;cursor:pointer;">🏠 HOME</button>
+<!-- SCOREBOARD & HUD -->
+<div class="scoreboard">
+<span id="p1Score" style="color:#ff00ff">0</span>
+<span style="color:white;opacity:0.5">|</span>
+<span id="p2Score" style="color:#00f2ff">0</span>
+</div>
 
-    <div id="app">
-        <div class="game-wrapper">
+<div id="matchBanner" class="match-banner">MATCH POINT!</div>
+<div id="goalBanner">GOAL!</div>
+<div id="commentary">GREAT SHOT!</div>
+<div id="warning">2 MINUTES LEFT!</div>
+<div id="winnerMsg"></div>
+<div id="lastGoalLight"></div>
 
-            <!-- ===== HUD ===== -->
-            <div class="scoreboard">
-                <span id="p1Score">0</span>
-                <span class="score-divider">|</span>
-                <span id="p2Score">0</span>
-            </div>
-            <div id="lastGoalLight"></div>
+<!-- AUDIO -->
+<audio id="goalHorn" src="9.mp3"></audio>
+<audio id="bgMusic"></audio>
 
-            <!-- ===== OVERLAYS ===== -->
-            <div id="goalBanner">GOAL!</div>
-            <div id="commentary">GREAT SHOT!</div>
-            <div id="warning">2 MINUTES LEFT!</div>
-            <div id="winnerMsg"></div>
+<canvas id="fbCanvas" width="1000" height="500"></canvas>
 
-            <!-- ===== START BUTTON ===== -->
-            <button id="startBtn">START GAME</button>
+<div class="controls">
+<select onchange="setGameTime(this.value)">
+<option value="">Select Time (min)</option>
+<option value="2">2</option>
+<option value="4">4</option>
+<option value="6">6</option>
+<option value="8">8</option>
+<option value="10">10</option>
+</select>
 
-            <!-- ===== CANVAS + CONTROLS ===== -->
-            <div id="gameCanvasContainer">
-                <canvas id="gameCanvas" width="1000" height="500"></canvas>
+<select onchange="setGameGoal(this.value)">
+<option value="">First X Goals</option>
+<option value="10">1st 10</option>
+<option value="20">1st 20</option>
+</select>
 
-                <!-- Mobile Controls (diamond + joystick) -->
-                <div id="mobileControls">
-                    <div class="joystick-container" id="joystickContainer">
-                        <div class="joystick-base" id="joystickBase">
-                            <div class="joystick-thumb" id="joystickThumb"></div>
-                        </div>
-                    </div>
+<select onchange="setAIHardness(this.value)">
+<option value="1">AI Easy</option>
+<option value="2">AI Medium</option>
+<option value="3" selected>AI Hard</option>
+<option value="4">AI Impossible</option>
+</select>
 
-                    <div class="diamond-cluster">
-                        <button id="dashBtn" class="diamond-btn dash-diamond">💨<br>DASH</button>
-                        <button id="shootBtn" class="diamond-btn shoot-diamond">⚽<br>SHOT</button>
-                        <button id="lockBtnMobile" class="diamond-btn lock-diamond">🔒<br>LOCK</button>
-                        <button id="turboShotBtn" class="diamond-btn turbo-diamond">🚀<br>TURBO<br>SHOT</button>
-                    </div>
+<button onclick="resetMatch()">Restart</button>
+</div>
 
-                    <div id="aimIndicator" class="aim-indicator"></div>
-                </div>
+<script>
+    
 
-                <!-- Fullscreen Toggle -->
-                <div id="fullscreenToggle" title="Toggle fullscreen">⛶</div>
-            </div>
+    function goToPage(page){
+    window.location.href = page;
+}
+let gameStarted = false; // will start after pressing Start
+const canvas=document.getElementById("fbCanvas");
+const ctx=canvas.getContext("2d");
 
-            <!-- ===== BOTTOM CONTROLS BAR ===== -->
-            <div class="controls-bar">
-                <select id="timeSelect">
-                    <option value="">Time</option>
-                    <option value="2">2 min</option>
-                    <option value="4">4 min</option>
-                    <option value="6">6 min</option>
-                    <option value="8">8 min</option>
-                    <option value="10">10 min</option>
-                </select>
-                <select id="goalSelect">
-                    <option value="">Goals</option>
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                    <option value="30">30</option>
-                </select>
-                <select id="aiLevelSelect">
-                    <option value="1">Easy</option>
-                    <option value="2">Medium</option>
-                    <option value="3" selected>Hard</option>
-                    <option value="4">Impossible</option>
-                </select>
-                <button id="resetBtn">Restart</button>
-            </div>
+let aiMode=true,p1Score=0,p2Score=0,gameOver=false,goalFlash=0;
+let totalTime=0,timeLeft=0,gameType=10,aiLevel=3;
+const keys={};
+document.addEventListener("keydown",e=>keys[e.code]=true);
+document.addEventListener("keyup",e=>keys[e.code]=false);
 
-            <!-- ===== AUDIO ===== -->
-            <audio id="goalHorn" src="9.mp3" preload="auto"></audio>
-            <audio id="bgMusic" loop></audio>
+function postCommentary(msg,color="#ffcc00"){
+    const comm=document.getElementById('commentary');
+    comm.innerText=msg;
+    comm.style.color=color;
+    comm.classList.add('show');
+    setTimeout(()=>comm.classList.remove('show'),2000);
+}
 
-        </div>
-    </div>
+// ===================== START PAGE LOGIC =====================
+const startBtn = document.createElement('button');
+startBtn.innerText = "START GAME";
+startBtn.style.cssText = "font-size:40px;padding:20px 50px;background:#111;color:#00ff00;border:2px solid #00ff00;border-radius:10px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);cursor:pointer;";
+document.body.appendChild(startBtn);
 
-    <script>
-        // ================================================================
-        //  FRANKLIN FOOTBALL 2026 – AI MODE with Diamond Controls
-        //  Merged from multiplayer reference: diamond buttons, joystick,
-        //  lock-on aiming, auto fullscreen, fixed screen.
-        // ================================================================
+const bgMusic = document.getElementById('bgMusic');
+const playlist = ['1.mp3','3.mp3','4.mp3','5.MP3','6.mp3'];
+let currentTrack = 0;
+bgMusic.volume = 1.0;
 
-        // ==================== CONFIG ====================
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const canvasContainer = document.getElementById('gameCanvasContainer');
+startBtn.addEventListener('click', ()=>{
+    gameStarted = true;
+    startBtn.style.display = 'none';
+    playNextTrack();
+});
 
-        let gameStarted = false;
-        let aiMode = true;
-        let p1Score = 0,
-            p2Score = 0;
-        let gameOver = false;
-        let goalFlash = 0;
-        let totalTime = 0;
-        let timeLeft = 0;
-        let gameType = 10;
-        let aiLevel = 3;
+function playNextTrack(){
+    bgMusic.src = playlist[currentTrack];
+    bgMusic.play().catch(()=>{});
+    currentTrack++;
+    if(currentTrack >= playlist.length) currentTrack = 0;
+    bgMusic.onended = playNextTrack;
+}
 
-        // ==================== KEYBOARD STATE ====================
-        const keys = {};
-        document.addEventListener('keydown', e => {
-            const tag = e.target.tagName;
-            if (tag === 'INPUT' || tag === 'SELECT') return;
-            e.preventDefault();
-            keys[e.code] = true;
-            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') lockPressed = true;
-        });
-        document.addEventListener('keyup', e => {
-            const tag = e.target.tagName;
-            if (tag === 'INPUT' || tag === 'SELECT') return;
-            e.preventDefault();
-            keys[e.code] = false;
-            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') lockPressed = false;
+// ===================== BALL, PLAYERS, KEEPERS =====================
+class Ball{
+    constructor(){ this.reset(); }
+    reset(){ this.x=500; this.y=250; this.vx=(Math.random()>0.5?5:-5); this.vy=-3; }
+    update(k1,k2,players){
+        if(gameOver) return;
+        this.x+=this.vx; this.y+=this.vy; this.vy+=0.25; this.vx*=0.995;
+        if(this.y>480){this.y=480; this.vy*=-0.7;}
+        if(this.y<10){this.y=10; this.vy*=-0.7;}
+
+        [k1,k2].forEach(k=>{
+            if(this.x+10>k.x && this.x-10<k.x+12 && this.y+10>k.y && this.y-10<k.y+60){
+                if(Math.abs(this.vx)>25) postCommentary("WHAT A SAVE!","#fff");
+                this.vx*=-1.1; this.x=(k.x<500)?25:970;
+            }
         });
 
-        // ==================== TOUCH STATE ====================
-        let touchDir = { up: false, down: false, left: false, right: false };
-        let shootPressed = false;
-        let turboPressed = false;
-        let lockPressed = false;
-        let joystickActive = false;
-        let joystickCenter = { x: 0, y: 0 };
-        let joystickMaxDist = 35;
-        let currentAimAngle = null;
-        let predictedIsJumping = false;
-
-        // ==================== FULLSCREEN + AUTO ROTATE ====================
-        let isFullscreen = false;
-
-        function requestFullscreen() {
-            const el = document.documentElement;
-            if (el.requestFullscreen) {
-                el.requestFullscreen().then(() => {
-                    if (screen.orientation && screen.orientation.lock) {
-                        screen.orientation.lock('landscape').catch(() => {});
-                    }
-                }).catch(() => {});
-            } else if (el.webkitRequestFullscreen) {
-                el.webkitRequestFullscreen();
-                if (screen.lockOrientation) screen.lockOrientation('landscape');
+        players.forEach(p=>{
+            if(this.x+10>p.x && this.x-10<p.x+30 && this.y+10>p.y && this.y-10<p.y+65){
+                this.vx*=-0.5; this.x=(this.x<p.x+15)?p.x-11:p.x+31;
             }
-        }
-
-        function exitFullscreen() {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-            if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
-        }
-
-        function updateNavVisibility() {
-            isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
-        }
-        document.addEventListener('fullscreenchange', updateNavVisibility);
-        document.addEventListener('webkitfullscreenchange', updateNavVisibility);
-
-        document.getElementById('fullscreenToggle').addEventListener('click', () => {
-            if (isFullscreen) exitFullscreen();
-            else requestFullscreen();
         });
 
-        // ==================== MOBILE DETECT ====================
-        function isMobile() {
-            return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        }
+        if(this.x<0 || this.x>1000) this.checkGoal();
+    }
 
-        function showMobileControls() {
-            if (isMobile()) {
-                document.getElementById('mobileControls').style.display = 'flex';
-            }
-        }
-
-        // ==================== RESIZE CANVAS ====================
-        function resizeCanvas() {
-            const rect = canvasContainer.getBoundingClientRect();
-            canvas.width = rect.width || 1000;
-            canvas.height = rect.height || 500;
-            ctx.imageSmoothingEnabled = false;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        window.addEventListener('orientationchange', () => {
-            setTimeout(resizeCanvas, 300);
-        });
-        setTimeout(resizeCanvas, 100);
-
-        // ==================== JOYSTICK SETUP ====================
-        function setupJoystick() {
-            const base = document.getElementById('joystickBase');
-            const thumb = document.getElementById('joystickThumb');
-
-            function updateAimAngle(dx, dy) {
-                if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
-                    currentAimAngle = null;
-                    return;
-                }
-                currentAimAngle = Math.atan2(-dy, dx) * 180 / Math.PI;
+    checkGoal(){
+        if(this.y>150 && this.y<350){
+            if(this.x<0) p2Score++; else p1Score++;
+            goalFlash=25;
+            showGoalBanner(this.x<0?"#00f2ff":"#ff00ff");
+            flashLastGoalLight();
+ const horn = document.getElementById('goalHorn');
+horn.pause();
+horn.currentTime = 0;
+horn.play().catch(()=>{});
+            if(p1Score>=gameType || p2Score>=gameType){
+                gameOver=true;
+                document.getElementById('winnerMsg').innerText=(p1Score>=gameType && aiMode)?"AI Wins!":"Human Wins!";
+                document.getElementById('winnerMsg').style.display="block";
             }
 
-            function updateThumb(e) {
-                const touch = e.touches[0];
-                if (!touch) return;
-                let dx = touch.clientX - joystickCenter.x;
-                let dy = touch.clientY - joystickCenter.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const max = joystickMaxDist;
-                let clampedDist = Math.min(dist, max);
-                let normalizedDx = 0,
-                    normalizedDy = 0;
-                if (dist > 0) {
-                    normalizedDx = dx / dist;
-                    normalizedDy = dy / dist;
-                    dx = normalizedDx * clampedDist;
-                    dy = normalizedDy * clampedDist;
-                }
-                thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            this.reset();
+        } else { this.vx*=-1; this.x=this.x<0?5:995; }
+    }
+}
 
-                touchDir.left = normalizedDx < -0.3;
-                touchDir.right = normalizedDx > 0.3;
-                touchDir.up = normalizedDy < -0.3;
-                touchDir.down = normalizedDy > 0.3;
+function showGoalBanner(color){
+    const el=document.getElementById('goalBanner');
+    el.style.textShadow=`0 0 30px ${color},0 0 60px ${color}`;
+    el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'),1500);
+}
+function flashLastGoalLight(){
+    const light=document.getElementById('lastGoalLight');
+    light.style.display='block';
+    setTimeout(()=>light.style.display='none',1500);
+}
 
-                updateAimAngle(normalizedDx, normalizedDy);
-            }
+class Keeper{
+    constructor(x,skill=1){ this.x=x; this.y=250; this.vy=0; this.skill=skill; }
+    update(ball){
+        let targetY=ball.y-30;
+        let delta=(targetY-this.y)*0.1*this.skill;
+        this.vy+=delta; this.vy*=0.7; this.y+=this.vy;
+        if(this.y<155) this.y=155;
+        if(this.y>295) this.y=295;
+    }
+}
 
-            function handleStart(e) {
-                e.preventDefault();
-                joystickActive = true;
-                const rect = base.getBoundingClientRect();
-                joystickCenter.x = rect.left + rect.width / 2;
-                joystickCenter.y = rect.top + rect.height / 2;
-                updateThumb(e);
-            }
+class Player{
+    constructor(x,y,color,controls,side){
+        this.x=x; this.y=y; this.color=color; this.controls=controls; this.side=side;
+        this.vx=0; this.vy=0; this.isJumping=false;
+    }
+    update(ball,isAI){
+        let dx=(this.x+15)-ball.x;
+        let dy=(this.y+32)-ball.y;
+        let hasBall=(dx*dx+dy*dy)<2500;
+        let isTurbo=(this.side==='left')?(keys['KeyW']):(keys['ArrowUp']&&(keys['ArrowLeft']||keys['ArrowRight']));
+        let attemptingShot=(this.side==='left')?keys['Key1']:(keys['ArrowUp']);
+       if(isAI){
+    let distX = ball.x - (this.x + 15);
+    let distY = ball.y - (this.y + 32);
+    let hasBall = (distX*distX + distY*distY) < 2500;
 
-            function handleMove(e) {
-                if (!joystickActive) return;
-                e.preventDefault();
-                updateThumb(e);
-            }
+    // ---- SMART POSITIONING ----
+    let targetX = (this.side === 'left') ? Math.min(ball.x - 50, 300) : Math.max(ball.x + 50, 700);
+    let targetY = ball.y - 30;
 
-            function handleEnd(e) {
-                e.preventDefault();
-                joystickActive = false;
-                thumb.style.transform = `translate(-50%, -50%)`;
-                touchDir = { up: false, down: false, left: false, right: false };
-                currentAimAngle = null;
-            }
+    // Move smoothly toward targetX
+    if(this.x < targetX) this.vx += 1.2 * aiLevel/3;
+    if(this.x > targetX) this.vx -= 1.2 * aiLevel/3;
 
-            base.addEventListener('touchstart', handleStart, { passive: false });
-            base.addEventListener('touchmove', handleMove, { passive: false });
-            base.addEventListener('touchend', handleEnd);
-            base.addEventListener('touchcancel', handleEnd);
-        }
+    // Jump if ball is above AI
+    if(!hasBall && distY < -15 && !this.isJumping && this.y >= 415) {
+        this.vy = -14 * aiLevel/3;
+        this.isJumping = true;
+    }
 
-        // ==================== DIAMOND BUTTONS SETUP ====================
-        function setupActionButtons() {
-            const shootBtn = document.getElementById('shootBtn');
-            const dashBtn = document.getElementById('dashBtn');
-            const turboBtn = document.getElementById('turboShotBtn');
-            const lockBtn = document.getElementById('lockBtnMobile');
+    // ---- SHOT DECISION ----
+    if(hasBall){
+        this.vx = 0;
 
-            // Shoot
-            shootBtn.addEventListener('touchstart', e => { e.preventDefault();
-                shootPressed = true; });
-            shootBtn.addEventListener('touchend', e => { e.preventDefault();
-                shootPressed = false; });
-            shootBtn.addEventListener('mousedown', () => { shootPressed = true; });
-            shootBtn.addEventListener('mouseup', () => { shootPressed = false; });
-            shootBtn.addEventListener('mouseleave', () => { shootPressed = false; });
+        // Determine shot speed based on AI level
+        let speed = 20 + (aiLevel*10);
+        let predictedY = ball.y + ball.vy * 10; // simple trajectory prediction
+        let goalY = 250; // goal center
+        let shootPower = Math.min(50, Math.abs(predictedY - goalY) * 2);
 
-            // Dash (also triggers turbo)
-            dashBtn.addEventListener('touchstart', e => { e.preventDefault();
-                turboPressed = true; });
-            dashBtn.addEventListener('touchend', e => { e.preventDefault();
-                turboPressed = false; });
-            dashBtn.addEventListener('mousedown', () => { turboPressed = true; });
-            dashBtn.addEventListener('mouseup', () => { turboPressed = false; });
-            dashBtn.addEventListener('mouseleave', () => { turboPressed = false; });
+        ball.vx = (this.side==='left') ? speed : -speed;
+        ball.vy = -shootPower;
 
-            // Turbo Shot (shoot + turbo)
-            turboBtn.addEventListener('touchstart', e => {
-                e.preventDefault();
-                shootPressed = true;
-                turboPressed = true;
-            });
-            turboBtn.addEventListener('touchend', e => {
-                e.preventDefault();
-                shootPressed = false;
-                turboPressed = false;
-            });
-            turboBtn.addEventListener('mousedown', () => { shootPressed = true;
-                turboPressed = true; });
-            turboBtn.addEventListener('mouseup', () => { shootPressed = false;
-                turboPressed = false; });
-            turboBtn.addEventListener('mouseleave', () => { shootPressed = false;
-                turboPressed = false; });
+        // Post commentary
+        if(aiLevel >= 3) postCommentary("AI POWER SHOT!", this.color);
+        else postCommentary("AI SHOT!", this.color);
+    }
 
-            // Lock
-            lockBtn.addEventListener('touchstart', e => { e.preventDefault();
-                lockPressed = true; });
-            lockBtn.addEventListener('touchend', e => { e.preventDefault();
-                lockPressed = false; });
-            lockBtn.addEventListener('mousedown', () => { lockPressed = true; });
-            lockBtn.addEventListener('mouseup', () => { lockPressed = false; });
-            lockBtn.addEventListener('mouseleave', () => { lockPressed = false; });
-        }
-
-        // ==================== GET INPUT (keyboard + touch) ====================
-        function getTouchInput() {
-            return {
-                left: touchDir.left,
-                right: touchDir.right,
-                up: touchDir.up,
-                down: touchDir.down,
-                shoot: shootPressed,
-                turbo: turboPressed,
-                lock: lockPressed,
-                aimAngle: currentAimAngle
-            };
-        }
-
-        function getInput() {
-            const touch = getTouchInput();
-            const left = keys['ArrowLeft'] || touch.left;
-            const right = keys['ArrowRight'] || touch.right;
-            const up = keys['ArrowUp'] || touch.up;
-            const down = keys['ArrowDown'] || touch.down;
-
-            // Keyboard shortcuts
-            const keyboardDash = keys['ArrowLeft'] && !keys['ArrowUp'];
-            const keyboardShoot = keys['ArrowUp'];
-            const keyboardTurbo = keyboardDash || (keys['ArrowUp'] && (keys['ArrowLeft'] || keys['ArrowRight']));
-            const keyboardLock = keys['ShiftLeft'] || keys['ShiftRight'];
-
-            const shoot = keyboardShoot || touch.shoot;
-            const turbo = keyboardTurbo || touch.turbo;
-            const lock = keyboardLock || touch.lock;
-
-            const inp = { left, right, up, down, shoot, turbo, lock };
-            if (touch.aimAngle !== null) inp.aimAngle = touch.aimAngle;
-            return inp;
-        }
-
-        // ==================== AUDIO ====================
-        const bgMusic = document.getElementById('bgMusic');
-        const goalHorn = document.getElementById('goalHorn');
-        const playlist = ['1.mp3', '3.mp3', '4.mp3', '5.MP3', '6.mp3'];
-        let currentTrack = 0;
-        bgMusic.volume = 0.6;
-
-        function playNextTrack() {
-            if (!gameStarted) return;
-            bgMusic.src = playlist[currentTrack];
-            bgMusic.play().catch(() => {});
-            currentTrack = (currentTrack + 1) % playlist.length;
-        }
-        bgMusic.addEventListener('ended', playNextTrack);
-
-        // ==================== COMMENTARY ====================
-        function comment(msg, color = '#ffcc00') {
-            const el = document.getElementById('commentary');
-            el.innerText = msg;
-            el.style.color = color;
-            el.classList.add('show');
-            setTimeout(() => el.classList.remove('show'), 2000);
-        }
-
-        function goalAnimation(color) {
-            const el = document.getElementById('goalBanner');
-            el.style.textShadow = `0 0 30px ${color},0 0 60px ${color}`;
-            el.classList.add('show');
-            setTimeout(() => el.classList.remove('show'), 1500);
-        }
-
-        function flashLastGoalLight() {
-            const light = document.getElementById('lastGoalLight');
-            light.style.display = 'block';
-            setTimeout(() => light.style.display = 'none', 1500);
-        }
-
-        // ==================== BALL, PLAYERS, KEEPERS ====================
-        class Ball {
-            constructor() { this.reset(); }
-            reset() {
-                this.x = 500;
-                this.y = 250;
-                this.vx = (Math.random() > 0.5 ? 5 : -5);
-                this.vy = -3;
-            }
-            update(k1, k2, players) {
-                if (gameOver) return;
-                this.x += this.vx;
-                this.y += this.vy;
-                this.vy += 0.25;
-                this.vx *= 0.995;
-                if (this.y > 480) { this.y = 480;
-                    this.vy *= -0.7; }
-                if (this.y < 10) { this.y = 10;
-                    this.vy *= -0.7; }
-
-                [k1, k2].forEach(k => {
-                    if (this.x + 10 > k.x && this.x - 10 < k.x + 12 &&
-                        this.y + 10 > k.y && this.y - 10 < k.y + 60) {
-                        if (Math.abs(this.vx) > 25) comment('WHAT A SAVE!', '#fff');
-                        this.vx *= -1.1;
-                        this.x = (k.x < 500) ? 25 : 970;
-                    }
-                });
-
-                players.forEach(p => {
-                    if (this.x + 10 > p.x && this.x - 10 < p.x + 30 &&
-                        this.y + 10 > p.y && this.y - 10 < p.y + 65) {
-                        this.vx *= -0.5;
-                        this.x = (this.x < p.x + 15) ? p.x - 11 : p.x + 31;
-                    }
-                });
-
-                if (this.x < 0 || this.x > 1000) this.checkGoal();
-            }
-
-            checkGoal() {
-                if (this.y > 150 && this.y < 350) {
-                    if (this.x < 0) p2Score++;
-                    else p1Score++;
-                    goalFlash = 25;
-                    goalAnimation(this.x < 0 ? '#00f2ff' : '#ff00ff');
-                    flashLastGoalLight();
-                    goalHorn.pause();
-                    goalHorn.currentTime = 0;
-                    goalHorn.play().catch(() => {});
-                    comment(this.x < 0 ? 'AI SCORES!' : 'YOU SCORE!', this.x < 0 ? '#00f2ff' : '#ff00ff');
-
-                    if (p1Score >= gameType || p2Score >= gameType) {
-                        gameOver = true;
-                        const winner = p1Score >= gameType ? '🏆 YOU WIN!' : '🤖 AI WINS!';
-                        document.getElementById('winnerMsg').innerText = winner;
-                        document.getElementById('winnerMsg').style.display = 'block';
-                        if (bgMusic) bgMusic.pause();
-                    }
-                    this.reset();
-                } else {
-                    this.vx *= -1;
-                    this.x = this.x < 0 ? 5 : 995;
-                }
+    // ---- HESITATION FOR LOWER LEVELS ----
+    if(aiLevel < 3 && Math.random() > 0.8) this.vx *= 0.5;
+}
+        if(hasBall && (attemptingShot || isTurbo)){
+            this.vx=0; let speed=isTurbo?45:20; ball.vx=(this.side==='left')?speed:-speed;
+            if(isTurbo) postCommentary("TURBO SHOT!",this.color); else postCommentary("POWER SHOT!","#fff");
+            if(this.side==='left'){ if(keys['KeyW']&&!keys['KeyS']) ball.vy=-14; else if(keys['KeyS']) ball.vy=10; else ball.vy=-2; }
+            else { if(keys['ArrowUp']&&!keys['ArrowDown']) ball.vy=-14; else if(keys['ArrowDown']) ball.vy=10; else ball.vy=-2; }
+        } else {
+            if(!isAI){
+                
+                if(keys[this.controls.left]) this.vx-=1.1;
+                if(keys[this.controls.right]) this.vx+=1.1;
+                if(keys[this.controls.up]&&!this.isJumping){ this.vy=-14; this.isJumping=true; }
+                if(keys[this.controls.down]) this.vy+=1;
             }
         }
+        this.vy+=0.7; this.x+=this.vx; this.y+=this.vy; this.vx*=0.85;
+        if(this.y>415){ this.y=415; this.vy=0; this.isJumping=false;}
+        if(this.x<40) this.x=40; if(this.x>930) this.x=930;
+    }
+}
 
-        class Keeper {
-            constructor(x, skill = 1) {
-                this.x = x;
-                this.y = 250;
-                this.vy = 0;
-                this.skill = skill;
-            }
-            update(ball) {
-                let targetY = ball.y - 30;
-                let delta = (targetY - this.y) * 0.1 * this.skill;
-                this.vy += delta;
-                this.vy *= 0.7;
-                this.y += this.vy;
-                if (this.y < 155) this.y = 155;
-                if (this.y > 295) this.y = 295;
-            }
-        }
+let ball=new Ball();
+let k1=new Keeper(5,1.2);
+let k2=new Keeper(983,1);
+let p1=new Player(150,415,"#ff00ff",{up:'KeyW',down:'KeyS',left:'KeyA',right:'KeyD'},'left');
+let p2=new Player(820,415,"#00f2ff",{up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'},'right');
 
-        class Player {
-            constructor(x, y, color, side) {
-                this.x = x;
-                this.y = y;
-                this.color = color;
-                this.side = side;
-                this.vx = 0;
-                this.vy = 0;
-                this.isJumping = false;
-            }
-            update(ball, isAI) {
-                let dx = (this.x + 15) - ball.x;
-                let dy = (this.y + 32) - ball.y;
-                let hasBall = (dx * dx + dy * dy) < 2500;
+function setMode(m){ aiMode=(m==='ai'); resetMatch(); }
+function setGameTime(min){ totalTime=parseInt(min)||0; timeLeft=totalTime*60; resetMatch(); }
+function setGameGoal(goal){ gameType=parseInt(goal)||10; resetMatch(); }
+function setAIHardness(level){ aiLevel=parseInt(level)||3; }
 
-                const inp = getInput();
+function drawScene(){
+    ctx.clearRect(0,0,1000,500);
+    ctx.strokeStyle="rgba(255,255,255,0.1)";
+    ctx.strokeRect(0,150,40,200);
+    ctx.strokeRect(960,150,40,200);
+    ctx.beginPath(); ctx.moveTo(500,0); ctx.lineTo(500,500); ctx.stroke();
+    if(goalFlash>0){ ctx.fillStyle=`rgba(255,255,255,${goalFlash/10})`; ctx.fillRect(0,0,1000,500); goalFlash--; }
+    ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(ball.x,ball.y,10,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=p1.color; ctx.fillRect(p1.x,p1.y,30,65);
+    ctx.fillStyle=p2.color; ctx.fillRect(p2.x,p2.y,30,65);
+    ctx.fillStyle="#ff00ff"; ctx.fillRect(5,k1.y,12,60);
+    ctx.fillStyle="#00f2ff"; ctx.fillRect(983,k2.y,12,60);
+}
 
-                // ---- AI ----
-                if (isAI) {
-                    let distX = ball.x - (this.x + 15);
-                    let distY = ball.y - (this.y + 32);
-                    let hasBallAI = (distX * distX + distY * distY) < 2500;
+let lastTime=0;
+function loop(){
+    if(!gameStarted){ requestAnimationFrame(loop); return; }
+    if(!gameOver){
+        ball.update(k1,k2,[p1,p2]);
+        k1.update(ball); k2.update(ball);
+        p1.update(ball,aiMode); p2.update(ball,false);
+        if(totalTime>0){ timeLeft-=1/60; if(timeLeft<=2*60) document.getElementById('warning').style.display='block';
+        if(timeLeft<=0){ gameOver=true; document.getElementById('winnerMsg').innerText=(p1Score>p2Score)?"Human Wins!":"AI Wins!"; document.getElementById('winnerMsg').style.display="block"; } }
+    }
+    drawScene();
+    document.getElementById('p1Score').innerText=p1Score;
+    document.getElementById('p2Score').innerText=p2Score;
+    requestAnimationFrame(loop);
+}
 
-                    let targetX = (this.side === 'left') ? Math.min(ball.x - 50, 300) : Math.max(ball.x + 50, 700);
-                    let targetY = ball.y - 30;
+function resetMatch(){
+    p1Score=0; p2Score=0; gameOver=false; ball.reset();
+    k1=new Keeper(5,1.2); k2=new Keeper(983,1);
+    p1=new Player(150,415,"#ff00ff",{up:'KeyW',down:'KeyS',left:'KeyA',right:'KeyD'},'left');
+    p2=new Player(820,415,"#00f2ff",{up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'},'right');
+    document.getElementById('warning').style.display='none';
+    document.getElementById('winnerMsg').style.display='none';
+    document.getElementById('lastGoalLight').style.display='none';
+}
 
-                    if (this.x < targetX) this.vx += 1.2 * aiLevel / 3;
-                    if (this.x > targetX) this.vx -= 1.2 * aiLevel / 3;
-
-                    if (!hasBallAI && distY < -15 && !this.isJumping && this.y >= 415) {
-                        this.vy = -14 * aiLevel / 3;
-                        this.isJumping = true;
-                    }
-
-                    if (hasBallAI) {
-                        this.vx = 0;
-                        let speed = 20 + (aiLevel * 10);
-                        let predictedY = ball.y + ball.vy * 10;
-                        let goalY = 250;
-                        let shootPower = Math.min(50, Math.abs(predictedY - goalY) * 2);
-                        ball.vx = (this.side === 'left') ? speed : -speed;
-                        ball.vy = -shootPower;
-                        if (aiLevel >= 3) comment('AI POWER SHOT!', this.color);
-                        else comment('AI SHOT!', this.color);
-                    }
-                    if (aiLevel < 3 && Math.random() > 0.8) this.vx *= 0.5;
-                    return;
-                }
-
-                // ---- HUMAN PLAYER (Player 1 - left side) ----
-                const left = inp.left || keys['KeyA'];
-                const right = inp.right || keys['KeyD'];
-                const up = inp.up || keys['KeyW'];
-                const down = inp.down || keys['KeyS'];
-                const shoot = inp.shoot || keys['Key1'];
-                const turbo = inp.turbo || (keys['KeyW'] && (keys['KeyA'] || keys['KeyD']));
-
-                // Movement
-                if (left) this.vx -= 1.1;
-                if (right) this.vx += 1.1;
-                if (up && !this.isJumping && this.y >= 415) {
-                    this.vy = -14;
-                    this.isJumping = true;
-                }
-                if (down) this.vy += 1;
-
-                // ---- SHOOTING ----
-                if (hasBall && (shoot || turbo)) {
-                    this.vx = 0;
-                    let speed = turbo ? 45 : 20;
-                    ball.vx = speed; // left side shoots right
-                    if (turbo) comment('TURBO SHOT!', '#ff80ff');
-                    else comment('POWER SHOT!', '#fff');
-
-                    // Aim with lock or joystick angle
-                    if (inp.lock || lockPressed) {
-                        // Lock-on: aim directly at goal center (250) with slight randomness
-                        ball.vy = -8 + (Math.random() * 4 - 2);
-                    } else if (inp.aimAngle !== null) {
-                        // Joystick aiming
-                        const angleRad = inp.aimAngle * Math.PI / 180;
-                        ball.vy = -12 * Math.sin(angleRad);
-                    } else {
-                        // Default: slight upward
-                        if (up) ball.vy = -14;
-                        else if (down) ball.vy = 10;
-                        else ball.vy = -3;
-                    }
-                }
-
-                // ---- GRAVITY & BOUNDS ----
-                this.vy += 0.7;
-                this.x += this.vx;
-                this.y += this.vy;
-                this.vx *= 0.85;
-                if (this.y > 415) {
-                    this.y = 415;
-                    this.vy = 0;
-                    this.isJumping = false;
-                }
-                if (this.x < 40) this.x = 40;
-                if (this.x > 930) this.x = 930;
-            }
-        }
-
-        // ==================== GAME OBJECTS ====================
-        let ball = new Ball();
-        let k1 = new Keeper(5, 1.2);
-        let k2 = new Keeper(983, 1);
-        let p1 = new Player(150, 415, '#ff00ff', 'left');
-        let p2 = new Player(820, 415, '#00f2ff', 'right');
-
-        // ==================== SETTINGS ====================
-        function setGameTime(min) {
-            totalTime = parseInt(min) || 0;
-            timeLeft = totalTime * 60;
-            resetMatch();
-        }
-
-        function setGameGoal(goal) {
-            gameType = parseInt(goal) || 10;
-            resetMatch();
-        }
-
-        function setAIHardness(level) {
-            aiLevel = parseInt(level) || 3;
-            resetMatch();
-        }
-
-        document.getElementById('timeSelect').addEventListener('change', function() {
-            setGameTime(this.value);
-        });
-        document.getElementById('goalSelect').addEventListener('change', function() {
-            setGameGoal(this.value);
-        });
-        document.getElementById('aiLevelSelect').addEventListener('change', function() {
-            setAIHardness(this.value);
-        });
-        document.getElementById('resetBtn').addEventListener('click', resetMatch);
-
-        // ==================== RESET ====================
-        function resetMatch() {
-            p1Score = 0;
-            p2Score = 0;
-            gameOver = false;
-            goalFlash = 0;
-            ball.reset();
-            k1 = new Keeper(5, 1.2);
-            k2 = new Keeper(983, 1);
-            p1 = new Player(150, 415, '#ff00ff', 'left');
-            p2 = new Player(820, 415, '#00f2ff', 'right');
-            document.getElementById('warning').style.display = 'none';
-            document.getElementById('winnerMsg').style.display = 'none';
-            document.getElementById('lastGoalLight').style.display = 'none';
-            if (bgMusic) {
-                bgMusic.pause();
-                bgMusic.currentTime = 0;
-            }
-            if (gameStarted) {
-                playNextTrack();
-            }
-        }
-
-        // ==================== RENDERING ====================
-        let prevBallX = 500,
-            prevBallY = 250;
-
-        function drawScene() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Field markings
-            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(0, 150, 40, 200);
-            ctx.strokeRect(canvas.width - 40, 150, 40, 200);
-            ctx.beginPath();
-            ctx.moveTo(canvas.width / 2, 0);
-            ctx.lineTo(canvas.width / 2, canvas.height);
-            ctx.stroke();
-
-            // Goal flash
-            if (goalFlash > 0) {
-                ctx.fillStyle = `rgba(255,255,255,${goalFlash / 10})`;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                goalFlash--;
-            }
-
-            // Ball (interpolated)
-            if (ball) {
-                prevBallX += (ball.x - prevBallX) * 0.4;
-                prevBallY += (ball.y - prevBallY) * 0.4;
-                let rx = prevBallX,
-                    ry = prevBallY;
-                if (rx < 10) rx = 10;
-                if (rx > canvas.width - 10) rx = canvas.width - 10;
-                if (ry < 10) ry = 10;
-                if (ry > canvas.height - 10) ry = canvas.height - 10;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(rx, ry, 10, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Lock-on aiming line
-                const inp = getInput();
-                if ((inp.lock || lockPressed) && gameStarted && !gameOver) {
-                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([6, 6]);
-                    ctx.beginPath();
-                    ctx.moveTo(p1.x + 15, p1.y + 30);
-                    ctx.lineTo(rx, ry);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    ctx.lineWidth = 1;
-                }
-
-                // Aim indicator (joystick)
-                if (inp.aimAngle !== null && gameStarted && !gameOver) {
-                    const angleRad = inp.aimAngle * Math.PI / 180;
-                    const indX = p1.x + 15 + 60 * Math.cos(angleRad);
-                    const indY = p1.y + 30 + 60 * Math.sin(angleRad);
-                    const aimEl = document.getElementById('aimIndicator');
-                    aimEl.style.display = 'block';
-                    aimEl.style.left = indX + 'px';
-                    aimEl.style.top = indY + 'px';
-                } else {
-                    document.getElementById('aimIndicator').style.display = 'none';
-                }
-            }
-
-            // Players
-            ctx.fillStyle = p1.color;
-            ctx.fillRect(p1.x, p1.y, 30, 65);
-
-            ctx.fillStyle = p2.color;
-            ctx.fillRect(p2.x, p2.y, 30, 65);
-
-            // Keepers
-            ctx.fillStyle = '#ff00ff';
-            ctx.fillRect(5, k1.y, 12, 60);
-            ctx.fillStyle = '#00f2ff';
-            ctx.fillRect(canvas.width - 17, k2.y, 12, 60);
-
-            // Scores
-            document.getElementById('p1Score').innerText = p1Score;
-            document.getElementById('p2Score').innerText = p2Score;
-        }
-
-        // ==================== GAME LOOP ====================
-        let lastTime = 0;
-
-        function gameLoop() {
-            if (!gameStarted) {
-                requestAnimationFrame(gameLoop);
-                return;
-            }
-
-            if (!gameOver) {
-                ball.update(k1, k2, [p1, p2]);
-                k1.update(ball);
-                k2.update(ball);
-                p1.update(ball, false);
-                p2.update(ball, true);
-
-                if (totalTime > 0) {
-                    timeLeft -= 1 / 60;
-                    if (timeLeft <= 2 * 60) {
-                        document.getElementById('warning').style.display = 'block';
-                    }
-                    if (timeLeft <= 0) {
-                        gameOver = true;
-                        const winner = p1Score > p2Score ? '🏆 YOU WIN!' : '🤖 AI WINS!';
-                        document.getElementById('winnerMsg').innerText = winner;
-                        document.getElementById('winnerMsg').style.display = 'block';
-                        if (bgMusic) bgMusic.pause();
-                    }
-                }
-            }
-
-            drawScene();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // ==================== START GAME ====================
-        document.getElementById('startBtn').addEventListener('click', function() {
-            gameStarted = true;
-            this.style.display = 'none';
-
-            // Auto fullscreen + landscape
-            requestFullscreen();
-
-            // Show mobile controls if on phone
-            showMobileControls();
-
-            // Start music
-            playNextTrack();
-
-            // Reset match
-            resetMatch();
-        });
-
-        // ==================== INIT CONTROLS ====================
-        setupJoystick();
-        setupActionButtons();
-
-        // ==================== START LOOP ====================
-        gameLoop();
-
-        // ==================== PREVENT SCROLLING ====================
-        document.addEventListener('touchmove', e => {
-            if (e.target.closest('#mobileControls')) return;
-            e.preventDefault();
-        }, { passive: false });
-
-        // ==================== KEYBOARD SHORTCUT HINT ====================
-        console.log('🎮 Controls: Arrow keys / WASD = move | Up / 1 = shoot | Shift = lock | Up+Left/Right = turbo');
-    </script>
-
+loop();
+</script>
 </body>
 </html>
