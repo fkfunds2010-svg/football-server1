@@ -175,22 +175,10 @@
     <div id="inviteModal" class="hidden" style="z-index:900;">
       <div id="inviteModalContent">
         <h2>📤 Invite Friend</h2>
-        <div class="invite-section">
-          <label id="recipientLabel">Phone number</label>
-          <input type="text" id="inviteRecipient" placeholder="+234...">
-        </div>
-        <div class="send-code-checkbox">
-          <input type="checkbox" id="sendCodeOnlyCheck">
-          <label for="sendCodeOnlyCheck">📋 Send room code & password only</label>
-        </div>
-        <div class="invite-section" id="subjectSection">
-          <label>Subject</label>
-          <input type="text" id="inviteSubject" placeholder="Subject">
-        </div>
-        <div class="invite-section">
-          <label>Message</label>
-          <textarea id="inviteMessage" placeholder="Type your message..."></textarea>
-        </div>
+        <div class="invite-section"><label id="recipientLabel">Phone number</label><input type="text" id="inviteRecipient" placeholder="+234..."></div>
+        <div class="send-code-checkbox"><input type="checkbox" id="sendCodeOnlyCheck"><label for="sendCodeOnlyCheck">📋 Send room code & password only</label></div>
+        <div class="invite-section" id="subjectSection"><label>Subject</label><input type="text" id="inviteSubject" placeholder="Subject"></div>
+        <div class="invite-section"><label>Message</label><textarea id="inviteMessage" placeholder="Type your message..."></textarea></div>
         <div class="app-buttons" id="appButtons"></div>
         <button class="invite-close-btn" id="inviteBackBtn">🔙 Back</button>
       </div>
@@ -202,18 +190,10 @@
         <h2>📞 Dial Code</h2>
         <div class="dial-display" id="dialCodeDisplay">*      #</div>
         <div class="dial-pad">
-          <button class="dial-btn" data-digit="1">1</button>
-          <button class="dial-btn" data-digit="2">2</button>
-          <button class="dial-btn" data-digit="3">3</button>
-          <button class="dial-btn" data-digit="4">4</button>
-          <button class="dial-btn" data-digit="5">5</button>
-          <button class="dial-btn" data-digit="6">6</button>
-          <button class="dial-btn" data-digit="7">7</button>
-          <button class="dial-btn" data-digit="8">8</button>
-          <button class="dial-btn" data-digit="9">9</button>
-          <button class="dial-btn" data-digit="*">*</button>
-          <button class="dial-btn" data-digit="0">0</button>
-          <button class="dial-btn" data-digit="#">#</button>
+          <button class="dial-btn" data-digit="1">1</button><button class="dial-btn" data-digit="2">2</button><button class="dial-btn" data-digit="3">3</button>
+          <button class="dial-btn" data-digit="4">4</button><button class="dial-btn" data-digit="5">5</button><button class="dial-btn" data-digit="6">6</button>
+          <button class="dial-btn" data-digit="7">7</button><button class="dial-btn" data-digit="8">8</button><button class="dial-btn" data-digit="9">9</button>
+          <button class="dial-btn" data-digit="*">*</button><button class="dial-btn" data-digit="0">0</button><button class="dial-btn" data-digit="#">#</button>
         </div>
         <div>
           <button class="dial-action-btn" id="dialClearBtn">Clear</button>
@@ -229,9 +209,7 @@
       <div id="gameCanvasContainer">
         <canvas id="gameCanvas" width="1000" height="500"></canvas>
         <div id="mobileControls">
-          <div class="joystick-container" id="joystickContainer">
-            <div class="joystick-base" id="joystickBase"><div class="joystick-thumb" id="joystickThumb"></div></div>
-          </div>
+          <div class="joystick-container" id="joystickContainer"><div class="joystick-base" id="joystickBase"><div class="joystick-thumb" id="joystickThumb"></div></div></div>
           <div class="diamond-cluster">
             <button id="dashBtn" class="diamond-btn dash-diamond">💨<br>DASH</button>
             <button id="shootBtn" class="diamond-btn shoot-diamond">⚽<br>SHOT</button>
@@ -254,6 +232,7 @@
 </div>
 
 <script>
+  // ==================== CONFIG ====================
   const SERVER_URL = "wss://football-server1.onrender.com";
   let client, room, myPlayerId, amIHost, gameActive = false;
   let keys = {};
@@ -262,18 +241,21 @@
   let ping = 0, reconnectAttempts = 0, countdownValue = -1, matchStatus = "waiting";
   let inputInterval, pingInterval, roomPassword = "", selectedRegion = "europe";
 
+  // Touch & lock
   let touchDir = { up: false, down: false, left: false, right: false };
   let shootPressed = false, turboPressed = false, lockPressed = false;
   let joystickActive = false, joystickCenter = { x: 0, y: 0 }, joystickMaxDist = 35, currentAimAngle = null;
   let isFullscreen = false, predictedIsJumping = false;
   let prevBallX = 500, prevBallY = 250;
 
+  // Series & stats
   let seriesTarget = 1;
   let seriesWins = { p1: 0, p2: 0 };
   let possessionTime = { p1: 0, p2: 0 };
   let shotCount = { p1: 0, p2: 0 };
   let lastPossessionUpdate = 0;
 
+  // UI elements
   const panels = {
     start: document.getElementById('startPanel'), menu: document.getElementById('menuPanel'),
     lobby: document.getElementById('lobbyPanel'), game: document.getElementById('gamePanel')
@@ -298,6 +280,7 @@
   const joinHostNameInput = document.getElementById('joinHostNameInput');
   const onlineRoomsList = document.getElementById('onlineRoomsList');
 
+  // Invite elements
   const inviteModal = document.getElementById('inviteModal');
   const inviteRecipient = document.getElementById('inviteRecipient');
   const recipientLabel = document.getElementById('recipientLabel');
@@ -307,6 +290,7 @@
   const appButtons = document.getElementById('appButtons');
   let currentInviteMode = 'phone';
 
+  // Dial pad
   let dialCode = '';
   const dialCodeDisplay = document.getElementById('dialCodeDisplay');
   const dialPadModal = document.getElementById('dialPadModal');
@@ -314,6 +298,7 @@
   const dialJoinBtn = document.getElementById('dialJoinBtn');
   const dialCloseBtn = document.getElementById('dialCloseBtn');
 
+  // Music
   const playlist = ['/1.mp3', '/3.mp3', '/4.mp3', '/5.mp3']; let currentTrack = 0;
   const bgMusic = document.getElementById('bgMusic'); bgMusic.volume = 0.6;
 
@@ -340,6 +325,7 @@
   window.sendRematch = () => { if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); } };
   regionSelect.addEventListener('change', () => { selectedRegion = regionSelect.value; });
 
+  // Fullscreen
   function requestFullscreen() {
     const el = document.documentElement;
     if (el.requestFullscreen) {
@@ -365,11 +351,13 @@
   document.addEventListener('webkitfullscreenchange', updateNavVisibility);
   fullscreenToggle.addEventListener('click', () => { if (isFullscreen) exitFullscreen(); else requestFullscreen(); });
 
+  // Copy buttons
   document.getElementById('copyRoomCode').onclick = () => navigator.clipboard.writeText(document.getElementById('roomCodeDisplay').innerText);
   document.getElementById('copyPassword').onclick = () => navigator.clipboard.writeText(document.getElementById('passwordText').innerText);
   document.querySelectorAll('.emote-btn').forEach(b => b.addEventListener('click', () => { if (room) room.send("emote", b.dataset.emote); }));
   rematchBtn.addEventListener('click', () => { if (room) { room.send("rematch"); rematchBtn.classList.add('hidden'); } });
 
+  // Mobile detection
   function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
   function showMobileControls() { if (isMobile()) mobileControls.style.display = 'flex'; }
 
@@ -382,7 +370,7 @@
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
-  // Joystick
+  // ---------- Joystick ----------
   function setupJoystick() {
     const base = document.getElementById('joystickBase'), thumb = document.getElementById('joystickThumb');
     function updateAimAngle(dx, dy) {
@@ -419,7 +407,7 @@
     base.addEventListener('touchcancel', handleEnd);
   }
 
-  // Diamond buttons
+  // ---------- Diamond buttons ----------
   function setupActionButtons() {
     document.getElementById('shootBtn').addEventListener('touchstart', e => { e.preventDefault(); shootPressed = true; });
     document.getElementById('shootBtn').addEventListener('touchend', e => { e.preventDefault(); shootPressed = false; });
@@ -436,6 +424,7 @@
       shoot: shootPressed, turbo: turboPressed, lock: lockPressed, aimAngle: currentAimAngle };
   }
 
+  // Keyboard
   window.addEventListener('keydown', e => {
     const tag = e.target.tagName;
     const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
@@ -465,103 +454,9 @@
     return inp;
   }
 
-  // --- Dial pad ---
-  function updateDialDisplay() {
-    let display = '*';
-    for (let i = 0; i < 6; i++) {
-      display += (dialCode[i] || ' ') + ' ';
-    }
-    display += '#';
-    dialCodeDisplay.textContent = display;
-  }
-
-  document.querySelectorAll('.dial-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const digit = btn.dataset.digit;
-      if (dialCode.length < 6) {
-        dialCode += digit;
-        updateDialDisplay();
-      }
-    });
-  });
-  dialClearBtn.addEventListener('click', () => { dialCode = ''; updateDialDisplay(); });
-  dialCloseBtn.addEventListener('click', () => { dialPadModal.classList.add('hidden'); });
-
-  dialJoinBtn.addEventListener('click', async () => {
-    if (dialCode.length < 4) { alert('Please enter at least 4 digits.'); return; }
-    try {
-      const res = await fetch(`/api/join-by-dial?code=${dialCode}`);
-      const data = await res.json();
-      if (data.error) { alert(data.error); return; }
-      if (!client) client = new Colyseus.Client(SERVER_URL);
-      room = await client.joinById(data.roomId);
-      amIHost = false; myPlayerId = 'p2';
-      const name = prompt("Enter your display name:", "Player2");
-      room.send("setName", name || "P2");
-      setupRoom(); enterLobby();
-      dialPadModal.classList.add('hidden');
-    } catch (e) { alert('Failed to join via dial code.'); }
-  });
-
-  // "Get Dial Code" button
-  document.getElementById('generateDialCodeBtn').addEventListener('click', () => {
-    if (!amIHost || !room) return;
-    room.send("generateDialCode");
-  });
-
-  // --- Online rooms list & join by host ---
-  async function refreshOpenRooms() {
-    try {
-      const res = await fetch("/api/rooms");
-      const rooms = await res.json();
-      onlineRoomsList.innerHTML = '';
-      if (rooms.length === 0) {
-        onlineRoomsList.innerHTML = '<div style="color:#ccc;padding:10px;">No open rooms right now.</div>';
-        return;
-      }
-      rooms.forEach(r => {
-        const div = document.createElement('div');
-        div.className = 'room-list-item';
-        div.innerHTML = `<span>${r.hostName} (${r.players}/2)</span>
-          <button class="join-open-room" data-roomid="${r.roomId}">Join</button>`;
-        onlineRoomsList.appendChild(div);
-      });
-      document.querySelectorAll('.join-open-room').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const roomId = btn.dataset.roomid;
-          if (!client) client = new Colyseus.Client(SERVER_URL);
-          room = await client.joinById(roomId);
-          amIHost = false; myPlayerId = 'p2';
-          const name = prompt("Enter your display name:", "Player2");
-          room.send("setName", name || "P2");
-          setupRoom(); enterLobby();
-        });
-      });
-    } catch (e) {
-      onlineRoomsList.innerHTML = '<div style="color:#f00;padding:10px;">Could not load rooms.</div>';
-    }
-  }
-
-  document.getElementById('refreshRoomsBtn').addEventListener('click', refreshOpenRooms);
-
-  document.getElementById('joinByHostBtn').addEventListener('click', async () => {
-    const hostName = joinHostNameInput.value.trim();
-    if (!hostName) { alert('Please enter a host name.'); return; }
-    try {
-      const res = await fetch(`/api/join-by-host?name=${encodeURIComponent(hostName)}`);
-      const data = await res.json();
-      if (data.error) { alert(data.error); return; }
-      if (!client) client = new Colyseus.Client(SERVER_URL);
-      room = await client.joinById(data.roomId);
-      amIHost = false; myPlayerId = 'p2';
-      const name = prompt("Enter your display name:", "Player2");
-      room.send("setName", name || "P2");
-      setupRoom(); enterLobby();
-    } catch (e) { alert('Failed to join by host name.'); }
-  });
-
   // ==================== NETWORKING ====================
   async function createRoom() {
+    console.log("Create room button clicked");
     const hostName = await showPrompt("Enter your display name", "Your name");
     if (!hostName) return;
     const password = await showPrompt("Set a room password", "Leave empty for random", true);
@@ -573,10 +468,16 @@
     selectedRegion = regionSelect.value;
     client = new Colyseus.Client(SERVER_URL);
     try {
-      room = await client.create("football", { password: pass, region: selectedRegion, matchTime, targetGoals, seriesTarget });
+      room = await client.create("football", {
+        password: pass, region: selectedRegion, matchTime, targetGoals, seriesTarget
+      });
       amIHost = true; myPlayerId = 'p1'; roomPassword = pass;
       room.send("setName", hostName);
-    } catch(e) { alert("Failed to create room. Is server running? " + e.message); return; }
+      console.log("Room created:", room.roomId);
+    } catch(e) {
+      alert("Failed to create room. Is server running? " + e.message);
+      return;
+    }
     setupRoom(); enterLobby();
     passwordDisplay.style.display = 'flex'; passwordText.innerText = pass;
   }
@@ -691,7 +592,7 @@
       seriesWins = { p1: 0, p2: 0 };
     });
 
-    // DIAL CODE LISTENERS (inside setupRoom)
+    // Dial code listeners (inside setupRoom)
     room.onMessage("dialCode", (code) => {
       dialCode = code;
       updateDialDisplay();
@@ -794,7 +695,7 @@
     document.body.appendChild(toast); setTimeout(() => toast.remove(), 2500);
   }
 
-  // --- Prediction & Rendering ---
+  // ==================== PREDICTION & RENDERING ====================
   function applyPrediction() {
     if (!gameActive || !localPlayer) return;
     const inp = getInput();
@@ -849,9 +750,11 @@
   function loop() { if (gameActive) applyPrediction(); draw(); requestAnimationFrame(loop); }
   loop();
 
+  // ==================== UI EVENTS ====================
   function showPrompt(title, placeholder, isPassword=false) {
     return new Promise(resolve => {
-      const overlay = document.createElement('div'); overlay.className='modal-overlay';
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
       overlay.innerHTML = `<div class="modal-box"><h2>${title}</h2><input type="${isPassword?'password':'text'}" id="modalInput" class="input-field" placeholder="${placeholder}"><div><button class="btn" id="modalConfirm">Confirm</button><button class="btn secondary" id="modalCancel">Cancel</button></div></div>`;
       document.body.appendChild(overlay);
       document.getElementById('modalConfirm').onclick = () => { const val = document.getElementById('modalInput').value; document.body.removeChild(overlay); resolve(val); };
@@ -891,13 +794,14 @@
     shotCount = { p1: 0, p2: 0 };
   }
 
-  // Invite logic
+  // Invite & dial logic (unchanged from previous, fully functional)
+  // (I've included the complete invite/dial code below for completeness)
+
   function getRoomCode() { return document.getElementById('roomCodeDisplay').innerText; }
   function getRoomPassword() { return document.getElementById('passwordText').innerText; }
 
   function buildCodeOnlyMessage() {
-    const code = getRoomCode(); const pass = getRoomPassword();
-    return `Join my game! 🏆 FRANKLIN FOOTBALL 2026\nRoom Code: ${code}\nPassword: ${pass}`;
+    return `Join my game! 🏆 FRANKLIN FOOTBALL 2026\nRoom Code: ${getRoomCode()}\nPassword: ${getRoomPassword()}`;
   }
 
   function updateInviteFields() {
@@ -967,19 +871,15 @@
     const message = inviteMessage.value;
     let url = '';
     if (app === 'clipboard') {
-      const fullText = `${subject}\n${message}`;
-      navigator.clipboard.writeText(fullText).then(() => showNotification('📋 Invite copied!'));
+      navigator.clipboard.writeText(`${subject}\n${message}`).then(() => showNotification('📋 Invite copied!'));
       return;
     }
     if (currentInviteMode === 'phone') {
       const cleanNumber = recipient.replace(/[^+\d]/g, '');
       if (app === 'whatsapp') url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
       else if (app === 'telegram') url = `https://t.me/share/url?url=&text=${encodeURIComponent(message)}`;
-      else if (app === 'snapchat') {
-        navigator.clipboard.writeText(message);
-        alert('Snapchat link not supported; message copied. Paste it in Snapchat.');
-        return;
-      } else if (app === 'sms') url = `sms:${cleanNumber}?body=${encodeURIComponent(message)}`;
+      else if (app === 'snapchat') { navigator.clipboard.writeText(message); alert('Snapchat link not supported; message copied.'); return; }
+      else if (app === 'sms') url = `sms:${cleanNumber}?body=${encodeURIComponent(message)}`;
     } else {
       if (app === 'mailto') url = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
       else if (app === 'gmail') url = `https://mail.google.com/mail/?view=cm&fs=1&to=${recipient}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
@@ -988,6 +888,88 @@
     }
     if (url) window.open(url, '_blank');
   }
+
+  // Dial pad functionality (unchanged)
+  function updateDialDisplay() {
+    let display = '*';
+    for (let i = 0; i < 6; i++) display += (dialCode[i] || ' ') + ' ';
+    display += '#';
+    dialCodeDisplay.textContent = display;
+  }
+  document.querySelectorAll('.dial-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (dialCode.length < 6) { dialCode += btn.dataset.digit; updateDialDisplay(); }
+    });
+  });
+  dialClearBtn.addEventListener('click', () => { dialCode = ''; updateDialDisplay(); });
+  dialCloseBtn.addEventListener('click', () => { dialPadModal.classList.add('hidden'); });
+  dialJoinBtn.addEventListener('click', async () => {
+    if (dialCode.length < 4) { alert('Please enter at least 4 digits.'); return; }
+    try {
+      const res = await fetch(`/api/join-by-dial?code=${dialCode}`);
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      if (!client) client = new Colyseus.Client(SERVER_URL);
+      room = await client.joinById(data.roomId);
+      amIHost = false; myPlayerId = 'p2';
+      const name = prompt("Enter your display name:", "Player2");
+      room.send("setName", name || "P2");
+      setupRoom(); enterLobby();
+      dialPadModal.classList.add('hidden');
+    } catch (e) { alert('Failed to join via dial code.'); }
+  });
+
+  document.getElementById('generateDialCodeBtn').addEventListener('click', () => {
+    if (!amIHost || !room) return;
+    room.send("generateDialCode");
+  });
+
+  // Open rooms list
+  async function refreshOpenRooms() {
+    try {
+      const res = await fetch("/api/rooms");
+      const rooms = await res.json();
+      onlineRoomsList.innerHTML = '';
+      if (rooms.length === 0) {
+        onlineRoomsList.innerHTML = '<div style="color:#ccc;padding:10px;">No open rooms right now.</div>';
+        return;
+      }
+      rooms.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'room-list-item';
+        div.innerHTML = `<span>${r.hostName} (${r.players}/2)</span><button class="join-open-room" data-roomid="${r.roomId}">Join</button>`;
+        onlineRoomsList.appendChild(div);
+      });
+      document.querySelectorAll('.join-open-room').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const roomId = btn.dataset.roomid;
+          if (!client) client = new Colyseus.Client(SERVER_URL);
+          room = await client.joinById(roomId);
+          amIHost = false; myPlayerId = 'p2';
+          const name = prompt("Enter your display name:", "Player2");
+          room.send("setName", name || "P2");
+          setupRoom(); enterLobby();
+        });
+      });
+    } catch (e) { onlineRoomsList.innerHTML = '<div style="color:#f00;padding:10px;">Could not load rooms.</div>'; }
+  }
+  document.getElementById('refreshRoomsBtn').addEventListener('click', refreshOpenRooms);
+
+  document.getElementById('joinByHostBtn').addEventListener('click', async () => {
+    const hostName = joinHostNameInput.value.trim();
+    if (!hostName) { alert('Please enter a host name.'); return; }
+    try {
+      const res = await fetch(`/api/join-by-host?name=${encodeURIComponent(hostName)}`);
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      if (!client) client = new Colyseus.Client(SERVER_URL);
+      room = await client.joinById(data.roomId);
+      amIHost = false; myPlayerId = 'p2';
+      const name = prompt("Enter your display name:", "Player2");
+      room.send("setName", name || "P2");
+      setupRoom(); enterLobby();
+    } catch (e) { alert('Failed to join by host name.'); }
+  });
 
   if (isMobile()) { setupJoystick(); setupActionButtons(); }
 </script>
